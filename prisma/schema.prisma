@@ -1,0 +1,300 @@
+// Prisma schema — PT Wana Samudra Persada HR & Payroll Outsourcing
+//
+// Datasource is SQLite for now (zero local install, unblocks development).
+// Switch to PostgreSQL before deploying to the Hostinger VPS:
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")   // postgres connection string
+// Notes are avoided (String instead of `enum`) because SQLite does not
+// support native enums in Prisma — once on PostgreSQL these can be
+// converted to real `enum` types if desired (optional, not required).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ── Auth & access control ──────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  role          String   // ADMIN | HR | FINANCE | SUPERVISOR | EMPLOYEE
+  active        Boolean  @default(true)
+  employeeId    String?  @unique
+  employee      Employee? @relation(fields: [employeeId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  auditLogs     AuditLog[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String   // e.g. "employee.update", "payroll.pay", "invoice.markPaid"
+  entity    String   // e.g. "Employee", "Invoice"
+  entityId  String?
+  detail    String?  // JSON string with before/after or extra context
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
+}
+
+// ── Org structure ──────────────────────────────────────────────────────
+
+model Site {
+  id         String     @id @default(cuid())
+  name       String
+  address    String
+  supervisor String
+  umr        Int        @default(0)
+  employees  Employee[]
+  createdAt  DateTime   @default(now())
+}
+
+model Position {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  salaryType  String     // "bulanan" | "harian"
+  baseSalary  Int
+  employees   Employee[]
+}
+
+model Client {
+  id             String        @id @default(cuid())
+  name           String
+  pic            String
+  picPhone       String?
+  address        String?
+  contractStart  DateTime
+  contractEnd    DateTime
+  feeType        String        // "percent" | "flat"
+  feeValue       Int
+  employees      Employee[]
+  invoicesBj     InvoiceBj[]
+  invoices       Invoice[]
+  createdAt      DateTime      @default(now())
+}
+
+// ── Employees & lifecycle ──────────────────────────────────────────────
+
+model Employee {
+  id              String   @id @default(cuid())
+  empCode         String   @unique // e.g. EMP-0001
+  name            String
+  siteId          String
+  site            Site     @relation(fields: [siteId], references: [id])
+  positionId      String
+  position        Position @relation(fields: [positionId], references: [id])
+  clientId        String?
+  client          Client?  @relation(fields: [clientId], references: [id])
+  hireDate        DateTime
+  contractType    String   // "PKWT" | "PKWTT"
+  contractEnd     DateTime?
+  cutiKuota       Int      @default(12)
+  kasbon          Int      @default(0)
+  status          String   @default("aktif") // "aktif" | "resign"
+  thrPaid         Boolean  @default(false)
+  thrOverride     Int?
+  overtimeHours   Int      @default(0)
+  workDays        Int      @default(22)
+  presentDays     Int      @default(22)
+  leaveDays       Int      @default(0)
+  attStatus       String   @default("Hadir") // today's status: Hadir | Izin | Alpha
+  checkIn         String?
+  checkOut        String?
+
+  salaryComponents SalaryComponent[]
+  leaveRequests     LeaveRequest[]
+  assignments       Assignment[]
+  attendance        AttendanceRecord[]
+  user              User?
+
+  resignDate      DateTime?
+  resignReason    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([siteId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model SalaryComponent {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name       String   // "Gaji Pokok", "Tunjangan Transport", ...
+  amount     Int
+
+  @@index([employeeId])
+}
+
+model AttendanceRecord {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date       DateTime
+  status     String   // "Hadir" | "Izin" | "Alpha" | "Hari Libur"
+  checkIn    String?
+  checkOut   String?
+  lateMin    Int      @default(0)
+  overtimeHours Int   @default(0)
+  location   String?
+  createdAt  DateTime @default(now())
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+model LeaveRequest {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type       String   // "Cuti Tahunan" | "Sakit" | "Melahirkan" | "Lainnya"
+  startDate  DateTime
+  endDate    DateTime
+  reason     String
+  status     String   @default("menunggu") // "menunggu" | "disetujui" | "ditolak"
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model Assignment {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  title      String
+  mandays    Int
+  cost       Int
+  status     String   @default("berjalan") // "berjalan" | "selesai"
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId])
+}
+
+model Candidate {
+  id            String   @id @default(cuid())
+  name          String
+  position      String
+  appliedDate   DateTime
+  status        String   @default("lamaran") // lamaran | interview | diterima | aktif | ditolak
+  hiredEmployeeId String?
+  createdAt     DateTime @default(now())
+}
+
+// ── Client billing ──────────────────────────────────────────────────────
+
+model Invoice {
+  // Monthly outsourcing-fee invoice, one per client per period.
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id])
+  invoiceNo    String   @unique
+  period       String   // "2026-07"
+  status       String   @default("draft") // draft | terkirim | lunas
+  dueDate      DateTime?
+  gajiTotal    Int
+  feeTotal     Int
+  total        Int
+  sentAt       DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime @default(now())
+
+  @@unique([clientId, period])
+  @@index([status])
+}
+
+model InvoiceBj {
+  id          String        @id @default(cuid())
+  invoiceNo   String        @unique
+  clientId    String
+  client      Client        @relation(fields: [clientId], references: [id])
+  date        DateTime
+  dueDate     DateTime
+  withPpn     Boolean       @default(true)
+  status      String        @default("draft") // draft | terkirim | lunas
+  items       InvoiceBjItem[]
+  createdAt   DateTime      @default(now())
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model InvoiceBjItem {
+  id          String    @id @default(cuid())
+  invoiceId   String
+  invoice     InvoiceBj @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  desc        String
+  qty         Int
+  price       Int
+}
+
+// ── Finance: COA, cash accounts, transactions, payables ────────────────
+
+model Account {
+  id       String  @id @default(cuid())
+  code     String  @unique
+  name     String
+  type     String  // "masuk" | "keluar"
+  budget   Int?    // monthly budget, for "keluar" accounts
+
+  transactions Transaction[]
+}
+
+model CashAccount {
+  id       String  @id @default(cuid())
+  name     String
+  opening  Int     @default(0)
+
+  transactions Transaction[]
+}
+
+model Transaction {
+  id            String      @id @default(cuid())
+  date          DateTime
+  accountCoaId  String
+  account       Account     @relation(fields: [accountCoaId], references: [id])
+  cashAccountId String
+  cashAccount   CashAccount @relation(fields: [cashAccountId], references: [id])
+  desc          String
+  amount        Int
+  type          String      // "masuk" | "keluar"
+  isTransfer    Boolean     @default(false)
+  attachmentUrl String?
+  createdById   String?
+  createdAt     DateTime    @default(now())
+
+  @@index([date])
+  @@index([accountCoaId])
+  @@index([cashAccountId])
+}
+
+model Payable {
+  id         String   @id @default(cuid())
+  vendorName String
+  desc       String
+  amount     Int
+  dueDate    DateTime
+  status     String   @default("belum") // "belum" | "lunas"
+  paidAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([status])
+}
+
+model ClosedPeriod {
+  id       String   @id @default(cuid())
+  period   String   @unique // "2026-07"
+  closedAt DateTime @default(now())
+  closedBy String?
+}
