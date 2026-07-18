@@ -3,12 +3,15 @@
 import { useState, useRef } from "react";
 import { addLeaveRequest } from "@/app/(app)/cuti/actions";
 
-type Option = { id: string; name: string };
+type Option = { id: string; name: string; sisa: number };
 
 export function AddLeaveDialog({ employees }: { employees: Option[] }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [employeeId, setEmployeeId] = useState(employees[0]?.id ?? "");
   const formRef = useRef<HTMLFormElement>(null);
+
+  const selected = employees.find((e) => e.id === employeeId);
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
@@ -31,11 +34,16 @@ export function AddLeaveDialog({ employees }: { employees: Option[] }) {
             <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="employeeId">Karyawan</label>
-                <select className="input" id="employeeId" name="employeeId" required>
+                <select className="input" id="employeeId" name="employeeId" required value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
                   {employees.map((e) => (
                     <option key={e.id} value={e.id}>{e.name}</option>
                   ))}
                 </select>
+                {selected && (
+                  <p style={{ fontSize: 12, opacity: 0.65, margin: "4px 0 0" }}>
+                    Sisa kuota cuti tahunan: <strong>{selected.sisa} hari</strong>
+                  </p>
+                )}
               </div>
               <div className="field">
                 <label htmlFor="type">Jenis cuti</label>

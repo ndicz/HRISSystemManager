@@ -1,18 +1,14 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-// Prisma 7 dropped the bundled Rust query engine — every provider now
-// needs an explicit driver adapter. Swap this file's adapter (only this
-// file) when moving off SQLite to the Hostinger Postgres VPS:
-//   import { PrismaPg } from "@prisma/adapter-pg";
-//   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+// Prisma 7 dropped the bundled Rust query engine — every provider needs an
+// explicit driver adapter. This is the Postgres (Neon) adapter; the earlier
+// SQLite dev setup used @prisma/adapter-better-sqlite3 here instead.
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function createClient() {
-  const adapter = new PrismaBetterSqlite3({
-    url: process.env.DATABASE_URL ?? "file:./dev.db",
-  });
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
   return new PrismaClient({ adapter });
 }
 

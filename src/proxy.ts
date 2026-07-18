@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
 import { canAccess } from "@/lib/rbac";
 
-// Uses the edge-safe authConfig only (no Prisma) so this can run in
-// the Edge runtime without pulling in Node.js-only native modules.
+// Uses the edge-safe authConfig only (no Prisma) — kept even though Proxy
+// now defaults to the Node.js runtime, since this file still needs no
+// database access and staying edge-safe costs nothing.
 const { auth } = NextAuth(authConfig);
 
 const PUBLIC_PATHS = ["/login"];

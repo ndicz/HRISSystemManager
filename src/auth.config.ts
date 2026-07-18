@@ -7,6 +7,10 @@ import type { NextAuthConfig } from "next-auth";
 export const authConfig: NextAuthConfig = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
+  // Trust the Host header from Vercel's proxy instead of requiring a
+  // hardcoded NEXTAUTH_URL — the deployment URL isn't known until after
+  // the first deploy, and Vercel's edge network sets this reliably.
+  trustHost: true,
   providers: [],
   callbacks: {
     jwt: ({ token, user }) => {

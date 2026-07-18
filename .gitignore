@@ -45,3 +45,6 @@ public/uploads/*
 # local sqlite dev database
 *.db
 *.db-journal
+
+.vercel
+.env*

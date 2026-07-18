@@ -1,19 +1,16 @@
 // Prisma schema — PT Wana Samudra Persada HR & Payroll Outsourcing
 //
-// Datasource is SQLite for now (zero local install, unblocks development).
-// Switch to PostgreSQL before deploying to the Hostinger VPS:
-//   provider = "postgresql"
-//   url      = env("DATABASE_URL")   // postgres connection string
-// Notes are avoided (String instead of `enum`) because SQLite does not
-// support native enums in Prisma — once on PostgreSQL these can be
-// converted to real `enum` types if desired (optional, not required).
+// Datasource is PostgreSQL (Neon, provisioned via Vercel Marketplace).
+// String fields are used instead of native `enum` in a few places purely
+// for continuity with the earlier SQLite schema — fine as-is on Postgres,
+// optionally convertible to real `enum` types later if desired.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // ── Auth & access control ──────────────────────────────────────────────
