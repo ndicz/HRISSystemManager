@@ -10,7 +10,7 @@ export default async function PenggajianPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: "var(--space-6)" }}>
+      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
         <h1 style={{ margin: 0 }}>Penggajian</h1>
         <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Perhitungan gaji, lembur, potongan, dan THR</p>
       </div>
