@@ -54,7 +54,7 @@ export function AddLeaveDialog({ employees }: { employees: Option[] }) {
                   <option>Lainnya</option>
                 </select>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
+              <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field">
                   <label htmlFor="startDate">Mulai</label>
                   <input className="input" id="startDate" name="startDate" type="date" required />

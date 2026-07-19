@@ -43,7 +43,7 @@ export function AddInvoiceBjDialog({ clients }: { clients: Option[] }) {
               </label>
               <div className="field" style={{ marginBottom: 0 }}><label>Item</label></div>
               {[1, 2, 3].map((i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "var(--space-2)" }}>
+                <div key={i} className="grid-cols" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "var(--space-2)" }}>
                   <input className="input" name={`desc${i}`} placeholder={i === 1 ? "Nama item/jasa" : `Item ke-${i} (opsional)`} />
                   <input className="input" name={`qty${i}`} type="number" placeholder="Qty" />
                   <input className="input" name={`price${i}`} type="number" placeholder="Harga satuan" />

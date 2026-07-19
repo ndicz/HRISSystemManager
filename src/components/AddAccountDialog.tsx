@@ -27,7 +27,7 @@ export function AddAccountDialog() {
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Tambah akun (COA)</div>
             <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "var(--space-3)" }}>
+              <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "var(--space-3)" }}>
                 <div className="field">
                   <label htmlFor="code">Kode</label>
                   <input className="input" id="code" name="code" required placeholder="5010" />

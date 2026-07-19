@@ -35,7 +35,7 @@ export function AddPayableDialog() {
                 <label htmlFor="desc">Keterangan</label>
                 <input className="input" id="desc" name="desc" placeholder="Keterangan tagihan" />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
+              <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field">
                   <label htmlFor="amount">Jumlah (Rp)</label>
                   <input className="input" id="amount" name="amount" type="number" required placeholder="0" />

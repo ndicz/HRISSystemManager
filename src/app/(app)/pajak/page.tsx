@@ -25,7 +25,7 @@ export default async function PajakPage() {
         <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Perhitungan PPh 21 (estimasi)</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card">
           <div className="card-kicker">Total PPh 21 bulan ini</div>
           <div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumPph21)}</div>

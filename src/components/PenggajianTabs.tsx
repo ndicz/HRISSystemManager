@@ -51,7 +51,7 @@ export function PenggajianTabs({ employees }: { employees: Emp[] }) {
 
       {tab === "gaji" && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+          <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
             <div className="card"><div className="card-kicker">Gaji pokok</div><div className="card-title" style={{ fontSize: 20 }}>{formatRp(totals.gajiPokok)}</div></div>
             <div className="card"><div className="card-kicker">Lembur</div><div className="card-title" style={{ fontSize: 20 }}>{formatRp(totals.lembur)}</div></div>
             <div className="card"><div className="card-kicker">Potongan</div><div className="card-title" style={{ fontSize: 20 }}>{formatRp(totals.potongan)}</div></div>
@@ -79,7 +79,7 @@ export function PenggajianTabs({ employees }: { employees: Emp[] }) {
 
       {tab === "thr" && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+          <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
             <div className="card"><div className="card-kicker">Total estimasi THR</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumThr)}</div></div>
             <div className="card"><div className="card-kicker">Sudah dibayar</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumThrDibayar)}</div></div>
             <div className="card"><div className="card-kicker">Belum dibayar</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumThr - sumThrDibayar)}</div></div>

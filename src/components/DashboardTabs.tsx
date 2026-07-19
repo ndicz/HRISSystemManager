@@ -66,7 +66,7 @@ export function DashboardTabs({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
         <div className="card">
           <div className="card-kicker">Total karyawan</div>
           <div className="card-title">{totalKaryawan}</div>
@@ -89,7 +89,7 @@ export function DashboardTabs({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card">
           <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Arus Kas &mdash; {monthOptions().find((p) => p.value === period)?.label}</div>
           <div style={{ display: "grid", gap: 14 }}>
@@ -126,7 +126,7 @@ export function DashboardTabs({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "var(--space-4)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "var(--space-4)" }}>
         <div className="card">
           <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Kehadiran per tempat kerja</div>
           <table className="table">

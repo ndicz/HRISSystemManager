@@ -29,7 +29,7 @@ export function TransferDialog({ cashAccounts, disabled }: { cashAccounts: Optio
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Transfer antar rekening</div>
             <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
+              <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field">
                   <label htmlFor="fromId">Dari rekening</label>
                   <select className="input" id="fromId" name="fromId" required>

@@ -25,7 +25,7 @@ export default async function CutiPage() {
         <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Pengajuan dan persetujuan cuti karyawan</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card">
           <div className="card-kicker">Menunggu persetujuan</div>
           <div className="card-title">{menunggu}</div>

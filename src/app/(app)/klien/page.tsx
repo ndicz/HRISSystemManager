@@ -68,7 +68,7 @@ export default async function KlienPage() {
           <div className="card-kicker">Aging Piutang</div>
           <span className="tag tag-outline">Total: {formatRp(totalPiutang)}</span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+        <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
           {agingTotals.map((b) => (
             <div key={b.bucket} className="card" style={{ padding: "var(--space-3)" }}>
               <div className="card-kicker" style={{ fontSize: 11 }}>{b.bucket}</div>
