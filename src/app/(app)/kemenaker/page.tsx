@@ -36,7 +36,7 @@ export default async function KemenakerPage() {
         <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Kepatuhan UMR, iuran BPJS Ketenagakerjaan &amp; Kesehatan</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card">
           <div className="card-kicker">Kepatuhan UMR/UMK</div>
           <div className="card-title" style={{ fontSize: 22 }}>{compliancePct}%</div>

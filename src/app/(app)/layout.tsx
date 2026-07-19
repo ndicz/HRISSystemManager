@@ -7,11 +7,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session?.user) redirect("/login");
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-bg)" }}>
+    <div className="app-shell">
       <Sidebar userName={session.user.name ?? "Pengguna"} userRole={session.user.role} />
-      <div style={{ flex: 1, minWidth: 0, padding: "var(--space-6) var(--space-8) var(--space-8)" }}>
-        {children}
-      </div>
+      <div className="app-content">{children}</div>
     </div>
   );
 }

@@ -24,7 +24,7 @@ export default async function AbsensiPage() {
         <ImportAttendanceDialog sites={sites} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
         <div className="card">
           <div className="card-kicker">Total karyawan</div>
           <div className="card-title">{employees.length}</div>

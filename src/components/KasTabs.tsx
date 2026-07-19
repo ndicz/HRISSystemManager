@@ -119,7 +119,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card"><div className="card-kicker">Saldo kas (s.d. akhir periode)</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(saldoAkhir)}</div></div>
         <div className="card"><div className="card-kicker">Dana masuk periode ini</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumMasuk)}</div></div>
         <div className="card"><div className="card-kicker">Dana keluar periode ini</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumKeluar)}</div></div>
@@ -276,7 +276,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
       {tab === "rekening" && (
         <>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}><TransferDialog cashAccounts={cashAccounts} disabled={isTodayPeriodClosed} /></div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)" }}>
+          <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)" }}>
             {cashAccounts.map((c) => (
               <div className="card" key={c.id}>
                 <div className="card-kicker">{c.name}</div>

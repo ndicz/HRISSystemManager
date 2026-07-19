@@ -22,7 +22,7 @@ export default async function RekrutmenPage() {
         <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Pipeline lamaran, interview, sampai aktivasi karyawan baru</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card"><div className="card-kicker">Lamaran masuk</div><div className="card-title">{counts.lamaran}</div></div>
         <div className="card"><div className="card-kicker">Interview</div><div className="card-title">{counts.interview}</div></div>
         <div className="card"><div className="card-kicker">Diterima, belum aktif</div><div className="card-title">{counts.diterima}</div></div>

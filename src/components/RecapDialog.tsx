@@ -75,7 +75,7 @@ export function RecapDialog({ employeeId, employeeName }: { employeeId: string; 
               {recap && (
                 <>
                   <div
-                    className="card"
+                    className="card grid-cols"
                     style={{ marginBottom: "var(--space-3)", padding: "var(--space-3)", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-2)" }}
                   >
                     <div>
