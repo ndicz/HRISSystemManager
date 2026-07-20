@@ -1,18 +1,34 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { computePayroll, formatRp } from "@/lib/payroll";
+import { computeMonthlyPayroll, formatRp } from "@/lib/payroll";
+import { monthKey } from "@/lib/finance";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
-export default async function SlipPrintPage({ params }: { params: Promise<{ employeeId: string }> }) {
+const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+function periodLabel(period: string) {
+  const [year, month] = period.split("-").map(Number);
+  return `${MONTH_NAMES[(month ?? 1) - 1]} ${year}`;
+}
+
+export default async function SlipPrintPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ employeeId: string }>;
+  searchParams: Promise<{ period?: string }>;
+}) {
   const { employeeId } = await params;
+  const { period: periodParam } = await searchParams;
   const emp = await db.employee.findUnique({
     where: { id: employeeId },
-    include: { site: true, position: true, salaryComponents: true },
+    include: { site: true, position: true, salaryComponents: true, attendance: true },
   });
   if (!emp) notFound();
 
-  const p = computePayroll(emp, emp.salaryComponents);
-  const periode = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  const period = periodParam && /^\d{4}-\d{2}$/.test(periodParam) ? periodParam : monthKey(new Date());
+  const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period);
+  const periode = periodLabel(period);
 
   return (
     <PrintDocument

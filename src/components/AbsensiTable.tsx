@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import type { Employee, Site, Position } from "@prisma/client";
 import { RecapDialog } from "@/components/RecapDialog";
-import { downloadCsv } from "@/lib/csv";
+import { EditEmployeeDialog } from "@/components/EditEmployeeDialog";
+import { SalaryComponentsDialog } from "@/components/SalaryComponentsDialog";
+import { downloadXlsx } from "@/lib/xlsx-writer";
 
 type Emp = Employee & { site: Site; position: Position };
 
@@ -25,8 +27,8 @@ export function AbsensiTable({ employees }: { employees: Emp[] }) {
   }, [employees, q]);
 
   function download() {
-    downloadCsv(
-      "absensi-karyawan.csv",
+    downloadXlsx(
+      "absensi-karyawan.xlsx",
       [
         ["ID", "Nama", "Tempat Kerja", "Posisi", "Hadir", "Total Hari Kerja", "Status Terkini"],
         ...filtered.map((e) => [e.empCode, e.name, e.site.name, e.position.name, e.presentDays, e.workDays, e.attStatus]),
@@ -46,7 +48,7 @@ export function AbsensiTable({ employees }: { employees: Emp[] }) {
           style={{ width: "100%", maxWidth: 320 }}
         />
         <button type="button" className="btn btn-secondary" onClick={download} disabled={filtered.length === 0}>
-          Unduh CSV
+          Unduh Excel
         </button>
       </div>
       {filtered.length === 0 ? (
@@ -60,6 +62,9 @@ export function AbsensiTable({ employees }: { employees: Emp[] }) {
               <th>Tempat kerja</th>
               <th>Posisi</th>
               <th>Kehadiran</th>
+              <th>Kasbon</th>
+              <th></th>
+              <th></th>
               <th></th>
             </tr>
           </thead>
@@ -75,7 +80,10 @@ export function AbsensiTable({ employees }: { employees: Emp[] }) {
                     {e.presentDays}/{e.workDays} hari
                   </span>
                 </td>
+                <td className="text-muted">{e.kasbon > 0 ? "Rp" + e.kasbon.toLocaleString("id-ID") : "-"}</td>
                 <td><RecapDialog employeeId={e.id} employeeName={e.name} /></td>
+                <td><SalaryComponentsDialog employeeId={e.id} employeeName={e.name} /></td>
+                <td><EditEmployeeDialog employee={e} /></td>
               </tr>
             ))}
           </tbody>

@@ -109,6 +109,7 @@ export async function updateEmployeeDetails(formData: FormData) {
   revalidatePath("/karyawan");
   revalidatePath("/penggajian");
   revalidatePath("/cuti");
+  revalidatePath("/absensi");
 }
 
 export async function addSalaryComponent(formData: FormData) {
@@ -134,6 +135,7 @@ export async function addSalaryComponent(formData: FormData) {
 
   revalidatePath("/karyawan");
   revalidatePath("/penggajian");
+  revalidatePath("/absensi");
   return db.salaryComponent.findMany({ where: { employeeId }, orderBy: { id: "asc" } });
 }
 
@@ -155,6 +157,7 @@ export async function removeSalaryComponent(componentId: string) {
 
   revalidatePath("/karyawan");
   revalidatePath("/penggajian");
+  revalidatePath("/absensi");
   return db.salaryComponent.findMany({ where: { employeeId: comp.employeeId }, orderBy: { id: "asc" } });
 }
 

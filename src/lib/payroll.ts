@@ -1,4 +1,5 @@
-import type { Employee, SalaryComponent } from "@prisma/client";
+import type { AttendanceRecord, Employee, SalaryComponent } from "@prisma/client";
+import { monthKey } from "@/lib/finance";
 
 export function formatRp(n: number) {
   return "Rp" + Math.round(n).toLocaleString("id-ID");
@@ -22,6 +23,33 @@ export function computePayroll(
   const potongan = potonganAbsensi + bpjs + emp.kasbon;
   const total = base - potongan + lembur;
   return { gajiPokok: base, potonganAbsensi, bpjs, lembur, potongan, total };
+}
+
+// Tallies a specific month's presentDays/leaveDays/workDays straight from
+// day-level AttendanceRecord rows (which carry real dates), instead of the
+// Employee's live aggregate columns — those only ever reflect whichever
+// month currently has the most imported records, so they can't answer
+// "what did October look like" once November's import has landed.
+export function monthlyAttendanceTally(records: Pick<AttendanceRecord, "date" | "status">[], period: string) {
+  const monthRecords = records.filter((r) => monthKey(r.date) === period);
+  const presentDays = monthRecords.filter((r) => r.status === "Hadir").length;
+  const leaveDays = monthRecords.filter((r) => r.status === "Izin").length;
+  const alpha = monthRecords.filter((r) => r.status === "Alpha").length;
+  return { presentDays, leaveDays, workDays: presentDays + leaveDays + alpha };
+}
+
+// computePayroll scoped to one specific month's actual attendance, rather
+// than the employee's live/current aggregate — overtimeHours and kasbon
+// aren't tracked per month in this schema, so those still come from the
+// employee's current values.
+export function computeMonthlyPayroll(
+  emp: Pick<Employee, "overtimeHours" | "kasbon">,
+  components: SalaryComponent[],
+  records: Pick<AttendanceRecord, "date" | "status">[],
+  period: string,
+) {
+  const tally = monthlyAttendanceTally(records, period);
+  return computePayroll({ ...tally, overtimeHours: emp.overtimeHours, kasbon: emp.kasbon }, components);
 }
 
 export function tenureMonths(hireDate: Date, ref: Date = new Date()): number {

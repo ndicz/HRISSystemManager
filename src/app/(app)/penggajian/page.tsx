@@ -4,7 +4,7 @@ import { PenggajianTabs } from "@/components/PenggajianTabs";
 export default async function PenggajianPage() {
   const employees = await db.employee.findMany({
     where: { status: "aktif" },
-    include: { site: true, position: true, salaryComponents: true },
+    include: { site: true, position: true, salaryComponents: true, attendance: true },
     orderBy: { name: "asc" },
   });
 

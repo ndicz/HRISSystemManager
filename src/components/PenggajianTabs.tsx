@@ -1,15 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Employee, Site, Position, SalaryComponent } from "@prisma/client";
-import { computePayroll, computeThr, formatRp } from "@/lib/payroll";
+import type { AttendanceRecord, Employee, Site, Position, SalaryComponent } from "@prisma/client";
+import { computeMonthlyPayroll, computeThr, formatRp } from "@/lib/payroll";
+import { monthKey } from "@/lib/finance";
 import { ThrButton } from "@/components/ThrButton";
 
-type Emp = Employee & { site: Site; position: Position; salaryComponents: SalaryComponent[] };
+type Emp = Employee & { site: Site; position: Position; salaryComponents: SalaryComponent[]; attendance: AttendanceRecord[] };
+
+function monthOptions() {
+  const names = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  return names.map((n, i) => ({ value: "2026-" + String(i + 1).padStart(2, "0"), label: n + " 2026" }));
+}
 
 export function PenggajianTabs({ employees }: { employees: Emp[] }) {
   const [tab, setTab] = useState<"gaji" | "thr">("gaji");
   const [q, setQ] = useState("");
+  const [period, setPeriod] = useState(() => monthKey(new Date()));
 
   const needle = q.trim().toLowerCase();
   const filteredEmployees = useMemo(
@@ -17,7 +24,7 @@ export function PenggajianTabs({ employees }: { employees: Emp[] }) {
     [employees, needle],
   );
 
-  const payrollRows = filteredEmployees.map((e) => ({ e, p: computePayroll(e, e.salaryComponents) }));
+  const payrollRows = filteredEmployees.map((e) => ({ e, p: computeMonthlyPayroll(e, e.salaryComponents, e.attendance, period) }));
   const totals = payrollRows.reduce(
     (acc, r) => ({
       gajiPokok: acc.gajiPokok + r.p.gajiPokok,
@@ -51,6 +58,15 @@ export function PenggajianTabs({ employees }: { employees: Emp[] }) {
 
       {tab === "gaji" && (
         <>
+          <div className="field" style={{ maxWidth: 220, marginBottom: "var(--space-4)" }}>
+            <label htmlFor="gaji-period">Periode</label>
+            <select className="input" id="gaji-period" value={period} onChange={(e) => setPeriod(e.target.value)}>
+              {monthOptions().map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
             <div className="card"><div className="card-kicker">Gaji pokok</div><div className="card-title" style={{ fontSize: 20 }}>{formatRp(totals.gajiPokok)}</div></div>
             <div className="card"><div className="card-kicker">Lembur</div><div className="card-title" style={{ fontSize: 20 }}>{formatRp(totals.lembur)}</div></div>
@@ -67,7 +83,7 @@ export function PenggajianTabs({ employees }: { employees: Emp[] }) {
                       <td className="text-muted">{e.empCode}</td><td>{e.name}</td><td>{e.site.name}</td>
                       <td>{formatRp(p.gajiPokok)}</td><td>{formatRp(p.lembur)}</td><td>-{formatRp(p.potongan)}</td>
                       <td style={{ fontWeight: 600 }}>{formatRp(p.total)}</td>
-                      <td><a href={`/print/slip/${e.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak slip</a></td>
+                      <td><a href={`/print/slip/${e.id}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak slip</a></td>
                     </tr>
                   ))}
                 </tbody>
