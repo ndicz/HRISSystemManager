@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { AttendanceRecord, Employee, Site, Position, SalaryComponent } from "@prisma/client";
-import { computeMonthlyPayroll, computeThr, formatRp } from "@/lib/payroll";
+import { bestAttendanceMonth, computeMonthlyPayroll, computeThr, formatRp } from "@/lib/payroll";
 import { monthKey } from "@/lib/finance";
 import { ThrButton } from "@/components/ThrButton";
 
@@ -16,7 +16,12 @@ function monthOptions() {
 export function PenggajianTabs({ employees }: { employees: Emp[] }) {
   const [tab, setTab] = useState<"gaji" | "thr">("gaji");
   const [q, setQ] = useState("");
-  const [period, setPeriod] = useState(() => monthKey(new Date()));
+  // Default to whichever month actually has attendance data across all
+  // employees, rather than today's real calendar month (usually empty
+  // right after an import).
+  const [period, setPeriod] = useState(
+    () => bestAttendanceMonth(employees.flatMap((e) => e.attendance)) ?? monthKey(new Date()),
+  );
 
   const needle = q.trim().toLowerCase();
   const filteredEmployees = useMemo(

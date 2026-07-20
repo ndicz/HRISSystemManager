@@ -38,6 +38,29 @@ export function monthlyAttendanceTally(records: Pick<AttendanceRecord, "date" | 
   return { presentDays, leaveDays, workDays: presentDays + leaveDays + alpha };
 }
 
+// Picks the month that actually has attendance data — the same
+// most-records-wins rule absensi/actions.ts uses to keep the employee's
+// live aggregate stable — so a period picker can default to "the month
+// that was just imported" instead of blindly defaulting to today's real
+// calendar month, which is usually empty right after an import.
+export function bestAttendanceMonth(records: Pick<AttendanceRecord, "date">[]): string | null {
+  if (records.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const r of records) {
+    const key = monthKey(r.date);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [key, count] of counts) {
+    if (count > bestCount) {
+      best = key;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 // computePayroll scoped to one specific month's actual attendance, rather
 // than the employee's live/current aggregate — overtimeHours and kasbon
 // aren't tracked per month in this schema, so those still come from the

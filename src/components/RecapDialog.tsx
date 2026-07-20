@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { fetchAttendanceRecap, upsertAttendanceDay } from "@/app/(app)/absensi/actions";
-import { formatRp, monthlyAttendanceTally } from "@/lib/payroll";
+import { bestAttendanceMonth, formatRp, monthlyAttendanceTally } from "@/lib/payroll";
 import { monthKey } from "@/lib/finance";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 
@@ -32,6 +32,10 @@ export function RecapDialog({ employeeId, employeeName }: { employeeId: string; 
     startTransition(async () => {
       const data = await fetchAttendanceRecap(employeeId);
       setRecap(data);
+      // Default to whichever month actually has records — right after an
+      // import, that's virtually never "today's real calendar month".
+      const best = bestAttendanceMonth(data.records);
+      if (best) setPeriod(best);
     });
   }
 

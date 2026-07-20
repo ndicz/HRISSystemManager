@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { computeMonthlyPayroll, formatRp } from "@/lib/payroll";
+import { bestAttendanceMonth, computeMonthlyPayroll, formatRp } from "@/lib/payroll";
 import { monthKey } from "@/lib/finance";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
@@ -26,7 +26,9 @@ export default async function SlipPrintPage({
   });
   if (!emp) notFound();
 
-  const period = periodParam && /^\d{4}-\d{2}$/.test(periodParam) ? periodParam : monthKey(new Date());
+  const period = periodParam && /^\d{4}-\d{2}$/.test(periodParam)
+    ? periodParam
+    : bestAttendanceMonth(emp.attendance) ?? monthKey(new Date());
   const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period);
   const periode = periodLabel(period);
 
