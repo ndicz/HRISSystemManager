@@ -89,6 +89,7 @@ export async function updateEmployeeDetails(formData: FormData) {
   const contractType = String(formData.get("contractType") ?? "PKWT");
   const contractEndRaw = String(formData.get("contractEnd") ?? "");
   const kasbon = Math.max(0, parseInt(String(formData.get("kasbon") ?? "0"), 10) || 0);
+  const kasbonCicilan = Math.max(1, parseInt(String(formData.get("kasbonCicilan") ?? "1"), 10) || 1);
   const cutiKuota = Math.max(0, parseInt(String(formData.get("cutiKuota") ?? "0"), 10) || 0);
   if (!employeeId) throw new Error("Karyawan tidak ditemukan.");
 
@@ -98,6 +99,7 @@ export async function updateEmployeeDetails(formData: FormData) {
       contractType,
       contractEnd: contractType === "PKWT" && contractEndRaw ? new Date(contractEndRaw) : null,
       kasbon,
+      kasbonCicilan,
       cutiKuota,
     },
   });

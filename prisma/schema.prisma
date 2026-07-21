@@ -95,7 +95,8 @@ model Employee {
   contractType    String   // "PKWT" | "PKWTT"
   contractEnd     DateTime?
   cutiKuota       Int      @default(12)
-  kasbon          Int      @default(0)
+  kasbon          Int      @default(0) // total outstanding balance
+  kasbonCicilan   Int      @default(1) // over how many months to deduct it (1 = full amount at once)
   status          String   @default("aktif") // "aktif" | "resign"
   thrPaid         Boolean  @default(false)
   thrOverride     Int?
