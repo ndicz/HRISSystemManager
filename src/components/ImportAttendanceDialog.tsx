@@ -10,6 +10,10 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
+  // Separate from `error`/"error" status: a failed apply shouldn't throw
+  // away the already-parsed review table and send the user back to
+  // re-upload the file — they usually just need to fix the site picker.
+  const [applyError, setApplyError] = useState("");
   const [result, setResult] = useState<AttendanceImportResult | null>(null);
   const [siteId, setSiteId] = useState(sites[0]?.id ?? "");
   const [applySummary, setApplySummary] = useState<{ created: number; updated: number; daysRecorded: number } | null>(null);
@@ -19,6 +23,7 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
   function reset() {
     setStatus("idle");
     setError("");
+    setApplyError("");
     setResult(null);
     setApplySummary(null);
   }
@@ -51,14 +56,15 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
   function handleApply() {
     if (!result) return;
     setStatus("applying");
+    setApplyError("");
     startTransition(async () => {
       try {
         const res = await applyAttendanceImport(result.rows, siteId);
         setApplySummary(res);
         setStatus("applied");
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        setStatus("error");
+        setApplyError(err instanceof Error ? err.message : String(err));
+        setStatus("done");
       }
     });
   }
@@ -101,11 +107,17 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
                   </p>
                   <div className="field" style={{ maxWidth: 280 }}>
                     <label htmlFor="imp-site">Tempat kerja untuk personil baru</label>
-                    <select className="input" id="imp-site" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
-                      {sites.map((s) => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
+                    {sites.length === 0 ? (
+                      <p style={{ fontSize: 13, color: "var(--color-accent-800)", margin: "4px 0 0" }}>
+                        Belum ada tempat kerja — tambahkan dulu di bagian &ldquo;Tempat Kerja&rdquo; pada halaman ini sebelum menerapkan.
+                      </p>
+                    ) : (
+                      <select className="input" id="imp-site" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+                        {sites.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <table className="table">
                     <thead><tr><th>Nama</th><th>Kode</th><th>Hadir</th><th>Sakit/Izin</th><th>Alpha</th><th>Libur</th></tr></thead>
@@ -125,6 +137,9 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
                   <p style={{ fontSize: 12, opacity: 0.6, marginBottom: 0 }}>
                     Menerapkan akan menambahkan personil yang belum ada ke data karyawan dan memperbarui status kehadiran personil yang cocok (dicocokkan berdasarkan nama).
                   </p>
+                  {applyError && (
+                    <p style={{ fontSize: 13, color: "var(--color-accent-800)", marginBottom: 0 }}>Gagal menerapkan: {applyError}</p>
+                  )}
                 </>
               )}
               {status === "applied" && applySummary && (
@@ -138,7 +153,7 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
                 Tutup
               </button>
               {status !== "applied" && (
-                <button type="button" className="btn btn-primary" onClick={handleApply} disabled={status !== "done"}>
+                <button type="button" className="btn btn-primary" onClick={handleApply} disabled={status !== "done" || sites.length === 0}>
                   {status === "applying" ? "Menerapkan…" : "Terapkan ke data karyawan"}
                 </button>
               )}
