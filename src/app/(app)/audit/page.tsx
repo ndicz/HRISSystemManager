@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { AuditLogTable } from "@/components/AuditLogTable";
+import { ResetDataButton } from "@/components/ResetDataButton";
 
 export default async function AuditPage() {
   const logs = await db.auditLog.findMany({
@@ -26,6 +27,10 @@ export default async function AuditPage() {
       </div>
 
       <AuditLogTable rows={rows} />
+
+      <div style={{ marginTop: "var(--space-6)" }}>
+        <ResetDataButton />
+      </div>
     </div>
   );
 }
