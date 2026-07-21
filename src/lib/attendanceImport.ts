@@ -86,11 +86,19 @@ const MONTHS = [
   "july", "august", "september", "october", "november", "december",
 ];
 const MONTH_ABBR = MONTHS.map((m) => m.slice(0, 3));
+// Some exports (e.g. the Indonesian-language "Laporan Kehadiran Harian"
+// vertical format) render dates as "8 Juni 2026" instead of "8 June 2026".
+const MONTHS_ID = [
+  "januari", "februari", "maret", "april", "mei", "juni",
+  "juli", "agustus", "september", "oktober", "november", "desember",
+];
 
 function monthIndexFromName(name: string): number {
   const lower = name.toLowerCase();
   const full = MONTHS.indexOf(lower);
   if (full !== -1) return full;
+  const idFull = MONTHS_ID.indexOf(lower);
+  if (idFull !== -1) return idFull;
   return MONTH_ABBR.indexOf(lower.slice(0, 3));
 }
 
@@ -160,11 +168,12 @@ function distributeMonthlyStatuses(
 }
 
 // Canonical status vocabulary used by AttendanceRecord.status in the app,
-// mapped from whatever label the fingerprint export uses.
+// mapped from whatever label the fingerprint export uses (English or the
+// Indonesian-language "Laporan Kehadiran Harian" variant).
 function mapStatus(raw: string): string {
-  if (raw === "Present at Workday") return "Hadir";
-  if (raw === "Sick Leave") return "Izin";
-  if (raw === "Non-working Day") return "Hari Libur";
+  if (raw === "Present at Workday" || raw === "Hadir di Hari Kerja" || raw === "Hadir Bukan Hari Kerja") return "Hadir";
+  if (raw === "Sick Leave" || raw === "Sakit" || raw === "Izin") return "Izin";
+  if (raw === "Non-working Day" || raw === "Bukan Hari Kerja") return "Hari Libur";
   return "Alpha";
 }
 
@@ -207,6 +216,20 @@ function findDetailCol(
     .filter((c) => groupMap[c] === group && headerMap[c] === label && (!after || colIndex(c) > colIndex(after)))
     .sort((a, b) => colIndex(a) - colIndex(b));
   return candidates[0];
+}
+
+// Tries each (group, label) pair in order — used to match both the
+// English column labels and their Indonesian-language equivalents.
+function findDetailColAny(
+  headerMap: Record<string, string>,
+  groupMap: Record<string, string>,
+  candidates: [group: string, label: string][],
+): string | undefined {
+  for (const [group, label] of candidates) {
+    const col = findDetailCol(headerMap, groupMap, group, label);
+    if (col) return col;
+  }
+  return undefined;
 }
 
 export type AttendanceImportDay = { date: Date; status: string; checkIn?: string; checkOut?: string; location?: string };
@@ -293,19 +316,28 @@ function parseVerticalDaily(rows: Record<string, string>[]): AttendanceImportRow
     const vals = Object.values(row).filter((v) => v !== undefined);
     if (vals.length === 0) continue;
 
-    const isHeaderRow = vals.includes("Date") && vals.includes("Status");
+    const isHeaderRow = (vals.includes("Date") || vals.includes("Tanggal")) && vals.includes("Status");
     if (isHeaderRow) {
       headerMap = {};
       for (const col in row) {
         if (row[col] !== undefined) headerMap[col] = row[col];
       }
 
-      const dateCol = Object.keys(headerMap).find((c) => headerMap![c] === "Date");
+      const dateCol = Object.keys(headerMap).find((c) => headerMap![c] === "Date" || headerMap![c] === "Tanggal");
       const statusCol = Object.keys(headerMap).find((c) => headerMap![c] === "Status");
       const groupMap = prevRow ? resolveGroupMap(prevRow, Object.keys(headerMap)) : {};
-      const checkInCol = findDetailCol(headerMap, groupMap, "Daily Attendance", "Clock In");
-      const checkOutCol = findDetailCol(headerMap, groupMap, "Daily Attendance", "Clock Out");
-      const locationCol = findDetailCol(headerMap, groupMap, "Location", "Clock In");
+      const checkInCol = findDetailColAny(headerMap, groupMap, [
+        ["Daily Attendance", "Clock In"],
+        ["Kehadiran Harian", "Jam Masuk"],
+      ]);
+      const checkOutCol = findDetailColAny(headerMap, groupMap, [
+        ["Daily Attendance", "Clock Out"],
+        ["Kehadiran Harian", "Jam Keluar"],
+      ]);
+      const locationCol = findDetailColAny(headerMap, groupMap, [
+        ["Location", "Clock In"],
+        ["Lokasi", "Jam Masuk"],
+      ]);
 
       cols = { date: dateCol, status: statusCol, checkIn: checkInCol, checkOut: checkOutCol, location: locationCol };
       prevRow = row;
@@ -328,10 +360,10 @@ function parseVerticalDaily(rows: Record<string, string>[]): AttendanceImportRow
       const checkOut = cols.checkOut ? row[cols.checkOut] : undefined;
       const location = cols.location ? row[cols.location] : undefined;
 
-      if (status === "Present at Workday") current.hadir++;
-      else if (status === "Sick Leave") current.sakit++;
-      else if (status === "No Status") current.alpha++;
-      else if (status === "Non-working Day") current.libur++;
+      if (status === "Present at Workday" || status === "Hadir di Hari Kerja" || status === "Hadir Bukan Hari Kerja") current.hadir++;
+      else if (status === "Sick Leave" || status === "Sakit" || status === "Izin") current.sakit++;
+      else if (status === "No Status" || status === "Belum Ada Status") current.alpha++;
+      else if (status === "Non-working Day" || status === "Bukan Hari Kerja") current.libur++;
       else if (status !== undefined) current.lainnya++;
 
       if (status !== undefined && dateStr !== undefined) {
