@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { formatRp } from "@/lib/payroll";
 import { AddEmployeeDialog } from "@/components/AddEmployeeDialog";
 import { AddSiteDialog } from "@/components/AddSiteDialog";
+import { AddPositionDialog } from "@/components/AddPositionDialog";
 import { AddAssignmentDialog } from "@/components/AddAssignmentDialog";
 import { AssignmentActions } from "@/components/AssignmentActions";
 import { KaryawanTable } from "@/components/KaryawanTable";
@@ -19,7 +20,7 @@ export default async function KaryawanPage() {
       orderBy: { resignDate: "desc" },
     }),
     db.site.findMany({ include: { employees: true }, orderBy: { createdAt: "desc" } }),
-    db.position.findMany({ select: { id: true, name: true } }),
+    db.position.findMany({ include: { employees: true } }),
     db.client.findMany({ select: { id: true, name: true } }),
     db.assignment.findMany({ include: { employee: true }, orderBy: { createdAt: "desc" } }),
   ]);
@@ -68,6 +69,37 @@ export default async function KaryawanPage() {
                   <td>{s.supervisor}</td>
                   <td>{formatRp(s.umr)}</td>
                   <td>{s.employees.length}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: "var(--space-6)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+          <div className="card-kicker">Posisi</div>
+          <AddPositionDialog />
+        </div>
+        {positions.length === 0 ? (
+          <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada posisi. Tambahkan posisi terlebih dahulu sebelum menambah karyawan atau import absensi.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Nama posisi</th>
+                <th>Jenis gaji</th>
+                <th>Gaji pokok default</th>
+                <th>Karyawan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {positions.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.name}</td>
+                  <td className="text-muted">{p.salaryType === "harian" ? "Harian" : "Bulanan"}</td>
+                  <td>{formatRp(p.baseSalary)}</td>
+                  <td>{p.employees.length}</td>
                 </tr>
               ))}
             </tbody>

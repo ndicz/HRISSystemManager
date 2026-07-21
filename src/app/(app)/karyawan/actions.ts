@@ -191,6 +191,32 @@ export async function addSite(formData: FormData) {
   revalidatePath("/karyawan");
 }
 
+export async function addPosition(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const salaryType = String(formData.get("salaryType") ?? "bulanan");
+  const baseSalary = Math.max(0, parseInt(String(formData.get("baseSalary") ?? "0"), 10) || 0);
+
+  if (!name) throw new Error("Nama posisi wajib diisi.");
+
+  const existing = await db.position.findUnique({ where: { name } });
+  if (existing) throw new Error("Posisi dengan nama ini sudah ada.");
+
+  const position = await db.position.create({
+    data: { name, salaryType, baseSalary },
+  });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "position.create", entity: "Position", entityId: position.id, detail: JSON.stringify({ name }) },
+  });
+
+  revalidatePath("/karyawan");
+  revalidatePath("/rekrutmen");
+  revalidatePath("/absensi");
+}
+
 export async function addAssignment(formData: FormData) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
