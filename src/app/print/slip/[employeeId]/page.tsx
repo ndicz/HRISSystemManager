@@ -60,7 +60,11 @@ export default async function SlipPrintPage({
           <tr><td>Gaji pokok</td><td>{formatRp(p.gajiPokok)}</td></tr>
           <tr><td>Lembur</td><td>{formatRp(p.lembur)}</td></tr>
           <tr><td>Potongan absensi</td><td>-{formatRp(p.potonganAbsensi)}</td></tr>
-          <tr><td>Potongan BPJS &amp; kasbon</td><td>-{formatRp(p.bpjs + emp.kasbon)}</td></tr>
+          <tr><td>Potongan BPJS</td><td>-{formatRp(p.bpjs)}</td></tr>
+          <tr>
+            <td>Potongan kasbon{emp.kasbonCicilan > 1 ? ` (cicilan ${emp.kasbonCicilan}x dari total ${formatRp(emp.kasbon)})` : ""}</td>
+            <td>-{formatRp(p.kasbonBulanIni)}</td>
+          </tr>
           <tr className="total"><td>Total diterima</td><td>{formatRp(p.total)}</td></tr>
         </tbody>
       </table>

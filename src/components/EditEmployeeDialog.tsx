@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { updateEmployeeDetails } from "@/app/(app)/karyawan/actions";
+import { formatRp, kasbonPerBulan } from "@/lib/payroll";
 
 type Emp = {
   id: string;
@@ -9,6 +10,7 @@ type Emp = {
   contractType: string;
   contractEnd: Date | null;
   kasbon: number;
+  kasbonCicilan: number;
   cutiKuota: number;
 };
 
@@ -20,6 +22,8 @@ function toDateInputValue(d: Date | null) {
 export function EditEmployeeDialog({ employee }: { employee: Emp }) {
   const [open, setOpen] = useState(false);
   const [contractType, setContractType] = useState(employee.contractType);
+  const [kasbon, setKasbon] = useState(employee.kasbon);
+  const [kasbonCicilan, setKasbonCicilan] = useState(employee.kasbonCicilan || 1);
   const [pending, setPending] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -63,10 +67,40 @@ export function EditEmployeeDialog({ employee }: { employee: Emp }) {
                   <input className="input" id="contractEnd" name="contractEnd" type="date" defaultValue={toDateInputValue(employee.contractEnd)} />
                 </div>
               )}
-              <div className="field">
-                <label htmlFor="kasbon">Kasbon (Rp)</label>
-                <input className="input" id="kasbon" name="kasbon" type="number" min={0} defaultValue={employee.kasbon} />
+              <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label htmlFor="kasbon">Total kasbon (Rp)</label>
+                  <input
+                    className="input"
+                    id="kasbon"
+                    name="kasbon"
+                    type="number"
+                    min={0}
+                    value={kasbon}
+                    onChange={(e) => setKasbon(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  />
+                </div>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label htmlFor="kasbonCicilan">Dicicil (bulan)</label>
+                  <input
+                    className="input"
+                    id="kasbonCicilan"
+                    name="kasbonCicilan"
+                    type="number"
+                    min={1}
+                    max={24}
+                    value={kasbonCicilan}
+                    onChange={(e) => setKasbonCicilan(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  />
+                </div>
               </div>
+              {kasbon > 0 && (
+                <p style={{ fontSize: 12, opacity: 0.6, margin: 0 }}>
+                  {kasbonCicilan > 1
+                    ? `Dipotong ${formatRp(kasbonPerBulan(kasbon, kasbonCicilan))}/bulan selama ${kasbonCicilan} bulan dari gaji.`
+                    : "Dipotong penuh dari gaji bulan berikutnya. Ubah \"Dicicil\" untuk mencicil 2–4 bulan."}
+                </p>
+              )}
               <div className="field">
                 <label htmlFor="cutiKuota">Kuota cuti tahunan (hari)</label>
                 <input className="input" id="cutiKuota" name="cutiKuota" type="number" min={0} defaultValue={employee.cutiKuota} />

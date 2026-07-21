@@ -5,7 +5,7 @@ import type { AttendanceRecord, Employee, Site, Position } from "@prisma/client"
 import { RecapDialog } from "@/components/RecapDialog";
 import { EditEmployeeDialog } from "@/components/EditEmployeeDialog";
 import { SalaryComponentsDialog } from "@/components/SalaryComponentsDialog";
-import { bestAttendanceMonth, monthlyAttendanceTally } from "@/lib/payroll";
+import { bestAttendanceMonth, formatRp, kasbonPerBulan, monthlyAttendanceTally } from "@/lib/payroll";
 import { monthKey } from "@/lib/finance";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 
@@ -125,7 +125,20 @@ export function AbsensiTable({ employees }: { employees: Emp[] }) {
                       {tally.presentDays}/{tally.workDays} hari
                     </span>
                   </td>
-                  <td className="text-muted">{e.kasbon > 0 ? "Rp" + e.kasbon.toLocaleString("id-ID") : "-"}</td>
+                  <td className="text-muted">
+                    {e.kasbon > 0 ? (
+                      e.kasbonCicilan > 1 ? (
+                        <>
+                          {formatRp(kasbonPerBulan(e.kasbon, e.kasbonCicilan))}/bln
+                          <span style={{ opacity: 0.7 }}> ({e.kasbonCicilan}x dari {formatRp(e.kasbon)})</span>
+                        </>
+                      ) : (
+                        formatRp(e.kasbon)
+                      )
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   <td><RecapDialog employeeId={e.id} employeeName={e.name} /></td>
                   <td><SalaryComponentsDialog employeeId={e.id} employeeName={e.name} /></td>
                   <td><EditEmployeeDialog employee={e} /></td>

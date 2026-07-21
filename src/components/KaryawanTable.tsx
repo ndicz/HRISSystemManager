@@ -24,7 +24,7 @@ export function KaryawanTable({ employees }: { employees: Emp[] }) {
     downloadCsv(
       "karyawan.csv",
       [
-        ["ID", "Nama", "Tempat Kerja", "Posisi", "Kontrak", "Kontrak Berakhir", "Kasbon", "Kuota Cuti"],
+        ["ID", "Nama", "Tempat Kerja", "Posisi", "Kontrak", "Kontrak Berakhir", "Kasbon", "Kasbon Dicicil (bulan)", "Kuota Cuti"],
         ...filtered.map((e) => [
           e.empCode,
           e.name,
@@ -33,6 +33,7 @@ export function KaryawanTable({ employees }: { employees: Emp[] }) {
           e.contractType,
           e.contractEnd ? e.contractEnd.toLocaleDateString("id-ID") : "-",
           e.kasbon,
+          e.kasbonCicilan,
           e.cutiKuota,
         ]),
       ],

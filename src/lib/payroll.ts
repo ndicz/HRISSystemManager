@@ -9,8 +9,15 @@ export function baseSalary(components: SalaryComponent[]): number {
   return components.reduce((sum, c) => sum + c.amount, 0);
 }
 
+// A kasbon (salary advance) can be repaid over several months instead of
+// deducted in full at once — kasbonCicilan is how many months to spread it
+// across (1 = the whole balance comes out immediately, the old behavior).
+export function kasbonPerBulan(kasbon: number, kasbonCicilan: number): number {
+  return kasbonCicilan > 1 ? Math.ceil(kasbon / kasbonCicilan) : kasbon;
+}
+
 export function computePayroll(
-  emp: Pick<Employee, "workDays" | "presentDays" | "leaveDays" | "overtimeHours" | "kasbon">,
+  emp: Pick<Employee, "workDays" | "presentDays" | "leaveDays" | "overtimeHours" | "kasbon" | "kasbonCicilan">,
   components: SalaryComponent[],
 ) {
   const base = baseSalary(components);
@@ -20,9 +27,10 @@ export function computePayroll(
   const lemburRate = Math.round(base / 173 * 1.5);
   const lembur = emp.overtimeHours * lemburRate;
   const bpjs = Math.round(base * 0.04);
-  const potongan = potonganAbsensi + bpjs + emp.kasbon;
+  const kasbonBulanIni = kasbonPerBulan(emp.kasbon, emp.kasbonCicilan);
+  const potongan = potonganAbsensi + bpjs + kasbonBulanIni;
   const total = base - potongan + lembur;
-  return { gajiPokok: base, potonganAbsensi, bpjs, lembur, potongan, total };
+  return { gajiPokok: base, potonganAbsensi, bpjs, kasbonBulanIni, lembur, potongan, total };
 }
 
 // Tallies a specific month's presentDays/leaveDays/workDays straight from
@@ -66,13 +74,13 @@ export function bestAttendanceMonth(records: Pick<AttendanceRecord, "date">[]): 
 // aren't tracked per month in this schema, so those still come from the
 // employee's current values.
 export function computeMonthlyPayroll(
-  emp: Pick<Employee, "overtimeHours" | "kasbon">,
+  emp: Pick<Employee, "overtimeHours" | "kasbon" | "kasbonCicilan">,
   components: SalaryComponent[],
   records: Pick<AttendanceRecord, "date" | "status">[],
   period: string,
 ) {
   const tally = monthlyAttendanceTally(records, period);
-  return computePayroll({ ...tally, overtimeHours: emp.overtimeHours, kasbon: emp.kasbon }, components);
+  return computePayroll({ ...tally, overtimeHours: emp.overtimeHours, kasbon: emp.kasbon, kasbonCicilan: emp.kasbonCicilan }, components);
 }
 
 export function tenureMonths(hireDate: Date, ref: Date = new Date()): number {
