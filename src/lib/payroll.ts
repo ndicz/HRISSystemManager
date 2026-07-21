@@ -1,4 +1,5 @@
-import type { Employee, SalaryComponent } from "@prisma/client";
+import type { AttendanceRecord, Employee, SalaryComponent } from "@prisma/client";
+import { monthKey } from "@/lib/finance";
 
 export function formatRp(n: number) {
   return "Rp" + Math.round(n).toLocaleString("id-ID");
@@ -22,6 +23,56 @@ export function computePayroll(
   const potongan = potonganAbsensi + bpjs + emp.kasbon;
   const total = base - potongan + lembur;
   return { gajiPokok: base, potonganAbsensi, bpjs, lembur, potongan, total };
+}
+
+// Tallies a specific month's presentDays/leaveDays/workDays straight from
+// day-level AttendanceRecord rows (which carry real dates), instead of the
+// Employee's live aggregate columns — those only ever reflect whichever
+// month currently has the most imported records, so they can't answer
+// "what did October look like" once November's import has landed.
+export function monthlyAttendanceTally(records: Pick<AttendanceRecord, "date" | "status">[], period: string) {
+  const monthRecords = records.filter((r) => monthKey(r.date) === period);
+  const presentDays = monthRecords.filter((r) => r.status === "Hadir").length;
+  const leaveDays = monthRecords.filter((r) => r.status === "Izin").length;
+  const alpha = monthRecords.filter((r) => r.status === "Alpha").length;
+  return { presentDays, leaveDays, workDays: presentDays + leaveDays + alpha };
+}
+
+// Picks the month that actually has attendance data — the same
+// most-records-wins rule absensi/actions.ts uses to keep the employee's
+// live aggregate stable — so a period picker can default to "the month
+// that was just imported" instead of blindly defaulting to today's real
+// calendar month, which is usually empty right after an import.
+export function bestAttendanceMonth(records: Pick<AttendanceRecord, "date">[]): string | null {
+  if (records.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const r of records) {
+    const key = monthKey(r.date);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [key, count] of counts) {
+    if (count > bestCount) {
+      best = key;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+// computePayroll scoped to one specific month's actual attendance, rather
+// than the employee's live/current aggregate — overtimeHours and kasbon
+// aren't tracked per month in this schema, so those still come from the
+// employee's current values.
+export function computeMonthlyPayroll(
+  emp: Pick<Employee, "overtimeHours" | "kasbon">,
+  components: SalaryComponent[],
+  records: Pick<AttendanceRecord, "date" | "status">[],
+  period: string,
+) {
+  const tally = monthlyAttendanceTally(records, period);
+  return computePayroll({ ...tally, overtimeHours: emp.overtimeHours, kasbon: emp.kasbon }, components);
 }
 
 export function tenureMonths(hireDate: Date, ref: Date = new Date()): number {

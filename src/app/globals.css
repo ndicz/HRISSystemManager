@@ -188,15 +188,21 @@ img { display: block; max-width: 100%; }
 /* Responsive: off-canvas sidebar + mobile topbar */
 @media (max-width: 900px) {
   .app-shell { display: block; }
-  .app-content { padding: var(--space-4); }
+  .app-content { padding: calc(65px + env(safe-area-inset-top) + var(--space-4)) var(--space-4) var(--space-4); }
 
+  /* `position: fixed` rather than `sticky`, composited independently of
+     the page instead of participating in its scroll — app-content's
+     padding-top above reserves the height a fixed box no longer holds in
+     normal flow. */
   .mobile-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 40;
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-divider);
@@ -239,6 +245,28 @@ img { display: block; max-width: 100%; }
     -webkit-tap-highlight-color: transparent;
   }
   .sidebar-backdrop.sidebar-open { opacity: 1; pointer-events: auto; }
+
+  /* The mobile topbar already shows the current page's title, so the
+     in-page <h1>/description repeats it — and being plain text with no
+     card background, it looks broken (not "scrolling behind the header")
+     for the moment it's half-covered while scrolling past. Visually hide
+     it (screen-reader-only, not display:none) rather than remove it, so
+     the heading stays in the accessibility tree. */
+  .page-header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  /* With .page-header taken out of flow, a row that paired it with an
+     action button would otherwise dump that button at the start edge
+     instead of its intended end alignment. */
+  .page-header-row { justify-content: flex-end !important; margin-bottom: var(--space-4) !important; }
 }
 
 @media (max-width: 640px) {

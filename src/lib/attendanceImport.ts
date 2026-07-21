@@ -85,13 +85,78 @@ const MONTHS = [
   "january", "february", "march", "april", "may", "june",
   "july", "august", "september", "october", "november", "december",
 ];
+const MONTH_ABBR = MONTHS.map((m) => m.slice(0, 3));
+
+function monthIndexFromName(name: string): number {
+  const lower = name.toLowerCase();
+  const full = MONTHS.indexOf(lower);
+  if (full !== -1) return full;
+  return MONTH_ABBR.indexOf(lower.slice(0, 3));
+}
 
 function parseEnglishDate(s: string): Date | null {
   const m = s.trim().match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
   if (!m) return null;
-  const monthIdx = MONTHS.indexOf(m[2].toLowerCase());
+  const monthIdx = monthIndexFromName(m[2]);
   if (monthIdx === -1) return null;
   return new Date(parseInt(m[3], 10), monthIdx, parseInt(m[1], 10));
+}
+
+function parsePeriodRange(period: string): { start: Date; end: Date } | null {
+  const m = period.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\s*-\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  if (!m) return null;
+  const startMonth = monthIndexFromName(m[2]);
+  const endMonth = monthIndexFromName(m[5]);
+  if (startMonth === -1 || endMonth === -1) return null;
+  return {
+    start: new Date(parseInt(m[3], 10), startMonth, parseInt(m[1], 10)),
+    end: new Date(parseInt(m[6], 10), endMonth, parseInt(m[4], 10)),
+  };
+}
+
+// "Ringkasan Kehadiran"-style exports only give monthly totals per
+// employee, no per-day punches — but the rest of the app (month-scoped
+// payroll, the daily recap table) is built around individual
+// AttendanceRecord dates. We reconstruct a plausible day-by-day
+// breakdown by walking the stated period, treating weekends as "Hari
+// Libur" and assigning the reported hadir/sakit/alpha counts to
+// weekdays in order. Which *specific* weekday got which status is a
+// guess — the totals are what's authoritative — so HR can still
+// correct individual days afterward via the existing per-day editor.
+function distributeMonthlyStatuses(
+  period: { start: Date; end: Date },
+  hadir: number,
+  sakit: number,
+  alpha: number,
+): AttendanceImportDay[] {
+  const days: AttendanceImportDay[] = [];
+  for (const cur = new Date(period.start); cur <= period.end; cur.setDate(cur.getDate() + 1)) {
+    const dow = cur.getDay();
+    days.push({ date: new Date(cur), status: dow === 0 || dow === 6 ? "Hari Libur" : "" });
+  }
+
+  // Fill weekdays first (in order), then — if the reported totals exceed
+  // the number of weekdays available (e.g. a 6-day work week) — spill the
+  // remainder into the "Hari Libur" days so the totals always match the
+  // source exactly; which day loses its "Libur" tag is a guess either way.
+  const remaining = { hadir, sakit, alpha };
+  for (const pass of [days.filter((d) => d.status === ""), days.filter((d) => d.status === "Hari Libur")]) {
+    for (const day of pass) {
+      if (remaining.hadir > 0) {
+        day.status = "Hadir";
+        remaining.hadir--;
+      } else if (remaining.sakit > 0) {
+        day.status = "Izin";
+        remaining.sakit--;
+      } else if (remaining.alpha > 0) {
+        day.status = "Alpha";
+        remaining.alpha--;
+      } else if (day.status === "") {
+        day.status = "Hari Libur";
+      }
+    }
+  }
+  return days;
 }
 
 // Canonical status vocabulary used by AttendanceRecord.status in the app,
@@ -121,7 +186,7 @@ function resolveGroupMap(groupHeaderRow: Record<string, string>, dataCols: strin
     .sort((a, b) => colIndex(a) - colIndex(b));
   const map: Record<string, string> = {};
   let currentLabel = "";
-  let starts = [...groupStarts];
+  const starts = [...groupStarts];
   for (const col of dataCols) {
     while (starts.length > 0 && colIndex(starts[0]) <= colIndex(col)) {
       currentLabel = groupHeaderRow[starts.shift()!];
@@ -162,19 +227,58 @@ export type AttendanceImportResult = {
   rows: AttendanceImportRow[];
 };
 
-export function parseAttendanceXlsx(buf: Buffer): AttendanceImportResult {
-  const files = unzip(buf);
-  const sheetPath = Object.keys(files).find((k) => /xl\/worksheets\/sheet1\.xml/.test(k));
-  if (!sheetPath) throw new Error("Sheet absensi tidak ditemukan");
+// Monthly-summary export ("Ringkasan Kehadiran") — one row per employee
+// with totals (Hari kehadiran, Sakit, Tidak hadir, ...), no per-day
+// punches. Detected by its Indonesian header labels, distinct from the
+// vertical per-day English-language format handled by parseVerticalDaily.
+function parseRingkasanKehadiran(rows: Record<string, string>[], periodStr: string | undefined): AttendanceImportRow[] {
+  const headerRow = rows.find((row) => {
+    const vals = Object.values(row);
+    return vals.includes("ID Personalia") && vals.includes("Nama") && vals.includes("Hari kehadiran");
+  });
+  if (!headerRow) return [];
 
-  const strs = parseSharedStrings(files["xl/sharedStrings.xml"]);
-  const rows = parseSheetRows(files[sheetPath], strs);
+  const colFor = (label: string) => Object.keys(headerRow).find((c) => headerRow[c] === label);
+  const codeCol = colFor("ID Personalia");
+  const nameCol = colFor("Nama");
+  const hadirCol = colFor("Hari kehadiran");
+  const sakitCol = colFor("Sakit");
+  const izinCol = colFor("Izin Lainnya");
+  const cutiTahunanCol = colFor("Cuti Tahunan");
+  const cutiSetengahCol = colFor("Cuti Setengah Hari");
+  const cutiTakDibayarCol = colFor("Cuti tidak dibayar");
+  const alphaCol = colFor("Tidak hadir");
+  if (!codeCol || !nameCol) return [];
 
-  const companyName = strs.find((s) => /^PT /i.test(s)) || "Perusahaan";
-  const periodMatch = strs.find(
-    (s) => /\d{4}\s*-\s*\d{1,2}\s*\w+\s*\d{4}/.test(s) || /\d{1,2}\s+\w+\s+\d{4}\s*-\s*\d{1,2}\s+\w+\s+\d{4}/.test(s),
-  );
+  const period = periodStr ? parsePeriodRange(periodStr) : null;
+  const num = (row: Record<string, string>, col: string | undefined) => {
+    const raw = col ? row[col] : undefined;
+    const n = raw === undefined ? 0 : parseInt(raw, 10);
+    return Number.isFinite(n) ? n : 0;
+  };
 
+  const headerIndex = rows.indexOf(headerRow);
+  return rows
+    .slice(headerIndex + 1)
+    .filter((row) => row[codeCol] !== undefined && row[nameCol] !== undefined && row[nameCol].trim() !== "")
+    .map((row) => {
+      const hadir = num(row, hadirCol);
+      const sakit = num(row, sakitCol) + num(row, izinCol) + num(row, cutiTahunanCol) + num(row, cutiSetengahCol) + num(row, cutiTakDibayarCol);
+      const alpha = num(row, alphaCol);
+      return {
+        code: row[codeCol].trim(),
+        name: row[nameCol].trim(),
+        hadir,
+        sakit,
+        alpha,
+        libur: 0,
+        lainnya: 0,
+        days: period ? distributeMonthlyStatuses(period, hadir, sakit, alpha) : [],
+      };
+    });
+}
+
+function parseVerticalDaily(rows: Record<string, string>[]): AttendanceImportRow[] {
   let headerMap: Record<string, string> | null = null;
   let cols: { date?: string; status?: string; checkIn?: string; checkOut?: string; location?: string } = {};
   let prevRow: Record<string, string> | null = null;
@@ -248,7 +352,26 @@ export function parseAttendanceXlsx(buf: Buffer): AttendanceImportResult {
   }
   finish();
 
-  if (results.length === 0) throw new Error("Tidak ada data personil yang terbaca dari file ini");
+  return results;
+}
 
-  return { summary: { companyName, period: periodMatch || "-", count: results.length }, rows: results };
+export function parseAttendanceXlsx(buf: Buffer): AttendanceImportResult {
+  const files = unzip(buf);
+  const sheetPath = Object.keys(files).find((k) => /xl\/worksheets\/sheet1\.xml/.test(k));
+  if (!sheetPath) throw new Error("Sheet absensi tidak ditemukan");
+
+  const strs = parseSharedStrings(files["xl/sharedStrings.xml"]);
+  const rows = parseSheetRows(files[sheetPath], strs);
+
+  const companyName = strs.find((s) => /^PT /i.test(s)) || "Perusahaan";
+  const periodMatch = strs.find(
+    (s) => /\d{4}\s*-\s*\d{1,2}\s*\w+\s*\d{4}/.test(s) || /\d{1,2}\s+\w+\s+\d{4}\s*-\s*\d{1,2}\s+\w+\s+\d{4}/.test(s),
+  );
+
+  const results = parseRingkasanKehadiran(rows, periodMatch);
+  const finalResults = results.length > 0 ? results : parseVerticalDaily(rows);
+
+  if (finalResults.length === 0) throw new Error("Tidak ada data personil yang terbaca dari file ini");
+
+  return { summary: { companyName, period: periodMatch || "-", count: finalResults.length }, rows: finalResults };
 }

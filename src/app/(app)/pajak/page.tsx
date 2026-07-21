@@ -20,7 +20,7 @@ export default async function PajakPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: "var(--space-6)" }}>
+      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
         <h1 style={{ margin: 0 }}>Laporan Pajak</h1>
         <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Perhitungan PPh 21 (estimasi)</p>
       </div>

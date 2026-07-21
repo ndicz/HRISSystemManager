@@ -12,7 +12,7 @@ export default async function KasPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: "var(--space-6)" }}>
+      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
         <h1 style={{ margin: 0 }}>Pengeluaran &amp; Kas</h1>
         <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Arus kas, laba rugi, neraca, dan hutang usaha</p>
       </div>
