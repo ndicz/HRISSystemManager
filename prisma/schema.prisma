@@ -46,13 +46,14 @@ model AuditLog {
 // ── Org structure ──────────────────────────────────────────────────────
 
 model Site {
-  id         String     @id @default(cuid())
-  name       String
-  address    String
-  supervisor String
-  umr        Int        @default(0)
-  employees  Employee[]
-  createdAt  DateTime   @default(now())
+  id           String        @id @default(cuid())
+  name         String
+  address      String
+  supervisor   String
+  umr          Int           @default(0)
+  employees    Employee[]
+  payrollRates PayrollRate[]
+  createdAt    DateTime      @default(now())
 }
 
 model Position {
@@ -100,6 +101,10 @@ model Employee {
   status          String   @default("aktif") // "aktif" | "resign"
   thrPaid         Boolean  @default(false)
   thrOverride     Int?
+  // null = use the standard formula (computeBpjsKesehatan / computeBpjsKetenagakerjaanKaryawan);
+  // set = deduct this exact amount instead, for cases the formula doesn't match reality.
+  bpjsKesehatanOverride       Int?
+  bpjsKetenagakerjaanOverride Int?
   overtimeHours   Int      @default(0)
   workDays        Int      @default(22)
   presentDays     Int      @default(22)
@@ -108,10 +113,26 @@ model Employee {
   checkIn         String?
   checkOut        String?
 
+  ktpNumber       String?
+  phone           String?
+  contractNumber  String?  // "No PKWT" — contract doc reference, distinct from contractType
+  education       String?
+  bankName        String?
+  bankAccount     String?
+  birthPlace      String?
+  birthDate       DateTime?
+  address         String?
+  gender          String?  // "Pria" | "Wanita"
+  religion        String?  // "Islam" | "Kristen" | "Katolik" | "Hindu" | "Buddha" | "Konghucu" | "Lainnya"
+
   salaryComponents SalaryComponent[]
   leaveRequests     LeaveRequest[]
   assignments       Assignment[]
   attendance        AttendanceRecord[]
+  certificates      Certificate[]
+  payrollEntries    PayrollEntry[]
+  allowancePayments AllowancePayment[]
+  overtimeDays      OvertimeDay[]
   user              User?
 
   resignDate      DateTime?
@@ -135,6 +156,101 @@ model SalaryComponent {
   @@index([employeeId])
 }
 
+model Certificate {
+  id         String    @id @default(cuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name       String
+  validFrom  DateTime?
+  validUntil DateTime?
+
+  @@index([employeeId])
+}
+
+// Configurable flat-rate deductions/overtime rates per period, optionally
+// overridden per site — siteId null is the default/fallback rate applied
+// to every site that doesn't have its own override for that period.
+model PayrollRate {
+  id                String   @id @default(cuid())
+  period            String   // "2026-06"
+  siteId            String?
+  site              Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  izinRate          Int      @default(0)
+  alphaRate         Int      @default(0)
+  terlambatRate     Int      @default(0)
+  lemburRegulerRate Int      @default(0)
+  lemburMerahRate   Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([period, siteId])
+  @@index([period])
+}
+
+// Manually-entered per-employee-per-period overtime counts + allowance —
+// unlike Employee.overtimeHours (a single live/current value), this is
+// scoped to a specific payroll period.
+model PayrollEntry {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  period        String
+  allowance     Int      @default(0) // Rp
+  note          String?
+  // null = compute from attendance count × PayrollRate as usual; set = deduct
+  // this exact amount instead, for this employee in this period only.
+  potonganIzinOverride      Int?
+  potonganAlphaOverride     Int?
+  potonganTerlambatOverride Int?
+  // Rate lembur beda-beda per orang di dunia nyata — kosongkan untuk hitung
+  // otomatis dari jumlah OvertimeDay, isi untuk pakai angka manual.
+  lemburOverride            Int?
+  // Set together when the monthly payroll run for this employee/period is
+  // paid out via "Bayar Gaji" — paid stays false until then so re-running
+  // payment for a site skips whoever's already been paid instead of
+  // double-posting to Kas.
+  paid              Boolean  @default(false)
+  paidTransactionId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([employeeId, period])
+  @@index([employeeId])
+}
+
+// One row per overtime day actually worked, instead of a single manually
+// typed count — HR records the specific dates (mis. tanggal merah 13, 15),
+// and computeMonthlyPayroll counts them per type to price the lembur line.
+model OvertimeDay {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  period     String   // "2026-06" — derived from date, kept for cheap querying
+  date       DateTime
+  type       String   // "reguler" | "merah"
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId, period])
+}
+
+// Off-cycle bonus/incentive payment — deliberately separate from
+// PayrollEntry.allowance (which is folded into the monthly gaji-tgl-1 run):
+// this is payable on any date, its own cash Transaction, own history.
+model AllowancePayment {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date          DateTime
+  amount        Int
+  desc          String?
+  transactionId String
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  @@index([employeeId])
+}
+
 model AttendanceRecord {
   id         String   @id @default(cuid())
   employeeId String
@@ -143,6 +259,8 @@ model AttendanceRecord {
   status     String   // "Hadir" | "Izin" | "Alpha" | "Hari Libur"
   checkIn    String?
   checkOut   String?
+  scheduledCheckIn  String?
+  scheduledCheckOut String?
   lateMin    Int      @default(0)
   overtimeHours Int   @default(0)
   location   String?
@@ -175,6 +293,10 @@ model Assignment {
   mandays    Int
   cost       Int
   status     String   @default("berjalan") // "berjalan" | "selesai"
+  // Which payslip period this cost belongs to (e.g. "2026-07") — nullable
+  // for rows created before this field existed. Only "selesai" assignments
+  // with a period actually show up on that period's payslip / Kas total.
+  period     String?
   createdAt  DateTime @default(now())
 
   @@index([employeeId])

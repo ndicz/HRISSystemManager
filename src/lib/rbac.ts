@@ -15,6 +15,7 @@ export const NAV_GROUP_ORDER: NavGroup[] = ["SDM", "Keuangan", "Kepatuhan", "Sis
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Dashboard", roles: ["ADMIN", "HR", "FINANCE", "SUPERVISOR", "EMPLOYEE"] },
   { href: "/absensi", label: "Absensi", roles: ["ADMIN", "HR", "SUPERVISOR"], group: "SDM" },
+  { href: "/laporan", label: "Laporan Kehadiran", roles: ["ADMIN", "HR", "SUPERVISOR"], group: "SDM" },
   { href: "/karyawan", label: "Karyawan & Lokasi", roles: ["ADMIN", "HR"], group: "SDM" },
   { href: "/cuti", label: "Cuti", roles: ["ADMIN", "HR", "SUPERVISOR"], group: "SDM" },
   { href: "/rekrutmen", label: "Rekrutmen", roles: ["ADMIN", "HR"], group: "SDM" },

@@ -5,6 +5,11 @@ import { addEmployee } from "@/app/(app)/karyawan/actions";
 
 type Option = { id: string; name: string };
 
+function todayInputValue() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
 export function AddEmployeeDialog({
   sites,
   positions,
@@ -45,6 +50,13 @@ export function AddEmployeeDialog({
                 <input className="input" id="name" name="name" required placeholder="Nama lengkap" />
               </div>
               <div className="field">
+                <label htmlFor="empCode">Nomor karyawan (opsional)</label>
+                <input className="input" id="empCode" name="empCode" placeholder="Kosongkan untuk generate otomatis" />
+                <p style={{ fontSize: 11, opacity: 0.55, marginTop: 4 }}>
+                  Isi manual jika perlu, mis. mengikuti nomor dari data lama. Kosongkan untuk generate otomatis (format WSP + urut + bulan/tahun masuk).
+                </p>
+              </div>
+              <div className="field">
                 <label htmlFor="siteId">Tempat kerja</label>
                 <select className="input" id="siteId" name="siteId" required>
                   {sites.map((s) => (
@@ -68,6 +80,13 @@ export function AddEmployeeDialog({
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
+              </div>
+              <div className="field">
+                <label htmlFor="hireDate">Tanggal masuk</label>
+                <input className="input" id="hireDate" name="hireDate" type="date" defaultValue={todayInputValue()} required />
+                <p style={{ fontSize: 11, opacity: 0.55, marginTop: 4 }}>
+                  Menentukan bulan/tahun pada ID karyawan (mis. WSP 00307 26 = urut 003, masuk Juli 2026).
+                </p>
               </div>
               <div className="field">
                 <label>Jenis kontrak</label>

@@ -13,7 +13,7 @@ import { inflateRawSync } from "node:zlib";
 
 type ZipEntry = { name: string; compMethod: number; compSize: number; localOffset: number };
 
-function unzip(buf: Buffer): Record<string, string> {
+export function unzip(buf: Buffer): Record<string, string> {
   let eocd = -1;
   for (let i = buf.length - 22; i >= 0; i--) {
     if (buf.readUInt32LE(i) === 0x06054b50) {
@@ -52,13 +52,29 @@ function unzip(buf: Buffer): Record<string, string> {
   return files;
 }
 
-function parseSharedStrings(xml: string | undefined): string[] {
-  if (!xml) return [];
-  const siBlocks = xml.split("<si>").slice(1).map((b) => b.split("</si>")[0]);
-  return siBlocks.map((b) => [...b.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((m) => m[1]).join(""));
+// XML text content escapes &, <, >, ", ' and can carry numeric character
+// references (e.g. &#xA; for a literal newline in a rich-text cell, common
+// when a fingerprint export wraps an overnight checkout onto a second line
+// like "06:33\n(1 Jul 2026)"). Left undecoded, that entity text leaks
+// verbatim into stored check-in/out values instead of a real newline.
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&amp;/g, "&");
 }
 
-function parseSheetRows(xml: string, strs: string[]): Record<string, string>[] {
+export function parseSharedStrings(xml: string | undefined): string[] {
+  if (!xml) return [];
+  const siBlocks = xml.split("<si>").slice(1).map((b) => b.split("</si>")[0]);
+  return siBlocks.map((b) => decodeXmlEntities([...b.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((m) => m[1]).join("")));
+}
+
+export function parseSheetRows(xml: string, strs: string[]): Record<string, string>[] {
   const rows: Record<string, string>[] = [];
   // Rows and cells with no content are self-closing (<row .../>, <c .../>) in
   // real Excel output, and attribute order (style before/after type) isn't
@@ -74,7 +90,7 @@ function parseSheetRows(xml: string, strs: string[]): Record<string, string>[] {
       const val = c[3];
       if (val === undefined) continue;
       const typeMatch = attrs.match(/ t="(\w+)"/);
-      rowObj[col] = typeMatch?.[1] === "s" ? strs[parseInt(val, 10)] : val;
+      rowObj[col] = typeMatch?.[1] === "s" ? strs[parseInt(val, 10)] : decodeXmlEntities(val);
     }
     rows.push(rowObj);
   }
@@ -140,7 +156,7 @@ function distributeMonthlyStatuses(
   const days: AttendanceImportDay[] = [];
   for (const cur = new Date(period.start); cur <= period.end; cur.setDate(cur.getDate() + 1)) {
     const dow = cur.getDay();
-    days.push({ date: new Date(cur), status: dow === 0 || dow === 6 ? "Hari Libur" : "" });
+    days.push({ date: new Date(cur), status: dow === 0 || dow === 6 ? "Hari Libur" : "", lateMin: 0 });
   }
 
   // Fill weekdays first (in order), then — if the reported totals exceed
@@ -232,7 +248,49 @@ function findDetailColAny(
   return undefined;
 }
 
-export type AttendanceImportDay = { date: Date; status: string; checkIn?: string; checkOut?: string; location?: string };
+export type AttendanceImportDay = {
+  date: Date;
+  status: string;
+  checkIn?: string;
+  checkOut?: string;
+  location?: string;
+  scheduledCheckIn?: string;
+  scheduledCheckOut?: string;
+  lateMin: number;
+};
+
+// A punch time cell can wrap onto a second line for an overnight shift
+// (e.g. "06:33\n(1 Jul 2026)" once XML entities are decoded) — only the
+// first line is the actual clock time.
+function firstLine(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const line = raw.split("\n")[0].trim();
+  return line || undefined;
+}
+
+function parseTimeToMinutes(raw: string | undefined): number | null {
+  const m = raw?.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  return h * 60 + mm;
+}
+
+// Some exports report lateness directly as its own column instead of (or
+// alongside) separate scheduled/actual clock times — as an "HH:MM:SS" or
+// "HH:MM" duration, or a plain number of minutes. When present, this is
+// authoritative straight from the source system and preferred over
+// deriving lateness ourselves from scheduled vs. actual clock-in.
+function parseLateDuration(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "-") return null;
+  const hms = trimmed.match(/^(\d{1,3}):(\d{2})(?::(\d{2}))?$/);
+  if (hms) return parseInt(hms[1], 10) * 60 + parseInt(hms[2], 10);
+  const plain = trimmed.match(/^(\d+)$/);
+  if (plain) return parseInt(plain[1], 10);
+  return null;
+}
 
 export type AttendanceImportRow = {
   code: string;
@@ -303,7 +361,16 @@ function parseRingkasanKehadiran(rows: Record<string, string>[], periodStr: stri
 
 function parseVerticalDaily(rows: Record<string, string>[]): AttendanceImportRow[] {
   let headerMap: Record<string, string> | null = null;
-  let cols: { date?: string; status?: string; checkIn?: string; checkOut?: string; location?: string } = {};
+  let cols: {
+    date?: string;
+    status?: string;
+    checkIn?: string;
+    checkOut?: string;
+    location?: string;
+    scheduledIn?: string;
+    scheduledOut?: string;
+    late?: string;
+  } = {};
   let prevRow: Record<string, string> | null = null;
   let current: AttendanceImportRow | null = null;
   const results: AttendanceImportRow[] = [];
@@ -338,8 +405,39 @@ function parseVerticalDaily(rows: Record<string, string>[]): AttendanceImportRow
         ["Location", "Clock In"],
         ["Lokasi", "Jam Masuk"],
       ]);
+      // "Work Pattern" / "Pola Kerja" is the scheduled shift — the *should
+      // have* clocked in/out times — separate from "Daily Attendance" /
+      // "Kehadiran Harian", which is the actual punch. Comparing the two is
+      // what lets us compute how late someone actually was.
+      const scheduledInCol = findDetailColAny(headerMap, groupMap, [
+        ["Work Pattern", "Clock In"],
+        ["Pola Kerja", "Jam Masuk"],
+      ]);
+      const scheduledOutCol = findDetailColAny(headerMap, groupMap, [
+        ["Work Pattern", "Clock Out"],
+        ["Pola Kerja", "Jam Keluar"],
+      ]);
+      // A handful of exports report lateness as its own explicit column —
+      // either grouped under "Daily Attendance"/"Kehadiran Harian" next to
+      // Clock In/Out, or as a plain top-level column with no group at all
+      // (same shape as Date/Status above). Try both.
+      const lateCol =
+        findDetailColAny(headerMap, groupMap, [
+          ["Daily Attendance", "Late"],
+          ["Kehadiran Harian", "Terlambat"],
+        ]) ??
+        Object.keys(headerMap).find((c) => ["Late", "Terlambat", "Telat", "Late Duration", "Lama Keterlambatan"].includes(headerMap![c]));
 
-      cols = { date: dateCol, status: statusCol, checkIn: checkInCol, checkOut: checkOutCol, location: locationCol };
+      cols = {
+        date: dateCol,
+        status: statusCol,
+        checkIn: checkInCol,
+        checkOut: checkOutCol,
+        location: locationCol,
+        scheduledIn: scheduledInCol,
+        scheduledOut: scheduledOutCol,
+        late: lateCol,
+      };
       prevRow = row;
       continue;
     }
@@ -356,9 +454,12 @@ function parseVerticalDaily(rows: Record<string, string>[]): AttendanceImportRow
     if (current && headerMap) {
       const status = cols.status ? row[cols.status] : undefined;
       const dateStr = cols.date ? row[cols.date] : undefined;
-      const checkIn = cols.checkIn ? row[cols.checkIn] : undefined;
-      const checkOut = cols.checkOut ? row[cols.checkOut] : undefined;
+      const checkIn = firstLine(cols.checkIn ? row[cols.checkIn] : undefined);
+      const checkOut = firstLine(cols.checkOut ? row[cols.checkOut] : undefined);
       const location = cols.location ? row[cols.location] : undefined;
+      const scheduledCheckIn = firstLine(cols.scheduledIn ? row[cols.scheduledIn] : undefined);
+      const scheduledCheckOut = firstLine(cols.scheduledOut ? row[cols.scheduledOut] : undefined);
+      const lateRaw = cols.late ? row[cols.late] : undefined;
 
       if (status === "Present at Workday" || status === "Hadir di Hari Kerja" || status === "Hadir Bukan Hari Kerja") current.hadir++;
       else if (status === "Sick Leave" || status === "Sakit" || status === "Izin") current.sakit++;
@@ -369,12 +470,23 @@ function parseVerticalDaily(rows: Record<string, string>[]): AttendanceImportRow
       if (status !== undefined && dateStr !== undefined) {
         const parsedDate = parseEnglishDate(dateStr);
         if (parsedDate) {
+          // Prefer a direct "Late"/"Terlambat" column straight from the
+          // source when the export has one — only fall back to deriving
+          // it from scheduled-vs-actual clock-in when it doesn't.
+          const directLateMin = parseLateDuration(lateRaw);
+          const actualMin = parseTimeToMinutes(checkIn);
+          const scheduledMin = parseTimeToMinutes(scheduledCheckIn);
+          const derivedLateMin = actualMin !== null && scheduledMin !== null && actualMin > scheduledMin ? actualMin - scheduledMin : 0;
+          const lateMin = directLateMin ?? derivedLateMin;
           current.days.push({
             date: parsedDate,
             status: mapStatus(status),
             checkIn: checkIn && checkIn !== "-" ? checkIn : undefined,
             checkOut: checkOut && checkOut !== "-" ? checkOut : undefined,
             location: location && location !== "-" ? location : undefined,
+            scheduledCheckIn: scheduledCheckIn && scheduledCheckIn !== "-" ? scheduledCheckIn : undefined,
+            scheduledCheckOut: scheduledCheckOut && scheduledCheckOut !== "-" ? scheduledCheckOut : undefined,
+            lateMin,
           });
         }
       }

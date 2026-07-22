@@ -24,7 +24,11 @@ export async function resetAllData(confirmText: string) {
     db.invoiceBjItem.deleteMany(),
     db.invoiceBj.deleteMany(),
     db.invoice.deleteMany(),
-    // Cascades SalaryComponent, AttendanceRecord, LeaveRequest, Assignment.
+    // Not employee-scoped (siteId is nullable), so it won't cascade from
+    // either an Employee or a Site delete below — must be explicit.
+    db.payrollRate.deleteMany(),
+    // Cascades SalaryComponent, AttendanceRecord, LeaveRequest, Assignment,
+    // Certificate, PayrollEntry.
     db.employee.deleteMany(),
     db.client.deleteMany(),
     db.site.deleteMany(),

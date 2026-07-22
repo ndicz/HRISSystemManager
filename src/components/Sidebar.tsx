@@ -53,6 +53,14 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
       <polyline points="12 7 12 12 15.5 14" />
     </Icon>
   ),
+  "/laporan": (
+    <Icon>
+      <line x1="4" y1="21" x2="20" y2="21" />
+      <rect x="6" y="13" width="3" height="8" />
+      <rect x="11" y="9" width="3" height="12" />
+      <rect x="16" y="5" width="3" height="16" />
+    </Icon>
+  ),
   "/karyawan": (
     <Icon>
       <circle cx="12" cy="8" r="4" />

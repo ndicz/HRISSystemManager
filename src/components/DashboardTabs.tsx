@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Account, CashAccount, Employee, Position, SalaryComponent, Site, Transaction } from "@prisma/client";
-import { computePayroll, formatRp } from "@/lib/payroll";
+import { computePayroll, expiringContracts, formatRp } from "@/lib/payroll";
 import { monthKey, saldoKasSampai } from "@/lib/finance";
 
 type Emp = Employee & { site: Site; position: Position; salaryComponents: SalaryComponent[] };
@@ -54,6 +54,7 @@ export function DashboardTabs({
   });
 
   const recentTx = transactions.slice(0, 5);
+  const expiring = useMemo(() => expiringContracts(employees, 30), [employees]);
 
   return (
     <div>
@@ -164,6 +165,27 @@ export function DashboardTabs({
             </div>
           )}
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: "var(--space-4)" }}>
+        <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Kontrak akan berakhir (30 hari)</div>
+        {expiring.length === 0 ? (
+          <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada kontrak yang akan berakhir dalam 30 hari.</p>
+        ) : (
+          <div style={{ display: "grid", gap: "var(--space-3)" }}>
+            {expiring.map((e) => (
+              <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-2)", borderBottom: "1px solid var(--color-divider)", paddingBottom: "var(--space-2)" }}>
+                <div>
+                  <div style={{ fontSize: 14 }}>{e.name}</div>
+                  <div style={{ fontSize: 12, opacity: 0.55 }}>{e.siteName} &middot; berakhir {e.contractEnd.toLocaleDateString("id-ID")}</div>
+                </div>
+                <span className={e.daysRemaining <= 7 ? "tag tag-accent" : "tag tag-outline"}>
+                  {e.daysRemaining < 0 ? `Lewat ${Math.abs(e.daysRemaining)} hari` : e.daysRemaining === 0 ? "Hari ini" : `${e.daysRemaining} hari lagi`}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

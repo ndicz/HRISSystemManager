@@ -60,6 +60,7 @@ async function main() {
     { code: "5007", name: "Biaya Penugasan Tambahan", type: "keluar" },
     { code: "5008", name: "Beban THR", type: "keluar" },
     { code: "5009", name: "Pembayaran Utang Usaha", type: "keluar" },
+    { code: "5010", name: "Bonus/Insentif Karyawan", type: "keluar" },
   ];
   for (const a of accounts) {
     await db.account.upsert({ where: { code: a.code }, update: {}, create: a });
