@@ -17,6 +17,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.role = (user as { role: string }).role;
         token.id = user.id as string;
+        token.pageAccess = (user as { pageAccess: string[] }).pageAccess;
       }
       return token;
     },
@@ -24,6 +25,7 @@ export const authConfig: NextAuthConfig = {
       if (session.user) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
+        session.user.pageAccess = (token.pageAccess as string[]) ?? [];
       }
       return session;
     },

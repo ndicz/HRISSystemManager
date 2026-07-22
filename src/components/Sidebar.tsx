@@ -130,6 +130,14 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
       <line x1="3" y1="18" x2="3.01" y2="18" />
     </Icon>
   ),
+  "/pengguna": (
+    <Icon>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 20c0-3.6 2.5-6.2 5.5-6.2s5.5 2.6 5.5 6.2" />
+      <circle cx="17.5" cy="8.5" r="2.4" />
+      <path d="M15.5 13.6c2.3.2 4 2.4 4 6.4" />
+    </Icon>
+  ),
 };
 
 function HamburgerIcon() {
@@ -220,9 +228,9 @@ function NavGroupSection({ group, items, pathname, onNavigate }: { group: NavGro
   );
 }
 
-export function Sidebar({ userName, userRole }: { userName: string; userRole: string }) {
+export function Sidebar({ userName, userRole, pageAccess }: { userName: string; userRole: string; pageAccess?: string[] }) {
   const pathname = usePathname();
-  const items = navForRole(userRole);
+  const items = navForRole(userRole, pageAccess);
   const standalone = items.filter((i) => !i.group);
   const groups = NAV_GROUP_ORDER.map((g) => ({ group: g, items: items.filter((i) => i.group === g) })).filter((g) => g.items.length > 0);
   const activeLabel = items.find((i) => isActive(pathname, i.href))?.label ?? "Industri.HR";
