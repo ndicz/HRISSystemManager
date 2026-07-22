@@ -53,6 +53,9 @@ export function LoginForm() {
               name="email"
               required
               autoFocus
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-500"
             />
           </label>
