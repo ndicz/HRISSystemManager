@@ -35,7 +35,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!code || !verifyTotp(user.totpSecret, code)) return null;
         } else {
           if (!email || !password) return null;
-          user = await db.user.findUnique({ where: { email } });
+          user = await db.user.findUnique({ where: { email: email.trim().toLowerCase() } });
           if (!user || !user.active) return null;
 
           const valid = await bcrypt.compare(password, user.passwordHash);

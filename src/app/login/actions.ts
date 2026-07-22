@@ -18,7 +18,7 @@ export async function checkCredentials(
   _prevState: LoginState | undefined,
   formData: FormData,
 ): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const callbackUrl = (formData.get("callbackUrl") as string) || "/";
 
