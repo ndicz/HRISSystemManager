@@ -2,8 +2,49 @@
 
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { generateTotpSecret, totpAuthUri, verifyTotp } from "@/lib/totp";
 
 const CONFIRM_PHRASE = "HAPUS SEMUA DATA";
+
+// Generates a new secret for the current user and stores it (unconfirmed
+// — totpEnabled stays false until confirmTotpSetup verifies a real code),
+// so re-running setup safely replaces a half-finished previous attempt.
+export async function startTotpSetup() {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const secret = generateTotpSecret();
+  const user = await db.user.update({
+    where: { id: session.user.id },
+    data: { totpSecret: secret, totpEnabled: false },
+  });
+
+  return { secret, otpauthUri: totpAuthUri(secret, user.email) };
+}
+
+export async function confirmTotpSetup(code: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const user = await db.user.findUniqueOrThrow({ where: { id: session.user.id } });
+  if (!user.totpSecret) throw new Error("Belum ada setup 2FA yang berjalan — mulai lagi dari awal.");
+  if (!verifyTotp(user.totpSecret, code)) throw new Error("Kode salah. Coba lagi.");
+
+  await db.user.update({ where: { id: session.user.id }, data: { totpEnabled: true } });
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "auth.totpEnabled", entity: "User", entityId: session.user.id },
+  });
+}
+
+export async function disableTotp() {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  await db.user.update({ where: { id: session.user.id }, data: { totpEnabled: false, totpSecret: null } });
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "auth.totpDisabled", entity: "User", entityId: session.user.id },
+  });
+}
 
 // Wipes every piece of business data (employees and everything that
 // cascades from them, sites, positions, clients, invoices, cash/finance

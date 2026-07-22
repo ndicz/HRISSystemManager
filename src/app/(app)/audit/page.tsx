@@ -1,13 +1,19 @@
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
 import { AuditLogTable } from "@/components/AuditLogTable";
 import { ResetDataButton } from "@/components/ResetDataButton";
+import { TotpSetupCard } from "@/components/TotpSetupCard";
 
 export default async function AuditPage() {
-  const logs = await db.auditLog.findMany({
-    include: { user: { select: { name: true, email: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 300,
-  });
+  const session = await auth();
+  const [logs, currentUser] = await Promise.all([
+    db.auditLog.findMany({
+      include: { user: { select: { name: true, email: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+    }),
+    session?.user ? db.user.findUnique({ where: { id: session.user.id }, select: { totpEnabled: true } }) : null,
+  ]);
 
   const rows = logs.map((l) => ({
     id: l.id,
@@ -27,6 +33,10 @@ export default async function AuditPage() {
       </div>
 
       <AuditLogTable rows={rows} />
+
+      <div style={{ marginTop: "var(--space-6)" }}>
+        <TotpSetupCard initialEnabled={currentUser?.totpEnabled ?? false} />
+      </div>
 
       <div style={{ marginTop: "var(--space-6)" }}>
         <ResetDataButton />

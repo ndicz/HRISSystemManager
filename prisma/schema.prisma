@@ -22,6 +22,8 @@ model User {
   name          String
   role          String   // ADMIN | HR | FINANCE | SUPERVISOR | EMPLOYEE
   active        Boolean  @default(true)
+  totpSecret    String?  // base32 — set once 2FA setup starts, kept even while unconfirmed
+  totpEnabled   Boolean  @default(false)
   employeeId    String?  @unique
   employee      Employee? @relation(fields: [employeeId], references: [id])
   createdAt     DateTime @default(now())
