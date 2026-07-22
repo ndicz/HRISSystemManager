@@ -57,9 +57,14 @@ export function AddUserDialog({
                 <input className="input" id="user-name" name="name" required />
               </div>
               <div className="field">
-                <label htmlFor="user-email">Email / username login</label>
-                <input className="input" id="user-email" name="email" required />
+                <label htmlFor="user-username">ID login</label>
+                <input className="input" id="user-username" name="username" required placeholder="mis. hrwana1" />
               </div>
+              <div className="field">
+                <label htmlFor="user-email">Email</label>
+                <input className="input" id="user-email" name="email" required placeholder="mis. hrwana@email.com" />
+              </div>
+              <p style={{ fontSize: 12, opacity: 0.6, margin: 0 }}>ID login maupun email bisa dipakai untuk masuk.</p>
               <div className="field">
                 <label htmlFor="user-password">Password</label>
                 <input className="input" id="user-password" name="password" type="password" required minLength={6} placeholder="Minimal 6 karakter" />

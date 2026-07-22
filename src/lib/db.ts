@@ -30,3 +30,9 @@ function createClient() {
 export const db = globalForPrisma.prisma ?? createClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+
+// Login accepts either a user's username or their email — both are unique
+// identifiers, so either one on its own resolves to exactly one account.
+export function findUserByIdentifier(identifier: string) {
+  return db.user.findFirst({ where: { OR: [{ username: identifier }, { email: identifier }] } });
+}

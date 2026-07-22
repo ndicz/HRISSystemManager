@@ -47,7 +47,7 @@ export function LoginForm() {
       ) : (
         <>
           <label className="mb-3 block text-sm">
-            <span className="mb-1 block text-neutral-600">Username</span>
+            <span className="mb-1 block text-neutral-600">ID login atau email</span>
             <input
               type="text"
               name="email"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateUser, resetUserPassword } from "@/app/(app)/pengguna/actions";
+import { updateUser, resetUserPassword, deleteUser } from "@/app/(app)/pengguna/actions";
 import type { NavItem } from "@/lib/rbac";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -15,6 +15,7 @@ const ROLE_LABEL: Record<string, string> = {
 type UserRow = {
   id: string;
   name: string;
+  username: string | null;
   email: string;
   role: string;
   active: boolean;
@@ -43,6 +44,9 @@ export function EditUserDialog({
   const [pwError, setPwError] = useState("");
   const [pwPending, setPwPending] = useState(false);
 
+  const [delError, setDelError] = useState("");
+  const [delPending, setDelPending] = useState(false);
+
   async function handleSubmit(formData: FormData) {
     setPending(true);
     setError("");
@@ -69,6 +73,22 @@ export function EditUserDialog({
     }
   }
 
+  async function handleDelete() {
+    if (!window.confirm(`Hapus akun "${user.name}" (${user.email}) secara permanen? Aksi ini tidak bisa dibatalkan.`)) return;
+    setDelPending(true);
+    setDelError("");
+    try {
+      const formData = new FormData();
+      formData.set("userId", user.id);
+      await deleteUser(formData);
+      setOpen(false);
+    } catch (err) {
+      setDelError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDelPending(false);
+    }
+  }
+
   return (
     <>
       <button type="button" className="btn btn-ghost" onClick={() => setOpen(true)}>
@@ -84,7 +104,15 @@ export function EditUserDialog({
                 <label htmlFor={`edit-name-${user.id}`}>Nama</label>
                 <input className="input" id={`edit-name-${user.id}`} name="name" defaultValue={user.name} required />
               </div>
-              <p style={{ fontSize: 12, opacity: 0.6, margin: 0 }}>Email: {user.email}</p>
+              <div className="field">
+                <label htmlFor={`edit-username-${user.id}`}>ID login</label>
+                <input className="input" id={`edit-username-${user.id}`} name="username" defaultValue={user.username ?? ""} required placeholder="mis. hrwana1" />
+              </div>
+              <div className="field">
+                <label htmlFor={`edit-email-${user.id}`}>Email</label>
+                <input className="input" id={`edit-email-${user.id}`} name="email" defaultValue={user.email} required />
+              </div>
+              <p style={{ fontSize: 12, opacity: 0.6, margin: 0 }}>ID login maupun email bisa dipakai untuk masuk.</p>
               <div className="field">
                 <label htmlFor={`edit-role-${user.id}`}>Peran</label>
                 <select className="input" id={`edit-role-${user.id}`} name="role" value={role} onChange={(e) => setRole(e.target.value)} disabled={isSelf}>
@@ -147,6 +175,21 @@ export function EditUserDialog({
                 </div>
               </div>
             </form>
+
+            {!isSelf && (
+              <div style={{ marginTop: "var(--space-4)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--color-neutral-200)" }}>
+                {delError && <p style={{ color: "#b91c1c", fontSize: 13, margin: "0 0 var(--space-2)" }}>{delError}</p>}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ color: "#b91c1c", borderColor: "#b91c1c" }}
+                  onClick={handleDelete}
+                  disabled={delPending}
+                >
+                  {delPending ? "Menghapus…" : "Hapus akun permanen"}
+                </button>
+              </div>
+            )}
 
             {pwOpen && (
               <form action={handleResetPassword} style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-4)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--color-neutral-200)" }}>
