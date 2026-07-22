@@ -1,17 +1,20 @@
 import { db } from "@/lib/db";
-import { formatRp } from "@/lib/payroll";
 import { AddEmployeeDialog } from "@/components/AddEmployeeDialog";
 import { AddSiteDialog } from "@/components/AddSiteDialog";
 import { AddPositionDialog } from "@/components/AddPositionDialog";
 import { AddAssignmentDialog } from "@/components/AddAssignmentDialog";
-import { AssignmentActions } from "@/components/AssignmentActions";
+import { ImportBpjsDialog } from "@/components/ImportBpjsDialog";
 import { KaryawanTable } from "@/components/KaryawanTable";
+import { SiteTable } from "@/components/SiteTable";
+import { PositionTable } from "@/components/PositionTable";
+import { AssignmentTable } from "@/components/AssignmentTable";
+import { ResignedTable } from "@/components/ResignedTable";
 
 export default async function KaryawanPage() {
   const [employees, resigned, sitesFull, positions, clients, assignments] = await Promise.all([
     db.employee.findMany({
       where: { status: "aktif" },
-      include: { site: true, position: true },
+      include: { site: true, position: true, salaryComponents: true },
       orderBy: { createdAt: "desc" },
     }),
     db.employee.findMany({
@@ -26,7 +29,7 @@ export default async function KaryawanPage() {
   ]);
 
   const sites = sitesFull.map((s) => ({ id: s.id, name: s.name }));
-  const employeeOptions = employees.map((e) => ({ id: e.id, name: e.name }));
+  const employeeOptions = employees.map((e) => ({ id: e.id, name: e.name, empCode: e.empCode }));
 
   return (
     <div>
@@ -37,43 +40,19 @@ export default async function KaryawanPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+        <ImportBpjsDialog />
         <AddEmployeeDialog sites={sites} positions={positions} clients={clients} />
       </div>
 
-      <KaryawanTable employees={employees} />
+      <KaryawanTable employees={employees} sites={sites} />
 
       <div className="card" style={{ marginTop: "var(--space-6)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
           <div className="card-kicker">Tempat Kerja</div>
           <AddSiteDialog />
         </div>
-        {sitesFull.length === 0 ? (
-          <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada tempat kerja.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nama lokasi</th>
-                <th>Alamat</th>
-                <th>Penanggung jawab</th>
-                <th>UMR/UMK</th>
-                <th>Karyawan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sitesFull.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.name}</td>
-                  <td className="text-muted">{s.address}</td>
-                  <td>{s.supervisor}</td>
-                  <td>{formatRp(s.umr)}</td>
-                  <td>{s.employees.length}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <SiteTable sites={sitesFull} />
       </div>
 
       <div className="card" style={{ marginTop: "var(--space-6)" }}>
@@ -81,30 +60,7 @@ export default async function KaryawanPage() {
           <div className="card-kicker">Posisi</div>
           <AddPositionDialog />
         </div>
-        {positions.length === 0 ? (
-          <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada posisi. Tambahkan posisi terlebih dahulu sebelum menambah karyawan atau import absensi.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nama posisi</th>
-                <th>Jenis gaji</th>
-                <th>Gaji pokok default</th>
-                <th>Karyawan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {positions.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.name}</td>
-                  <td className="text-muted">{p.salaryType === "harian" ? "Harian" : "Bulanan"}</td>
-                  <td>{formatRp(p.baseSalary)}</td>
-                  <td>{p.employees.length}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <PositionTable positions={positions} />
       </div>
 
       <div className="card" style={{ marginTop: "var(--space-6)" }}>
@@ -112,70 +68,12 @@ export default async function KaryawanPage() {
           <div className="card-kicker">Penugasan Tambahan</div>
           <AddAssignmentDialog employees={employeeOptions} />
         </div>
-        {assignments.length === 0 ? (
-          <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada penugasan tambahan.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Karyawan</th>
-                <th>Judul</th>
-                <th>Mandays</th>
-                <th>Biaya</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.map((a) => (
-                <tr key={a.id}>
-                  <td>{a.employee.name}</td>
-                  <td>{a.title}</td>
-                  <td className="text-muted">{a.mandays} hari</td>
-                  <td>{formatRp(a.cost)}</td>
-                  <td>
-                    <span className={a.status === "selesai" ? "tag tag-accent" : "tag tag-outline"}>
-                      {a.status === "selesai" ? "Selesai" : "Berjalan"}
-                    </span>
-                  </td>
-                  <td><AssignmentActions id={a.id} disabled={a.status === "selesai"} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <AssignmentTable assignments={assignments} />
       </div>
 
       <div className="card" style={{ marginTop: "var(--space-6)" }}>
         <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Riwayat Karyawan Keluar</div>
-        {resigned.length === 0 ? (
-          <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada karyawan yang resign.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nama</th>
-                <th>Tempat kerja</th>
-                <th>Posisi</th>
-                <th>Tanggal resign</th>
-                <th>Alasan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resigned.map((e) => (
-                <tr key={e.id}>
-                  <td className="text-muted">{e.empCode}</td>
-                  <td>{e.name}</td>
-                  <td>{e.site.name}</td>
-                  <td>{e.position.name}</td>
-                  <td className="text-muted">{e.resignDate ? e.resignDate.toLocaleDateString("id-ID") : "-"}</td>
-                  <td>{e.resignReason ?? "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <ResignedTable resigned={resigned} />
       </div>
     </div>
   );

@@ -136,9 +136,51 @@ img { display: block; max-width: 100%; }
 .tag-neutral { background: var(--color-neutral-100); color: var(--color-neutral-800); }
 .tag-outline { border: 1px solid var(--color-accent); color: var(--color-accent); }
 
-.table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.table th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2); border-bottom: 1px solid var(--color-divider); }
-.table td { padding: var(--space-2); border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+/* Always horizontally scrollable rather than squishing columns or
+   overflowing the page — wide tables (e.g. the flat-rate payroll grid,
+   the attendance recap) just scroll left/right at any viewport width,
+   with a fading edge hinting there's more content off-screen. */
+.table {
+  width: 100%;
+  /* min-width:0 (not max-content) is what actually makes this work: .table
+     is a flex item inside .card, and a flex item's default min-width is
+     "auto" (≈ its content's natural width) — meaning the table refused to
+     shrink below its full unscrolled width and pushed .card wider instead
+     of scrolling inside it. Forcing min-width:0 lets it shrink to the
+     card's actual width, so its own overflow-x:auto below can engage. */
+  min-width: 0;
+  /* Bounded height + its own overflow (not just overflow-x) is what makes
+     the sticky header below actually stick: position:sticky pins an
+     element to the top of its nearest *scrolling* ancestor, and without a
+     max-height here the table's box just grows to fit every row — there's
+     no internal scroll for anything to stick within, so the header would
+     silently never appear to move. With max-height + overflow:auto, once
+     content exceeds it the table scrolls in its own box (both axes) and
+     the header stays pinned to the top of that box as you scroll down. */
+  max-height: 65vh;
+  border-collapse: collapse;
+  font-size: 14px;
+  display: block;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background:
+    linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)) 0 0,
+    linear-gradient(to right, rgba(255, 255, 255, 0), #fff 70%) 100% 0,
+    linear-gradient(to right, color-mix(in srgb, var(--color-text) 18%, transparent), rgba(0, 0, 0, 0)) 0 0,
+    linear-gradient(to left, color-mix(in srgb, var(--color-text) 18%, transparent), rgba(0, 0, 0, 0)) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 24px 100%, 24px 100%, 8px 100%, 8px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+.table th {
+  text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2);
+  border-bottom: 1px solid var(--color-divider); white-space: nowrap;
+  /* Sticks to the top of .table's own scroll box (see .table's comment) —
+     needs an opaque background since rows scroll underneath it. */
+  position: sticky; top: 0; z-index: 1; background: #fff;
+}
+.table td { padding: var(--space-2); border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); white-space: nowrap; }
 .table tbody tr:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
 
 .dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent); z-index: 50; }
@@ -274,21 +316,4 @@ img { display: block; max-width: 100%; }
   h2 { font-size: 22px; }
   h3 { font-size: 19px; }
   .dialog { width: 100%; }
-
-  /* Horizontally-scrollable tables, with a fading edge that hints there's
-     more content off-screen so a swipe doesn't come as a surprise. */
-  .table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    background:
-      linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)) 0 0,
-      linear-gradient(to right, rgba(255, 255, 255, 0), #fff 70%) 100% 0,
-      linear-gradient(to right, color-mix(in srgb, var(--color-text) 18%, transparent), rgba(0, 0, 0, 0)) 0 0,
-      linear-gradient(to left, color-mix(in srgb, var(--color-text) 18%, transparent), rgba(0, 0, 0, 0)) 100% 0;
-    background-repeat: no-repeat;
-    background-size: 24px 100%, 24px 100%, 8px 100%, 8px 100%;
-    background-attachment: local, local, scroll, scroll;
-  }
-  .table th, .table td { white-space: nowrap; }
 }

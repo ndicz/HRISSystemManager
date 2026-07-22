@@ -1,11 +1,13 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
-import type { Prisma, PrismaClient } from "@prisma/client";
-import { parseAttendanceXlsx, type AttendanceImportRow } from "@/lib/attendanceImport";
+import { Prisma, type PrismaClient } from "@prisma/client";
+import { parseAttendanceXlsx, type AttendanceImportRow, type AttendanceImportDay } from "@/lib/attendanceImport";
 import { computePayroll } from "@/lib/payroll";
+import { mapLimit } from "@/lib/concurrency";
 
 type Tx = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
@@ -58,14 +60,52 @@ async function recomputeEmployeeAttendance(tx: Tx, employeeId: string) {
 }
 
 // Resolves the employee code to use from the Excel row's own code column,
-// falling back to null if it's blank or already used by a *different*
-// employee (so re-importing never collides on the unique empCode index).
-async function resolveEmpCode(tx: Tx, codeFromExcel: string, excludeEmployeeId?: string): Promise<string | null> {
+// checked against an in-memory set of codes already in use (across *all*
+// employees, any status) instead of a per-row DB round-trip — with ~95
+// employees that was ~95 extra network round-trips to Neon on its own.
+// Falls back to null if blank or already used by a *different* employee.
+function resolveEmpCode(usedCodes: Set<string>, codeFromExcel: string, currentCode?: string): string | null {
   const trimmed = codeFromExcel.trim();
   if (!trimmed) return null;
-  const taken = await tx.employee.findUnique({ where: { empCode: trimmed } });
-  if (taken && taken.id !== excludeEmployeeId) return null;
+  if (trimmed === currentCode) return null;
+  if (usedCodes.has(trimmed)) return null;
   return trimmed;
+}
+
+// Bulk-writes attendance days as a handful of multi-row INSERT ... ON
+// CONFLICT statements instead of one upsert per day. With ~95 employees ×
+// ~30 days that's ~2,850 individual round trips to Neon — the dominant
+// cost of an import even after employees themselves were parallelized.
+// Batching them into ~500-row chunks turns that into a handful of round
+// trips instead. `id` has no DB-level default (Prisma generates cuids
+// client-side), so a fresh id is generated per row here.
+async function bulkUpsertAttendanceDays(entries: { employeeId: string; day: AttendanceImportDay }[]): Promise<void> {
+  const CHUNK = 500;
+  const chunks: (typeof entries)[] = [];
+  for (let i = 0; i < entries.length; i += CHUNK) chunks.push(entries.slice(i, i + CHUNK));
+
+  await mapLimit(chunks, 4, async (chunk) => {
+    const values = chunk.map(
+      ({ employeeId, day }) => Prisma.sql`(
+        ${randomUUID()}, ${employeeId}, ${day.date}, ${day.status},
+        ${day.checkIn ?? null}, ${day.checkOut ?? null}, ${day.location ?? null},
+        ${day.scheduledCheckIn ?? null}, ${day.scheduledCheckOut ?? null}, ${day.lateMin}
+      )`,
+    );
+    await db.$executeRaw`
+      INSERT INTO "AttendanceRecord"
+        ("id", "employeeId", "date", "status", "checkIn", "checkOut", "location", "scheduledCheckIn", "scheduledCheckOut", "lateMin")
+      VALUES ${Prisma.join(values)}
+      ON CONFLICT ("employeeId", "date") DO UPDATE SET
+        "status" = EXCLUDED."status",
+        "checkIn" = EXCLUDED."checkIn",
+        "checkOut" = EXCLUDED."checkOut",
+        "location" = EXCLUDED."location",
+        "scheduledCheckIn" = EXCLUDED."scheduledCheckIn",
+        "scheduledCheckOut" = EXCLUDED."scheduledCheckOut",
+        "lateMin" = EXCLUDED."lateMin"
+    `;
+  });
 }
 
 export async function parseAttendanceImport(formData: FormData) {
@@ -85,89 +125,121 @@ export async function applyAttendanceImport(rows: AttendanceImportRow[], siteId:
   if (!siteId) throw new Error("Tempat kerja tujuan wajib dipilih.");
   if (!rows || rows.length === 0) throw new Error("Tidak ada data untuk diterapkan.");
 
-  const employees = await db.employee.findMany({ where: { status: "aktif" } });
+  const [employees, allCodeRows] = await Promise.all([
+    db.employee.findMany({ where: { status: "aktif" } }),
+    db.employee.findMany({ select: { empCode: true } }),
+  ]);
   const position = (await db.position.findFirst({ where: { name: "Staff Admin" } })) ?? (await db.position.findFirst());
   if (!position) throw new Error("Belum ada data posisi — tambahkan posisi terlebih dahulu.");
 
-  let empCount = await db.employee.count();
+  const empByName = new Map(employees.map((e) => [e.name.toLowerCase(), e]));
+  const empByCode = new Map(employees.filter((e) => e.empCode.trim()).map((e) => [e.empCode.trim(), e]));
+  const usedCodes = new Set(allCodeRows.map((e) => e.empCode));
+  let empCount = allCodeRows.length;
   let created = 0;
   let updated = 0;
   let daysRecorded = 0;
 
-  await db.$transaction(async (tx) => {
-    for (const r of rows) {
-      const workDays = r.hadir + r.sakit + r.alpha;
-      const latestDay = r.days.reduce<(typeof r.days)[number] | null>(
-        (latest, d) => (!latest || d.date > latest.date ? d : latest),
-        null,
-      );
-      const latestStatus =
-        latestDay?.status ?? (r.hadir >= r.sakit && r.hadir >= r.alpha ? "Hadir" : r.sakit >= r.alpha ? "Izin" : "Alpha");
-
-      const existing = employees.find((e) => e.name.toLowerCase() === r.name.toLowerCase());
-      let employeeId: string;
-
-      if (existing) {
-        const resolvedCode = await resolveEmpCode(tx as unknown as Tx, r.code, existing.id);
-        await tx.employee.update({
-          where: { id: existing.id },
-          data: {
-            ...(resolvedCode && resolvedCode !== existing.empCode ? { empCode: resolvedCode } : {}),
-            attStatus: latestStatus,
-            checkIn: latestDay?.checkIn ?? (latestStatus === "Hadir" ? "07:00" : "-"),
-            checkOut: latestDay?.checkOut ?? (latestStatus === "Hadir" ? "16:00" : "-"),
-            presentDays: r.hadir,
-            leaveDays: r.sakit,
-            workDays: workDays || existing.workDays,
-          },
-        });
-        employeeId = existing.id;
-        updated++;
-      } else {
-        let empCode = await resolveEmpCode(tx as unknown as Tx, r.code);
-        if (!empCode) {
-          empCount += 1;
-          empCode = "EMP-" + String(empCount).padStart(4, "0");
-        }
-
-        const emp = await tx.employee.create({
-          data: {
-            empCode,
-            name: r.name,
-            siteId,
-            positionId: position.id,
-            hireDate: new Date(),
-            contractType: "PKWT",
-            attStatus: latestStatus,
-            checkIn: latestDay?.checkIn ?? (latestStatus === "Hadir" ? "07:00" : "-"),
-            checkOut: latestDay?.checkOut ?? (latestStatus === "Hadir" ? "16:00" : "-"),
-            presentDays: r.hadir,
-            leaveDays: r.sakit,
-            workDays: workDays || 22,
-            salaryComponents: { create: { name: "Gaji Pokok", amount: position.baseSalary } },
-          },
-        });
-        employeeId = emp.id;
-        created++;
-      }
-
-      for (const day of r.days) {
-        await tx.attendanceRecord.upsert({
-          where: { employeeId_date: { employeeId, date: day.date } },
-          update: { status: day.status, checkIn: day.checkIn ?? null, checkOut: day.checkOut ?? null, location: day.location ?? null },
-          create: {
-            employeeId,
-            date: day.date,
-            status: day.status,
-            checkIn: day.checkIn ?? null,
-            checkOut: day.checkOut ?? null,
-            location: day.location ?? null,
-          },
-        });
-        daysRecorded++;
-      }
+  // Resolve every row's target employee + empCode up front, synchronously
+  // and with no DB calls — this is what lets the actual writes below run
+  // concurrently instead of one row waiting on the previous row's code
+  // uniqueness check to come back from Neon.
+  //
+  // Match by empCode first, falling back to name only when the row has no
+  // code or it doesn't resolve to a known employee. Names alone are prone
+  // to spelling drift between the attendance export and the HR roster
+  // (e.g. "Andy" vs "Andi") and a mismatch there used to silently create a
+  // duplicate employee with a freshly generated code instead of reusing
+  // the existing, correctly-numbered one — the code is the authoritative
+  // identifier and should win whenever it's present and known.
+  const plans = rows.map((r) => {
+    const trimmedCode = r.code.trim();
+    const existing = (trimmedCode && empByCode.get(trimmedCode)) || empByName.get(r.name.toLowerCase());
+    if (existing) {
+      const resolvedCode = resolveEmpCode(usedCodes, r.code, existing.empCode);
+      if (resolvedCode) usedCodes.add(resolvedCode);
+      return { row: r, existing, empCode: resolvedCode };
     }
+    let empCode = resolveEmpCode(usedCodes, r.code);
+    if (!empCode) {
+      empCount += 1;
+      empCode = "EMP-" + String(empCount).padStart(4, "0");
+    }
+    usedCodes.add(empCode);
+    return { row: r, existing: undefined as typeof existing, empCode };
   });
+
+  // Deliberately NOT wrapped in a single db.$transaction: a real import can
+  // easily mean 95 employees × 30 attendance days ≈ 2,850 upserts, which
+  // blows straight through Prisma's 5s interactive transaction timeout
+  // long before finishing. Each employee upsert and each day upsert is
+  // independently idempotent, so running them outside a transaction is
+  // safe — if this fails partway (network hiccup, etc.), re-running the
+  // same import just re-applies already-written rows instead of
+  // duplicating or corrupting anything.
+  //
+  // Employees are processed with bounded concurrency (mapLimit) rather
+  // than strictly one at a time — previously every employee waited on the
+  // full round-trip of the one before it, which serialized ~95 employees
+  // end-to-end even though each employee's own day-records were already
+  // parallel. That was the actual bottleneck, not the transaction timeout.
+  const allDayEntries: { employeeId: string; day: AttendanceImportDay }[] = [];
+  await mapLimit(plans, 10, async ({ row: r, existing, empCode }) => {
+    const workDays = r.hadir + r.sakit + r.alpha;
+    const latestDay = r.days.reduce<(typeof r.days)[number] | null>(
+      (latest, d) => (!latest || d.date > latest.date ? d : latest),
+      null,
+    );
+    const latestStatus =
+      latestDay?.status ?? (r.hadir >= r.sakit && r.hadir >= r.alpha ? "Hadir" : r.sakit >= r.alpha ? "Izin" : "Alpha");
+
+    let employeeId: string;
+
+    if (existing) {
+      await db.employee.update({
+        where: { id: existing.id },
+        data: {
+          ...(empCode ? { empCode } : {}),
+          attStatus: latestStatus,
+          checkIn: latestDay?.checkIn ?? (latestStatus === "Hadir" ? "07:00" : "-"),
+          checkOut: latestDay?.checkOut ?? (latestStatus === "Hadir" ? "16:00" : "-"),
+          presentDays: r.hadir,
+          leaveDays: r.sakit,
+          workDays: workDays || existing.workDays,
+        },
+      });
+      employeeId = existing.id;
+      updated++;
+    } else {
+      const emp = await db.employee.create({
+        data: {
+          empCode: empCode!,
+          name: r.name,
+          siteId,
+          positionId: position.id,
+          hireDate: new Date(),
+          contractType: "PKWT",
+          attStatus: latestStatus,
+          checkIn: latestDay?.checkIn ?? (latestStatus === "Hadir" ? "07:00" : "-"),
+          checkOut: latestDay?.checkOut ?? (latestStatus === "Hadir" ? "16:00" : "-"),
+          presentDays: r.hadir,
+          leaveDays: r.sakit,
+          workDays: workDays || 22,
+          salaryComponents: { create: { name: "Gaji Pokok", amount: position.baseSalary } },
+        },
+      });
+      employeeId = emp.id;
+      created++;
+    }
+
+    for (const day of r.days) allDayEntries.push({ employeeId, day });
+    daysRecorded += r.days.length;
+  });
+
+  // All employees are resolved by this point, so every day-record's
+  // employeeId is known — write them all in a handful of bulk statements
+  // instead of one upsert per day (see bulkUpsertAttendanceDays above).
+  await bulkUpsertAttendanceDays(allDayEntries);
 
   await db.auditLog.create({
     data: {

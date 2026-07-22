@@ -5,7 +5,7 @@ import { cutiTerpakai } from "@/lib/leave";
 
 export default async function CutiPage() {
   const [requests, employees] = await Promise.all([
-    db.leaveRequest.findMany({ include: { employee: true }, orderBy: { createdAt: "desc" } }),
+    db.leaveRequest.findMany({ include: { employee: { include: { site: true, position: true } } }, orderBy: { createdAt: "desc" } }),
     db.employee.findMany({ where: { status: "aktif" }, orderBy: { name: "asc" } }),
   ]);
 
@@ -13,10 +13,10 @@ export default async function CutiPage() {
 
   const kuotaRows = employees.map((e) => {
     const terpakai = cutiTerpakai(requests.filter((r) => r.employeeId === e.id));
-    return { id: e.id, name: e.name, kuota: e.cutiKuota, terpakai, sisa: e.cutiKuota - terpakai };
+    return { id: e.id, name: e.name, empCode: e.empCode, kuota: e.cutiKuota, terpakai, sisa: e.cutiKuota - terpakai };
   });
 
-  const employeeOptions = kuotaRows.map((k) => ({ id: k.id, name: k.name, sisa: k.sisa }));
+  const employeeOptions = kuotaRows.map((k) => ({ id: k.id, name: k.name, empCode: k.empCode, sisa: k.sisa }));
 
   return (
     <div>

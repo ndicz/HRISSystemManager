@@ -1,8 +1,9 @@
-import type { AttendanceRecord, Employee, SalaryComponent } from "@prisma/client";
+import type { Assignment, AttendanceRecord, Employee, OvertimeDay, PayrollEntry, PayrollRate, SalaryComponent, Site } from "@prisma/client";
 import { monthKey } from "@/lib/finance";
 
 export function formatRp(n: number) {
-  return "Rp" + Math.round(n).toLocaleString("id-ID");
+  const r = Math.round(n);
+  return (r < 0 ? "-Rp" : "Rp") + Math.abs(r).toLocaleString("id-ID");
 }
 
 export function baseSalary(components: SalaryComponent[]): number {
@@ -17,7 +18,11 @@ export function kasbonPerBulan(kasbon: number, kasbonCicilan: number): number {
 }
 
 export function computePayroll(
-  emp: Pick<Employee, "workDays" | "presentDays" | "leaveDays" | "overtimeHours" | "kasbon" | "kasbonCicilan">,
+  emp: Pick<
+    Employee,
+    "workDays" | "presentDays" | "leaveDays" | "overtimeHours" | "kasbon" | "kasbonCicilan"
+    | "bpjsKesehatanOverride" | "bpjsKetenagakerjaanOverride"
+  >,
   components: SalaryComponent[],
 ) {
   const base = baseSalary(components);
@@ -26,11 +31,15 @@ export function computePayroll(
   const potonganAbsensi = base - effective;
   const lemburRate = Math.round(base / 173 * 1.5);
   const lembur = emp.overtimeHours * lemburRate;
-  const bpjs = Math.round(base * 0.04);
+  // null override = use the standard formula; a set override lets HR correct
+  // cases where the formula doesn't match what's actually being deducted.
+  const bpjsKesehatan = emp.bpjsKesehatanOverride ?? computeBpjsKesehatan(base).karyawan;
+  const bpjsKetenagakerjaan = emp.bpjsKetenagakerjaanOverride ?? computeBpjsKetenagakerjaanKaryawan(base);
+  const bpjs = bpjsKesehatan + bpjsKetenagakerjaan;
   const kasbonBulanIni = kasbonPerBulan(emp.kasbon, emp.kasbonCicilan);
   const potongan = potonganAbsensi + bpjs + kasbonBulanIni;
   const total = base - potongan + lembur;
-  return { gajiPokok: base, potonganAbsensi, bpjs, kasbonBulanIni, lembur, potongan, total };
+  return { gajiPokok: base, potonganAbsensi, bpjs, bpjsKesehatan, bpjsKetenagakerjaan, kasbonBulanIni, lembur, potongan, total };
 }
 
 // Tallies a specific month's presentDays/leaveDays/workDays straight from
@@ -38,12 +47,13 @@ export function computePayroll(
 // Employee's live aggregate columns — those only ever reflect whichever
 // month currently has the most imported records, so they can't answer
 // "what did October look like" once November's import has landed.
-export function monthlyAttendanceTally(records: Pick<AttendanceRecord, "date" | "status">[], period: string) {
+export function monthlyAttendanceTally(records: Pick<AttendanceRecord, "date" | "status" | "lateMin">[], period: string) {
   const monthRecords = records.filter((r) => monthKey(r.date) === period);
   const presentDays = monthRecords.filter((r) => r.status === "Hadir").length;
   const leaveDays = monthRecords.filter((r) => r.status === "Izin").length;
-  const alpha = monthRecords.filter((r) => r.status === "Alpha").length;
-  return { presentDays, leaveDays, workDays: presentDays + leaveDays + alpha };
+  const alphaDays = monthRecords.filter((r) => r.status === "Alpha").length;
+  const lateCount = monthRecords.filter((r) => r.lateMin > 0).length;
+  return { presentDays, leaveDays, alphaDays, lateCount, workDays: presentDays + leaveDays + alphaDays };
 }
 
 // Picks the month that actually has attendance data — the same
@@ -73,14 +83,164 @@ export function bestAttendanceMonth(records: Pick<AttendanceRecord, "date">[]): 
 // than the employee's live/current aggregate — overtimeHours and kasbon
 // aren't tracked per month in this schema, so those still come from the
 // employee's current values.
+//
+// When opts.rate is provided (a PayrollRate has been configured for the
+// period), Izin/Alpha/Terlambat deductions and overtime/allowance are
+// computed from flat per-occurrence rates instead of computePayroll's
+// proportional-to-salary math — matching how the client's real payroll
+// spreadsheet works. Without a configured rate, behavior is unchanged.
 export function computeMonthlyPayroll(
-  emp: Pick<Employee, "overtimeHours" | "kasbon" | "kasbonCicilan">,
+  emp: Pick<Employee, "overtimeHours" | "kasbon" | "kasbonCicilan" | "bpjsKesehatanOverride" | "bpjsKetenagakerjaanOverride">,
   components: SalaryComponent[],
-  records: Pick<AttendanceRecord, "date" | "status">[],
+  records: Pick<AttendanceRecord, "date" | "status" | "lateMin">[],
   period: string,
+  opts?: { rate?: PayrollRate | null; entry?: PayrollEntry | null; overtimeDays?: Pick<OvertimeDay, "type">[]; assignments?: Pick<Assignment, "cost">[] },
 ) {
   const tally = monthlyAttendanceTally(records, period);
-  return computePayroll({ ...tally, overtimeHours: emp.overtimeHours, kasbon: emp.kasbon, kasbonCicilan: emp.kasbonCicilan }, components);
+  const base = computePayroll(
+    {
+      ...tally,
+      overtimeHours: emp.overtimeHours,
+      kasbon: emp.kasbon,
+      kasbonCicilan: emp.kasbonCicilan,
+      bpjsKesehatanOverride: emp.bpjsKesehatanOverride,
+      bpjsKetenagakerjaanOverride: emp.bpjsKetenagakerjaanOverride,
+    },
+    components,
+  );
+  // Completed Penugasan Tambahan for this period — earned pay on top of
+  // the regular run, independent of whether a flat PayrollRate is set.
+  const penugasanTambahan = (opts?.assignments ?? []).reduce((s, a) => s + a.cost, 0);
+
+  // Counted from the specific dates HR recorded (via "tanggal lembur"), not
+  // a manually typed total — the dates are the source of truth either way,
+  // with or without a PayrollRate configured for the period.
+  const overtimeDays = opts?.overtimeDays ?? [];
+  const lemburRegulerCount = overtimeDays.filter((d) => d.type === "reguler").length;
+  const lemburMerahCount = overtimeDays.filter((d) => d.type === "merah").length;
+
+  if (!opts?.rate) {
+    // No flat PayrollRate for this period — lembur used to silently come
+    // from Employee.overtimeHours (a stale field completely disconnected
+    // from OvertimeDay, so entering overtime dates had zero effect on the
+    // total). Now it's derived from those same recorded dates instead,
+    // priced at this employee's own proportional hourly rate (8h/day,
+    // tanggal merah at 2x — the standard holiday-overtime premium) so it
+    // always reflects what was actually entered. A manual override (rates
+    // genuinely differ per person) replaces this figure entirely.
+    const lemburRatePerJam = Math.round(base.gajiPokok / 173 * 1.5);
+    const autoLembur = lemburRegulerCount * 8 * lemburRatePerJam + lemburMerahCount * 8 * lemburRatePerJam * 2;
+    const lembur = opts?.entry?.lemburOverride ?? autoLembur;
+    const total = base.total - base.lembur + lembur + penugasanTambahan;
+    return {
+      ...base,
+      lembur, total,
+      potonganIzin: 0, potonganAlpha: 0, potonganTerlambat: 0,
+      lemburReguler: 0, lemburMerah: 0, allowance: 0, penugasanTambahan,
+      usesFlatRate: false as const,
+    };
+  }
+
+  const { rate, entry } = opts;
+  // A per-employee-per-period override (set via the "Lembur & Allowance"
+  // dialog) replaces the attendance×rate calculation entirely for that one
+  // category, for cases HR needs to correct by hand.
+  const potonganIzin = entry?.potonganIzinOverride ?? tally.leaveDays * rate.izinRate;
+  const potonganAlpha = entry?.potonganAlphaOverride ?? tally.alphaDays * rate.alphaRate;
+  const potonganTerlambat = entry?.potonganTerlambatOverride ?? tally.lateCount * rate.terlambatRate;
+  const lemburReguler = lemburRegulerCount * rate.lemburRegulerRate;
+  const lemburMerah = lemburMerahCount * rate.lemburMerahRate;
+  const allowance = entry?.allowance ?? 0;
+  // Rates genuinely differ per person in practice — a manual override (Rp)
+  // replaces the reguler+merah×rate figure entirely when HR sets one.
+  const lembur = entry?.lemburOverride ?? (lemburReguler + lemburMerah);
+  const potongan = potonganIzin + potonganAlpha + potonganTerlambat + base.bpjs + base.kasbonBulanIni;
+  const total = base.gajiPokok - potongan + lembur + allowance + penugasanTambahan;
+
+  return {
+    gajiPokok: base.gajiPokok,
+    potonganAbsensi: 0,
+    potonganIzin, potonganAlpha, potonganTerlambat,
+    bpjs: base.bpjs,
+    bpjsKesehatan: base.bpjsKesehatan,
+    bpjsKetenagakerjaan: base.bpjsKetenagakerjaan,
+    kasbonBulanIni: base.kasbonBulanIni,
+    lembur, lemburReguler, lemburMerah, allowance, penugasanTambahan,
+    potongan, total,
+    usesFlatRate: true as const,
+  };
+}
+
+// Rate resolution: a per-site override for the period wins; otherwise the
+// period's default (siteId null) rate; otherwise no rate is configured.
+export function resolvePayrollRate(rates: PayrollRate[], period: string, siteId: string): PayrollRate | null {
+  return rates.find((r) => r.period === period && r.siteId === siteId)
+    ?? rates.find((r) => r.period === period && r.siteId === null)
+    ?? null;
+}
+
+export function resolvePayrollEntry(entries: PayrollEntry[], period: string): PayrollEntry | null {
+  return entries.find((e) => e.period === period) ?? null;
+}
+
+export function resolveOvertimeDays(days: OvertimeDay[], period: string): OvertimeDay[] {
+  return days.filter((d) => d.period === period);
+}
+
+// Only "selesai" (completed) assignments count — same rule Kas already
+// follows (completeAssignment only posts a Transaction on completion), so
+// a still-"berjalan" assignment shouldn't show up as earned pay yet.
+export function resolveAssignments<T extends Pick<Assignment, "cost" | "status" | "period">>(assignments: T[], period: string): T[] {
+  return assignments.filter((a) => a.period === period && a.status === "selesai");
+}
+
+// Final settlement for a departing employee: prorates pay to the actual
+// resignDate within that month (not a full month), and deducts the FULL
+// outstanding kasbon (kasbonCicilan: 1 forces kasbonPerBulan to return the
+// whole balance) instead of just this month's installment, since there's
+// no future paycheck left to keep collecting it from.
+export function computeFinalSettlement(
+  emp: Pick<Employee, "overtimeHours" | "kasbon" | "kasbonCicilan" | "bpjsKesehatanOverride" | "bpjsKetenagakerjaanOverride">,
+  components: SalaryComponent[],
+  records: Pick<AttendanceRecord, "date" | "status" | "lateMin">[],
+  resignDate: Date,
+) {
+  const period = monthKey(resignDate);
+  const filtered = records.filter((r) => monthKey(r.date) === period && r.date <= resignDate);
+  const tally = monthlyAttendanceTally(filtered, period);
+  const result = computePayroll(
+    {
+      ...tally,
+      overtimeHours: emp.overtimeHours,
+      kasbon: emp.kasbon,
+      kasbonCicilan: 1,
+      bpjsKesehatanOverride: emp.bpjsKesehatanOverride,
+      bpjsKetenagakerjaanOverride: emp.bpjsKetenagakerjaanOverride,
+    },
+    components,
+  );
+  return { ...result, period };
+}
+
+// Employees whose PKWT contract ends within `days` days from now (or has
+// already passed), soonest/most-overdue first — for a dashboard reminder,
+// since there's no email/SMS notification infra in this app.
+export function expiringContracts(
+  employees: (Pick<Employee, "id" | "name" | "contractEnd"> & { site: Pick<Site, "name"> })[],
+  days = 30,
+  ref: Date = new Date(),
+) {
+  return employees
+    .filter((e): e is typeof e & { contractEnd: Date } => e.contractEnd != null)
+    .map((e) => ({
+      id: e.id,
+      name: e.name,
+      siteName: e.site.name,
+      contractEnd: e.contractEnd,
+      daysRemaining: Math.ceil((e.contractEnd.getTime() - ref.getTime()) / 86400000),
+    }))
+    .filter((e) => e.daysRemaining <= days)
+    .sort((a, b) => a.daysRemaining - b.daysRemaining);
 }
 
 export function tenureMonths(hireDate: Date, ref: Date = new Date()): number {
@@ -137,4 +297,10 @@ export function computeUmr(gajiPokok: number, umr: number) {
 export function computeBpjsKesehatan(gajiPokok: number) {
   const base = Math.min(gajiPokok, 12000000);
   return { perusahaan: Math.round(base * 0.04), karyawan: Math.round(base * 0.01) };
+}
+
+// Employee-side BPJS Ketenagakerjaan: JHT 2% + JP 1%, uncapped (same
+// simplification level as computeUmr's uncapped 8.54% company-side figure).
+export function computeBpjsKetenagakerjaanKaryawan(gajiPokok: number): number {
+  return Math.round(gajiPokok * 0.03);
 }

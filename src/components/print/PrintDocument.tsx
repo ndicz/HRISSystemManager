@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { AutoPrint } from "@/components/print/AutoPrint";
 
-const PRINT_CSS = `
+export const PRINT_CSS = `
   .print-doc{font-family:Georgia,"Times New Roman",serif;color:#1d1f20;padding:32px 40px;font-size:13px;line-height:1.5;max-width:760px;margin:0 auto;background:#fff}
   .print-doc *{box-sizing:border-box}
   .print-doc .letterhead{display:flex;align-items:center;gap:14px;border-bottom:3px solid #5980a6;padding-bottom:14px;margin-bottom:22px}
@@ -19,18 +19,62 @@ const PRINT_CSS = `
   .print-doc .sign-box{text-align:center;width:210px}
   .print-doc .sign-line{border-top:1px solid #1d1f20;margin-top:56px;padding-top:6px}
   .print-doc .footer-note{margin-top:32px;font-size:10.5px;opacity:.5;font-family:system-ui,sans-serif}
+  .print-doc.page-break{page-break-after:always;break-after:page}
   .no-print{margin:20px 40px}
   @media print{.no-print{display:none}body{background:#fff}@page{margin:14mm}}
 `;
 
-export function PrintDocument({
-  title,
+// The single-document letterhead+body+signature block, with no <style>/
+// <AutoPrint> of its own — used both by PrintDocument (one document, one
+// print trigger) and batch-print pages (many documents stacked under a
+// single shared <style>+<AutoPrint>, one per printed page via pageBreak).
+export function PrintDocumentInner({
   docTitle,
   meta,
   signLeftLabel,
   signLeftName,
   signRightLabel = "Hormat kami",
+  pageBreak = false,
   children,
+}: {
+  docTitle: string;
+  meta: ReactNode;
+  signLeftLabel: string;
+  signLeftName: string;
+  signRightLabel?: string;
+  pageBreak?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className={"print-doc" + (pageBreak ? " page-break" : "")}>
+      <div className="letterhead">
+        <div className="logo-mark">WSP</div>
+        <div>
+          <div className="company-name">PT Wana Samudra Persada</div>
+          <div className="company-addr">Jl. Kawaluyaan Indah XVII No.33, Jatisari, Kec. Buahbatu, Kota Bandung, Jawa Barat 40286</div>
+        </div>
+      </div>
+      <div className="doc-title">{docTitle}</div>
+      <div className="doc-meta">{meta}</div>
+      {children}
+      <div className="sign-block">
+        <div className="sign-box">
+          {signLeftLabel}
+          <div className="sign-line">{signLeftName}</div>
+        </div>
+        <div className="sign-box">
+          {signRightLabel}
+          <div className="sign-line">PT Wana Samudra Persada</div>
+        </div>
+      </div>
+      <div className="footer-note">Dokumen ini dibuat otomatis oleh sistem HR &amp; Payroll PT Wana Samudra Persada.</div>
+    </div>
+  );
+}
+
+export function PrintDocument({
+  title,
+  ...rest
 }: {
   title: string;
   docTitle: string;
@@ -44,29 +88,7 @@ export function PrintDocument({
     <>
       <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
       <AutoPrint title={title} />
-      <div className="print-doc">
-        <div className="letterhead">
-          <div className="logo-mark">WSP</div>
-          <div>
-            <div className="company-name">PT Wana Samudra Persada</div>
-            <div className="company-addr">Jl. Kawaluyaan Indah XVII No.33, Jatisari, Kec. Buahbatu, Kota Bandung, Jawa Barat 40286</div>
-          </div>
-        </div>
-        <div className="doc-title">{docTitle}</div>
-        <div className="doc-meta">{meta}</div>
-        {children}
-        <div className="sign-block">
-          <div className="sign-box">
-            {signLeftLabel}
-            <div className="sign-line">{signLeftName}</div>
-          </div>
-          <div className="sign-box">
-            {signRightLabel}
-            <div className="sign-line">PT Wana Samudra Persada</div>
-          </div>
-        </div>
-        <div className="footer-note">Dokumen ini dibuat otomatis oleh sistem HR &amp; Payroll PT Wana Samudra Persada.</div>
-      </div>
+      <PrintDocumentInner {...rest} />
     </>
   );
 }
