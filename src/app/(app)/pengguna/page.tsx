@@ -38,6 +38,7 @@ export default async function PenggunaPage() {
           <thead>
             <tr>
               <th>Nama</th>
+              <th>ID login</th>
               <th>Email</th>
               <th>Peran</th>
               <th>Akses halaman</th>
@@ -52,6 +53,7 @@ export default async function PenggunaPage() {
               return (
                 <tr key={u.id}>
                   <td>{u.name}{isSelf && <span className="text-muted"> (Anda)</span>}</td>
+                  <td className="text-muted">{u.username ?? "-"}</td>
                   <td className="text-muted">{u.email}</td>
                   <td>{ROLE_LABEL[u.role] ?? u.role}</td>
                   <td>
@@ -71,6 +73,7 @@ export default async function PenggunaPage() {
                       user={{
                         id: u.id,
                         name: u.name,
+                        username: u.username,
                         email: u.email,
                         role: u.role,
                         active: u.active,

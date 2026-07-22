@@ -3,7 +3,7 @@
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
-import { db } from "@/lib/db";
+import { findUserByIdentifier } from "@/lib/db";
 import { signLoginChallenge } from "@/lib/totp";
 
 export type LoginState =
@@ -18,20 +18,20 @@ export async function checkCredentials(
   _prevState: LoginState | undefined,
   formData: FormData,
 ): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const identifier = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const callbackUrl = (formData.get("callbackUrl") as string) || "/";
 
-  const user = await db.user.findUnique({ where: { email } });
+  const user = await findUserByIdentifier(identifier);
   if (!user || !user.active || !(await bcrypt.compare(password, user.passwordHash))) {
-    return { step: "credentials", error: "Email atau password salah." };
+    return { step: "credentials", error: "ID login, email, atau password salah." };
   }
 
   if (!user.totpEnabled) {
     try {
-      await signIn("credentials", { email, password, redirectTo: callbackUrl });
+      await signIn("credentials", { email: identifier, password, redirectTo: callbackUrl });
     } catch (err) {
-      if (err instanceof AuthError) return { step: "credentials", error: "Email atau password salah." };
+      if (err instanceof AuthError) return { step: "credentials", error: "ID login, email, atau password salah." };
       throw err;
     }
     return { step: "credentials" };

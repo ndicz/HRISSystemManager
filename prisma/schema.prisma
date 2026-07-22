@@ -18,6 +18,10 @@ datasource db {
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
+  // Separate login ID (e.g. "hrwana1"), distinct from email — either one
+  // can be used to log in. Nullable so pre-existing accounts (which only
+  // ever had email) keep working unchanged.
+  username      String?  @unique
   passwordHash  String
   name          String
   role          String   // ADMIN | HR | FINANCE | SUPERVISOR | EMPLOYEE

@@ -28,22 +28,27 @@ export async function createUser(formData: FormData) {
   const session = await requireAdmin();
 
   const name = String(formData.get("name") ?? "").trim();
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "");
   const employeeId = String(formData.get("employeeId") ?? "") || null;
   const pageAccess = parsePageAccess(formData);
 
-  if (!name || !email || !password) throw new Error("Nama, email, dan password wajib diisi.");
+  if (!name || !username || !email || !password) throw new Error("Nama, ID login, email, dan password wajib diisi.");
   if (password.length < 6) throw new Error("Password minimal 6 karakter.");
   if (!ROLES.includes(role as Role)) throw new Error("Peran tidak valid.");
 
-  const existing = await db.user.findUnique({ where: { email } });
-  if (existing) throw new Error("Email ini sudah dipakai pengguna lain.");
+  const [existingEmail, existingUsername] = await Promise.all([
+    db.user.findUnique({ where: { email } }),
+    db.user.findUnique({ where: { username } }),
+  ]);
+  if (existingEmail) throw new Error("Email ini sudah dipakai pengguna lain.");
+  if (existingUsername) throw new Error("ID login ini sudah dipakai pengguna lain.");
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await db.user.create({
-    data: { name, email, passwordHash, role, employeeId, pageAccess },
+    data: { name, username, email, passwordHash, role, employeeId, pageAccess },
   });
 
   await db.auditLog.create({
@@ -52,7 +57,7 @@ export async function createUser(formData: FormData) {
       action: "user.create",
       entity: "User",
       entityId: user.id,
-      detail: JSON.stringify({ email, role, customAccess: pageAccess.length > 0 ? pageAccess : undefined }),
+      detail: JSON.stringify({ username, email, role, customAccess: pageAccess.length > 0 ? pageAccess : undefined }),
     },
   });
 
@@ -64,13 +69,15 @@ export async function updateUser(formData: FormData) {
 
   const userId = String(formData.get("userId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const role = String(formData.get("role") ?? "");
   const active = formData.get("active") === "on";
   const employeeId = String(formData.get("employeeId") ?? "") || null;
   const pageAccess = parsePageAccess(formData);
 
   if (!userId) throw new Error("Pengguna tidak ditemukan.");
-  if (!name) throw new Error("Nama wajib diisi.");
+  if (!name || !username || !email) throw new Error("Nama, ID login, dan email wajib diisi.");
   if (!ROLES.includes(role as Role)) throw new Error("Peran tidak valid.");
 
   const target = await db.user.findUnique({ where: { id: userId } });
@@ -82,9 +89,18 @@ export async function updateUser(formData: FormData) {
     throw new Error("Tidak bisa mengubah peran akun sendiri dari Admin.");
   }
 
+  if (email !== target.email) {
+    const existing = await db.user.findUnique({ where: { email } });
+    if (existing) throw new Error("Email ini sudah dipakai pengguna lain.");
+  }
+  if (username !== target.username) {
+    const existing = await db.user.findUnique({ where: { username } });
+    if (existing) throw new Error("ID login ini sudah dipakai pengguna lain.");
+  }
+
   await db.user.update({
     where: { id: userId },
-    data: { name, role, active, employeeId, pageAccess },
+    data: { name, username, email, role, active, employeeId, pageAccess },
   });
 
   await db.auditLog.create({
@@ -93,7 +109,32 @@ export async function updateUser(formData: FormData) {
       action: "user.update",
       entity: "User",
       entityId: userId,
-      detail: JSON.stringify({ role, active, customAccess: pageAccess.length > 0 ? pageAccess : undefined }),
+      detail: JSON.stringify({ username, email, role, active, customAccess: pageAccess.length > 0 ? pageAccess : undefined }),
+    },
+  });
+
+  revalidatePath("/pengguna");
+}
+
+export async function deleteUser(formData: FormData) {
+  const session = await requireAdmin();
+
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) throw new Error("Pengguna tidak ditemukan.");
+  if (userId === session.user.id) throw new Error("Tidak bisa menghapus akun sendiri.");
+
+  const target = await db.user.findUnique({ where: { id: userId } });
+  if (!target) throw new Error("Pengguna tidak ditemukan.");
+
+  await db.user.delete({ where: { id: userId } });
+
+  await db.auditLog.create({
+    data: {
+      userId: session.user.id,
+      action: "user.delete",
+      entity: "User",
+      entityId: userId,
+      detail: JSON.stringify({ email: target.email, name: target.name }),
     },
   });
 

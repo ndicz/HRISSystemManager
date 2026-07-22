@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { db } from "@/lib/db";
+import { db, findUserByIdentifier } from "@/lib/db";
 import { authConfig } from "@/auth.config";
 import { verifyLoginChallenge, verifyTotp } from "@/lib/totp";
 
@@ -24,7 +24,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const challenge = credentials?.challenge as string | undefined;
         const code = credentials?.code as string | undefined;
 
-        let user: Awaited<ReturnType<typeof db.user.findUnique>>;
+        let user: Awaited<ReturnType<typeof findUserByIdentifier>>;
 
         if (challenge) {
           // Step 2 of a 2FA login: the challenge stands in for the password.
@@ -35,7 +35,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!code || !verifyTotp(user.totpSecret, code)) return null;
         } else {
           if (!email || !password) return null;
-          user = await db.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+          user = await findUserByIdentifier(email.trim().toLowerCase());
           if (!user || !user.active) return null;
 
           const valid = await bcrypt.compare(password, user.passwordHash);
