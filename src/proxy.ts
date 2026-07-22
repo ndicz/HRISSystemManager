@@ -22,7 +22,7 @@ export default auth((req) => {
 
   if (req.auth?.user && !isPublic && !isAuthRoute) {
     const role = req.auth.user.role;
-    if (!canAccess(role, req.nextUrl.pathname) && req.nextUrl.pathname !== "/akses-ditolak") {
+    if (!canAccess(role, req.nextUrl.pathname, req.auth.user.pageAccess) && req.nextUrl.pathname !== "/akses-ditolak") {
       return NextResponse.redirect(new URL("/akses-ditolak", req.nextUrl.origin));
     }
   }

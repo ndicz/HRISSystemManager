@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="app-shell">
-      <Sidebar userName={session.user.name ?? "Pengguna"} userRole={session.user.role} />
+      <Sidebar userName={session.user.name ?? "Pengguna"} userRole={session.user.role} pageAccess={session.user.pageAccess} />
       <div className="app-content">{children}</div>
     </div>
   );

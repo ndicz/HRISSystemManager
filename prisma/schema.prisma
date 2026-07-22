@@ -22,6 +22,9 @@ model User {
   name          String
   role          String   // ADMIN | HR | FINANCE | SUPERVISOR | EMPLOYEE
   active        Boolean  @default(true)
+  // Explicit page allowlist (nav hrefs) for this user. Empty = fall back
+  // to the role's default pages; non-empty overrides the role default.
+  pageAccess    String[] @default([])
   totpSecret    String?  // base32 — set once 2FA setup starts, kept even while unconfirmed
   totpEnabled   Boolean  @default(false)
   employeeId    String?  @unique

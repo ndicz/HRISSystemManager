@@ -52,7 +52,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           data: { userId: user.id, action: "auth.login", entity: "User", entityId: user.id },
         });
 
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        return { id: user.id, email: user.email, name: user.name, role: user.role, pageAccess: user.pageAccess };
       },
     }),
   ],

@@ -5,7 +5,7 @@ import { navForRole } from "@/lib/rbac";
 export default async function AksesDitolakPage() {
   const session = await auth();
   const role = session?.user?.role ?? "EMPLOYEE";
-  const firstAllowed = navForRole(role)[0]?.href ?? "/";
+  const firstAllowed = navForRole(role, session?.user?.pageAccess)[0]?.href ?? "/";
 
   return (
     <div
