@@ -3,22 +3,47 @@
 import { useState } from "react";
 import type { InventoryRequest } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
-import { cancelInventoryRequest } from "@/app/(app)/gudang/actions";
+import { cancelInventoryRequest, completeInventoryRequest } from "@/app/(app)/gudang/actions";
+
+const STATUS_TAG: Record<string, string> = {
+  berjalan: "tag tag-outline",
+  selesai: "tag tag-accent",
+  dibatalkan: "tag tag-neutral",
+};
+const STATUS_LABEL: Record<string, string> = {
+  berjalan: "Berjalan",
+  selesai: "Selesai",
+  dibatalkan: "Dibatalkan",
+};
 
 export function InventoryRequestDetailDialog({ request }: { request: InventoryRequest }) {
   const [open, setOpen] = useState(false);
   const [cancelError, setCancelError] = useState("");
   const [cancelPending, setCancelPending] = useState(false);
+  const [completeError, setCompleteError] = useState("");
+  const [completePending, setCompletePending] = useState(false);
   const total = request.qty * request.unitPrice;
 
   function handleCancel() {
-    if (!window.confirm(`Batalkan pengambilan "${request.itemName}" ini? Stok akan dikembalikan (jika barang stok fisik) dan Kas otomatis dikoreksi.`)) return;
+    const msg = request.status === "selesai"
+      ? `Batalkan pengambilan "${request.itemName}" ini? Stok akan dikembalikan (jika barang stok fisik) dan Kas otomatis dikoreksi.`
+      : `Batalkan pengambilan "${request.itemName}" ini?`;
+    if (!window.confirm(msg)) return;
     setCancelError("");
     setCancelPending(true);
     cancelInventoryRequest(request.id)
       .then(() => setOpen(false))
       .catch((err) => setCancelError(err instanceof Error ? err.message : String(err)))
       .finally(() => setCancelPending(false));
+  }
+
+  function handleComplete() {
+    setCompleteError("");
+    setCompletePending(true);
+    completeInventoryRequest(request.id)
+      .then(() => setOpen(false))
+      .catch((err) => setCompleteError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setCompletePending(false));
   }
 
   return (
@@ -59,9 +84,21 @@ export function InventoryRequestDetailDialog({ request }: { request: InventoryRe
                     <span>{request.department || "-"}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-3)" }}>
-                    <span className="text-muted">Tanggal</span>
+                    <span className="text-muted">Tanggal diajukan</span>
                     <span>{request.date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
                   </div>
+                  {request.targetDate && (
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-3)" }}>
+                      <span className="text-muted">Target selesai</span>
+                      <span>{request.targetDate.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
+                    </div>
+                  )}
+                  {request.completedAt && (
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-3)" }}>
+                      <span className="text-muted">Selesai pada</span>
+                      <span>{request.completedAt.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -72,21 +109,28 @@ export function InventoryRequestDetailDialog({ request }: { request: InventoryRe
               )}
 
               <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                <span className={STATUS_TAG[request.status]}>{STATUS_LABEL[request.status]}</span>
                 <span className={request.transactionId ? "tag tag-accent" : "tag tag-neutral"}>
                   {request.transactionId ? "✓ Sudah tercatat di Kas" : "Belum tercatat di Kas"}
                 </span>
-                {request.cancelledAt && (
-                  <span className="tag tag-neutral">
-                    Dibatalkan {request.cancelledAt.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
-                  </span>
-                )}
               </div>
+              {request.status === "berjalan" && (
+                <p style={{ fontSize: 12, opacity: 0.6, margin: 0 }}>
+                  Stok belum dikurangi dan belum tercatat di Kas — tandai &ldquo;Selesai&rdquo; setelah barang benar-benar diserahkan.
+                </p>
+              )}
+              {completeError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{completeError}</p>}
               {cancelError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{cancelError}</p>}
             </div>
             <div className="dialog-actions">
-              {!request.cancelledAt && (
+              {request.status !== "dibatalkan" && (
                 <button type="button" className="btn btn-ghost" disabled={cancelPending} onClick={handleCancel} style={{ marginRight: "auto" }}>
                   {cancelPending ? "Membatalkan…" : "Batalkan"}
+                </button>
+              )}
+              {request.status === "berjalan" && (
+                <button type="button" className="btn btn-secondary" disabled={completePending} onClick={handleComplete}>
+                  {completePending ? "Menyimpan…" : "Tandai Selesai"}
                 </button>
               )}
               <a href={`/print/inventory-request/${request.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">

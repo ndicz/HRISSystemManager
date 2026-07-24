@@ -473,11 +473,19 @@ model InventoryRequest {
   department    String?
   note          String?
   date          DateTime      @default(now())
+  // "berjalan" = baru diminta, belum diserahkan — stok belum dikurangi,
+  // belum tercatat di Kas. "selesai" = sudah diserahkan (ditandai manual
+  // lewat completeInventoryRequest) — baru di titik ini stok dikurangi dan
+  // Transaction diposting. "dibatalkan" = batal, lihat cancelInventoryRequest.
+  status        String        @default("berjalan")
+  targetDate    DateTime? // perkiraan tanggal barang akan diserahkan (opsional, informatif)
+  completedAt   DateTime?
   transactionId String?
-  cancelledAt   DateTime? // set = dibatalkan: stok dikembalikan (jika trackStock) + koreksi otomatis di Kas
+  cancelledAt   DateTime? // set = dibatalkan: stok dikembalikan (jika trackStock & sudah selesai) + koreksi otomatis di Kas (jika sudah sempat tercatat)
   createdById   String?
   createdAt     DateTime      @default(now())
 
   @@index([itemId])
   @@index([date])
+  @@index([status])
 }

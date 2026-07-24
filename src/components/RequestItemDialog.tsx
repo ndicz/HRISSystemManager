@@ -100,9 +100,13 @@ export function RequestItemDialog({ items, employees, siteNames }: { items: Item
               </div>
               {selected && (
                 <p style={{ fontSize: 13, margin: 0 }}>
-                  Total nilai barang: <strong>{formatRp(total)}</strong> — akan otomatis tercatat sebagai pengeluaran di Kas.
+                  Total nilai barang: <strong>{formatRp(total)}</strong> — status awalnya &ldquo;Berjalan&rdquo;, stok &amp; pencatatan ke Kas baru terjadi setelah ditandai &ldquo;Selesai&rdquo;.
                 </p>
               )}
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label htmlFor="req-targetDate">Tanggal target selesai (opsional)</label>
+                <input className="input" id="req-targetDate" name="targetDate" type="date" />
+              </div>
 
               <div className="field" style={{ marginBottom: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -150,7 +154,7 @@ export function RequestItemDialog({ items, employees, siteNames }: { items: Item
               {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary" disabled={pending || !itemId || !requesterName}>{pending ? "Memproses…" : "Ambil barang"}</button>
+                <button type="submit" className="btn btn-primary" disabled={pending || !itemId || !requesterName}>{pending ? "Memproses…" : "Ajukan pengambilan"}</button>
               </div>
             </form>
           </div>

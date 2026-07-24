@@ -14,7 +14,13 @@ export default async function InventoryRequestPrintPage({ params }: { params: Pr
   return (
     <PrintDocument
       title={`Bukti Pengeluaran Barang — ${req.itemName}`}
-      docTitle={req.cancelledAt ? "Bukti Pengeluaran Barang Gudang (DIBATALKAN)" : "Bukti Pengeluaran Barang Gudang"}
+      docTitle={
+        req.status === "dibatalkan"
+          ? "Bukti Pengeluaran Barang Gudang (DIBATALKAN)"
+          : req.status === "berjalan"
+          ? "Bukti Pengambilan Barang Gudang (BELUM SELESAI)"
+          : "Bukti Pengeluaran Barang Gudang"
+      }
       meta={
         <>
           Diserahkan kepada: <strong>{req.requesterName}</strong>
@@ -22,11 +28,19 @@ export default async function InventoryRequestPrintPage({ params }: { params: Pr
           <br />
           Tanggal: {req.date.toLocaleDateString("id-ID")}
           {req.note && <><br />Keterangan: {req.note}</>}
-          {req.cancelledAt && (
+          {req.status === "berjalan" && (
             <>
               <br />
               <strong style={{ color: "#b3261e" }}>
-                Dibatalkan pada {req.cancelledAt.toLocaleDateString("id-ID")} — dokumen ini tidak lagi berlaku sebagai bukti pengeluaran.
+                Belum ditandai selesai — barang belum resmi dikeluarkan dari stok dan belum tercatat di Kas.
+              </strong>
+            </>
+          )}
+          {req.status === "dibatalkan" && (
+            <>
+              <br />
+              <strong style={{ color: "#b3261e" }}>
+                Dibatalkan pada {req.cancelledAt?.toLocaleDateString("id-ID")} — dokumen ini tidak lagi berlaku sebagai bukti pengeluaran.
               </strong>
             </>
           )}

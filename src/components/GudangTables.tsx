@@ -9,7 +9,7 @@ import { EditInventoryItemDialog } from "@/components/EditInventoryItemDialog";
 import { RequestItemDialog } from "@/components/RequestItemDialog";
 import { InventoryRequestDetailDialog } from "@/components/InventoryRequestDetailDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
-import { toggleInventoryItemActive } from "@/app/(app)/gudang/actions";
+import { toggleInventoryItemActive, completeInventoryRequest } from "@/app/(app)/gudang/actions";
 
 function ActiveToggle({ id, active }: { id: string; active: boolean }) {
   const [pending, startTransition] = useTransition();
@@ -24,6 +24,32 @@ function ActiveToggle({ id, active }: { id: string; active: boolean }) {
     >
       {pending ? "…" : active ? "Aktif" : "Nonaktif"}
     </button>
+  );
+}
+
+const REQUEST_STATUS_TAG: Record<string, string> = {
+  berjalan: "tag tag-outline",
+  selesai: "tag tag-accent",
+  dibatalkan: "tag tag-neutral",
+};
+const REQUEST_STATUS_LABEL: Record<string, string> = {
+  berjalan: "Berjalan",
+  selesai: "Selesai",
+  dibatalkan: "Dibatalkan",
+};
+
+function CompleteButton({ id }: { id: string }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+  return (
+    <div>
+      <button type="button" className="btn btn-ghost" disabled={pending} onClick={() => { setError(""); startTransition(async () => {
+        try { await completeInventoryRequest(id); } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+      }); }}>
+        {pending ? "…" : "Selesaikan"}
+      </button>
+      {error && <div style={{ fontSize: 11, color: "var(--color-accent-800)" }}>{error}</div>}
+    </div>
   );
 }
 
@@ -156,20 +182,20 @@ export function GudangTables({
                   <th>Status</th>
                   <th></th>
                   <th></th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {pagedRequests.map((r) => (
-                  <tr key={r.id} style={r.cancelledAt ? { opacity: 0.55 } : undefined}>
+                  <tr key={r.id} style={r.status === "dibatalkan" ? { opacity: 0.55 } : undefined}>
                     <td className="text-muted">{r.date.toLocaleDateString("id-ID")}</td>
                     <td>{r.itemName}</td>
                     <td>{r.qty}</td>
                     <td style={{ fontWeight: 600 }}>{formatRp(r.qty * r.unitPrice)}</td>
                     <td>{r.requesterName}</td>
                     <td className="text-muted">{r.department || "-"}</td>
-                    <td>
-                      {r.cancelledAt ? <span className="tag tag-neutral">Dibatalkan</span> : <span className="tag tag-accent">Selesai</span>}
-                    </td>
+                    <td><span className={REQUEST_STATUS_TAG[r.status]}>{REQUEST_STATUS_LABEL[r.status]}</span></td>
+                    <td>{r.status === "berjalan" && <CompleteButton id={r.id} />}</td>
                     <td><InventoryRequestDetailDialog request={r} /></td>
                     <td><a href={`/print/inventory-request/${r.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
                   </tr>
