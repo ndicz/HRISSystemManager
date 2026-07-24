@@ -151,9 +151,14 @@ img { display: block; max-width: 100%; }
   border-radius: var(--radius-md); background: #fff;
   border: 1px solid color-mix(in srgb, var(--color-text) 6%, transparent);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
+  transition: box-shadow 0.16s ease, border-color 0.16s ease;
 }
-.card:hover { box-shadow: var(--shadow-md); border-color: color-mix(in srgb, var(--color-text) 10%, transparent); transform: translateY(-1px); }
+/* No transform here: a hover transform on .card makes it the CSS containing
+   block for any position:fixed descendant (e.g. a dialog opened from a
+   button inside this card), which breaks the dialog's full-viewport
+   backdrop — it collapses to the card's own box instead of covering the
+   screen. */
+.card:hover { box-shadow: var(--shadow-md); border-color: color-mix(in srgb, var(--color-text) 10%, transparent); }
 .card-kicker { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); font-weight: 600; }
 .card-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 17px; line-height: 1.2; }
 .card-body { margin: 0; font-size: 13px; opacity: 0.8; flex: 1; }
