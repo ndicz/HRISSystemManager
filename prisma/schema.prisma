@@ -448,6 +448,7 @@ model InventoryItem {
   qty       Int      @default(0) // stok saat ini
   price     Int      // harga satuan sekarang (Rp) — dipakai sebagai default saat permintaan baru
   category  String?
+  active    Boolean  @default(true) // nonaktifkan barang tanpa menghapusnya — tetap muncul di riwayat, tidak lagi bisa diambil
   requests  InventoryRequest[]
   createdAt DateTime @default(now())
 

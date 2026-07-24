@@ -1,14 +1,43 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import type { InventoryItem, InventoryRequest } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
+import type { EmployeeOption } from "@/components/EmployeeCombobox";
 import { AddInventoryItemDialog } from "@/components/AddInventoryItemDialog";
 import { EditInventoryItemDialog } from "@/components/EditInventoryItemDialog";
 import { RequestItemDialog } from "@/components/RequestItemDialog";
+import { InventoryRequestDetailDialog } from "@/components/InventoryRequestDetailDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
+import { toggleInventoryItemActive } from "@/app/(app)/gudang/actions";
 
-export function GudangTables({ items, requests }: { items: InventoryItem[]; requests: InventoryRequest[] }) {
+function ActiveToggle({ id, active }: { id: string; active: boolean }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <button
+      type="button"
+      className={active ? "tag tag-accent" : "tag tag-neutral"}
+      style={{ border: "none", cursor: pending ? "default" : "pointer" }}
+      disabled={pending}
+      onClick={() => startTransition(() => toggleInventoryItemActive(id, !active))}
+      title={active ? "Klik untuk nonaktifkan" : "Klik untuk aktifkan"}
+    >
+      {pending ? "…" : active ? "Aktif" : "Nonaktif"}
+    </button>
+  );
+}
+
+export function GudangTables({
+  items,
+  requests,
+  employees,
+  siteNames,
+}: {
+  items: InventoryItem[];
+  requests: InventoryRequest[];
+  employees: EmployeeOption[];
+  siteNames: string[];
+}) {
   const [qItem, setQItem] = useState("");
   const [qReq, setQReq] = useState("");
 
@@ -27,6 +56,7 @@ export function GudangTables({ items, requests }: { items: InventoryItem[]; requ
 
   const totalStockValue = items.reduce((s, i) => s + i.qty * i.price, 0);
   const lowStockCount = items.filter((i) => i.qty <= 2).length;
+  const requestableItems = items.filter((i) => i.active);
 
   return (
     <>
@@ -40,7 +70,11 @@ export function GudangTables({ items, requests }: { items: InventoryItem[]; requ
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)", flexWrap: "wrap", gap: "var(--space-2)" }}>
           <div className="card-kicker">Daftar Barang</div>
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
-            <RequestItemDialog items={items.map((i) => ({ id: i.id, name: i.name, unit: i.unit, qty: i.qty, price: i.price }))} />
+            <RequestItemDialog
+              items={requestableItems.map((i) => ({ id: i.id, name: i.name, unit: i.unit, qty: i.qty, price: i.price }))}
+              employees={employees}
+              siteNames={siteNames}
+            />
             <AddInventoryItemDialog />
           </div>
         </div>
@@ -63,6 +97,7 @@ export function GudangTables({ items, requests }: { items: InventoryItem[]; requ
                 <th>Stok</th>
                 <th>Harga satuan</th>
                 <th>Nilai stok</th>
+                <th>Status</th>
                 <th></th>
               </tr>
             </thead>
@@ -77,6 +112,7 @@ export function GudangTables({ items, requests }: { items: InventoryItem[]; requ
                   </td>
                   <td>{formatRp(i.price)}</td>
                   <td style={{ fontWeight: 600 }}>{formatRp(i.qty * i.price)}</td>
+                  <td><ActiveToggle id={i.id} active={i.active} /></td>
                   <td><EditInventoryItemDialog item={i} /></td>
                 </tr>
               ))}
@@ -109,6 +145,7 @@ export function GudangTables({ items, requests }: { items: InventoryItem[]; requ
                   <th>Peminta</th>
                   <th>Departemen</th>
                   <th></th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -120,6 +157,7 @@ export function GudangTables({ items, requests }: { items: InventoryItem[]; requ
                     <td style={{ fontWeight: 600 }}>{formatRp(r.qty * r.unitPrice)}</td>
                     <td>{r.requesterName}</td>
                     <td className="text-muted">{r.department || "-"}</td>
+                    <td><InventoryRequestDetailDialog request={r} /></td>
                     <td><a href={`/print/inventory-request/${r.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
                   </tr>
                 ))}

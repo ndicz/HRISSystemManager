@@ -66,6 +66,22 @@ export async function deleteInventoryItem(id: string) {
   revalidatePath("/gudang");
 }
 
+// Nonaktifkan/aktifkan barang tanpa menghapusnya — barang nonaktif tidak
+// lagi bisa diambil (lihat requestItem), tapi riwayat pengambilannya yang
+// lama tetap utuh, dan bisa diaktifkan lagi kapan saja.
+export async function toggleInventoryItemActive(id: string, active: boolean) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  await db.inventoryItem.update({ where: { id }, data: { active } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: active ? "inventoryItem.activate" : "inventoryItem.deactivate", entity: "InventoryItem", entityId: id },
+  });
+
+  revalidatePath("/gudang");
+}
+
 // Adds to stock (barang masuk/pembelian baru) — separate from
 // updateInventoryItem so editing the item's name/category can't
 // accidentally also change the stock count.
@@ -109,6 +125,7 @@ export async function requestItem(formData: FormData) {
 
   const item = await db.inventoryItem.findUnique({ where: { id: itemId } });
   if (!item) throw new Error("Barang tidak ditemukan.");
+  if (!item.active) throw new Error(`Barang "${item.name}" sedang nonaktif dan tidak bisa diambil.`);
   if (qty > item.qty) throw new Error(`Stok tidak cukup — sisa stok ${item.name} hanya ${item.qty} ${item.unit}.`);
 
   const account = await db.account.findFirst({ where: { code: "5011" } });

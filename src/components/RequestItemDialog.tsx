@@ -3,10 +3,11 @@
 import { useState, useRef, useMemo } from "react";
 import { requestItem } from "@/app/(app)/gudang/actions";
 import { formatRp } from "@/lib/payroll";
+import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
 
 type ItemOption = { id: string; name: string; unit: string; qty: number; price: number };
 
-export function RequestItemDialog({ items }: { items: ItemOption[] }) {
+export function RequestItemDialog({ items, employees, siteNames }: { items: ItemOption[]; employees: EmployeeOption[]; siteNames: string[] }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -15,8 +16,27 @@ export function RequestItemDialog({ items }: { items: ItemOption[] }) {
   const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
 
+  // Peminta: pilih dari daftar karyawan (nama diambil dari data), atau
+  // ketik manual untuk pemohon yang bukan karyawan tercatat di sistem.
+  const [requesterMode, setRequesterMode] = useState<"pilih" | "manual">(employees.length > 0 ? "pilih" : "manual");
+  const [requesterEmployeeId, setRequesterEmployeeId] = useState("");
+  const [requesterManualName, setRequesterManualName] = useState("");
+  const requesterName = requesterMode === "pilih" ? (employees.find((e) => e.id === requesterEmployeeId)?.name ?? "") : requesterManualName;
+
+  const [departmentMode, setDepartmentMode] = useState<"pilih" | "manual">(siteNames.length > 0 ? "pilih" : "manual");
+  const [departmentPicked, setDepartmentPicked] = useState("");
+  const [departmentManual, setDepartmentManual] = useState("");
+  const department = departmentMode === "pilih" ? departmentPicked : departmentManual;
+
   const selected = useMemo(() => items.find((i) => i.id === itemId) ?? null, [items, itemId]);
   const total = selected ? selected.price * qty : 0;
+
+  function resetRequesterFields() {
+    setRequesterEmployeeId("");
+    setRequesterManualName("");
+    setDepartmentPicked("");
+    setDepartmentManual("");
+  }
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
@@ -27,6 +47,7 @@ export function RequestItemDialog({ items }: { items: ItemOption[] }) {
       formRef.current?.reset();
       setItemId("");
       setQty(1);
+      resetRequesterFields();
       setFormKey((k) => k + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -80,14 +101,46 @@ export function RequestItemDialog({ items }: { items: ItemOption[] }) {
                   Total nilai barang: <strong>{formatRp(total)}</strong> — akan otomatis tercatat sebagai pengeluaran di Kas.
                 </p>
               )}
-              <div className="field">
-                <label htmlFor="req-requesterName">Nama peminta</label>
-                <input className="input" id="req-requesterName" name="requesterName" required placeholder="Nama karyawan/pemohon" />
+
+              <div className="field" style={{ marginBottom: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <label htmlFor="req-requesterName" style={{ marginBottom: 0 }}>Nama peminta</label>
+                  {employees.length > 0 && (
+                    <div className="seg" role="radiogroup">
+                      <label className="seg-opt"><input type="radio" checked={requesterMode === "pilih"} onChange={() => setRequesterMode("pilih")} /> Pilih karyawan</label>
+                      <label className="seg-opt"><input type="radio" checked={requesterMode === "manual"} onChange={() => setRequesterMode("manual")} /> Isi manual</label>
+                    </div>
+                  )}
+                </div>
+                {requesterMode === "pilih" ? (
+                  <EmployeeCombobox employees={employees} name="_requesterEmployee" id="req-requesterName" value={requesterEmployeeId} onChange={setRequesterEmployeeId} />
+                ) : (
+                  <input className="input" id="req-requesterName" value={requesterManualName} onChange={(e) => setRequesterManualName(e.target.value)} placeholder="Nama pemohon" />
+                )}
+                <input type="hidden" name="requesterName" value={requesterName} />
               </div>
-              <div className="field">
-                <label htmlFor="req-department">Tempat kerja/departemen (opsional)</label>
-                <input className="input" id="req-department" name="department" placeholder="mis. RS Borromeus" />
+
+              <div className="field" style={{ marginBottom: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <label htmlFor="req-department" style={{ marginBottom: 0 }}>Tempat kerja/departemen (opsional)</label>
+                  {siteNames.length > 0 && (
+                    <div className="seg" role="radiogroup">
+                      <label className="seg-opt"><input type="radio" checked={departmentMode === "pilih"} onChange={() => setDepartmentMode("pilih")} /> Pilih</label>
+                      <label className="seg-opt"><input type="radio" checked={departmentMode === "manual"} onChange={() => setDepartmentMode("manual")} /> Isi manual</label>
+                    </div>
+                  )}
+                </div>
+                {departmentMode === "pilih" ? (
+                  <select className="input" id="req-department" value={departmentPicked} onChange={(e) => setDepartmentPicked(e.target.value)}>
+                    <option value="">Tidak ada</option>
+                    {siteNames.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                ) : (
+                  <input className="input" id="req-department" value={departmentManual} onChange={(e) => setDepartmentManual(e.target.value)} placeholder="mis. RS Borromeus" />
+                )}
+                <input type="hidden" name="department" value={department} />
               </div>
+
               <div className="field">
                 <label htmlFor="req-note">Keterangan (opsional)</label>
                 <input className="input" id="req-note" name="note" placeholder="mis. Untuk ruang admin baru" />
@@ -95,7 +148,7 @@ export function RequestItemDialog({ items }: { items: ItemOption[] }) {
               {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary" disabled={pending || !itemId}>{pending ? "Memproses…" : "Ambil barang"}</button>
+                <button type="submit" className="btn btn-primary" disabled={pending || !itemId || !requesterName}>{pending ? "Memproses…" : "Ambil barang"}</button>
               </div>
             </form>
           </div>
