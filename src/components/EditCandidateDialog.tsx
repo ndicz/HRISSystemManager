@@ -56,8 +56,8 @@ export function EditCandidateDialog({ candidate, positions }: { candidate: Candi
                   ))}
                 </select>
               </div>
-              {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
-              {delError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{delError}</p>}
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+              {delError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{delError}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-ghost" disabled={delPending} onClick={handleDelete} style={{ marginRight: "auto" }}>
                   {delPending ? "Menghapus…" : "Hapus"}

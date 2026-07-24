@@ -5,12 +5,24 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #f2f2f3;
-  --color-surface: #e9e9ea;
+  --color-bg: #f3f1ee;
+  --color-surface: #e8e4de;
   --color-text: #1d1f20;
   --color-accent: oklch(58% 0.17 48);
   --color-accent-2: oklch(60% 0.16 54);
   --color-divider: color-mix(in srgb, #1d1f20 16%, transparent);
+
+  /* Status colors beyond the brand accent — before these existed, every tag
+     in the app (Dibatalkan, Ditolak, Nonaktif, Menipis, error text) had to
+     reuse either the accent orange or plain grey, which is a big part of
+     why the whole UI read as flat/monotone: nothing signaled "this is
+     different/negative" at a glance. */
+  --color-danger: oklch(56% 0.19 25);
+  --color-danger-100: oklch(95% 0.03 25);
+  --color-danger-800: oklch(38% 0.14 25);
+  --color-warning: oklch(78% 0.15 85);
+  --color-warning-100: oklch(96% 0.04 85);
+  --color-warning-800: oklch(42% 0.1 75);
 
   --color-neutral-100: #f5f5f8;
   --color-neutral-200: #e7e7ea;
@@ -57,13 +69,20 @@
   --radius-md: 14px;
   --radius-lg: 20px;
 
-  --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
-  --shadow-md: 0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
-  --shadow-lg: 0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 8%, transparent), 0 1px 1px color-mix(in srgb, #2b2b2d 6%, transparent);
+  --shadow-md: 0 6px 16px color-mix(in srgb, #2b2b2d 12%, transparent), 0 2px 6px color-mix(in srgb, #2b2b2d 8%, transparent);
+  --shadow-lg: 0 16px 40px color-mix(in srgb, #2b2b2d 20%, transparent), 0 4px 12px color-mix(in srgb, #2b2b2d 10%, transparent);
 }
 
 body {
-  background: var(--color-bg);
+  /* A very faint accent-tinted wash instead of one flat grey — subtle
+     enough not to read as "colored," just enough to stop every page
+     looking like the exact same solid slab. */
+  background:
+    radial-gradient(1100px 520px at 100% -8%, color-mix(in srgb, var(--color-accent) 6%, transparent), transparent 60%),
+    radial-gradient(900px 460px at -6% 100%, color-mix(in srgb, var(--color-accent-2) 5%, transparent), transparent 55%),
+    var(--color-bg);
+  background-attachment: fixed;
   color: var(--color-text);
   font-family: var(--font-body);
   margin: 0;
@@ -97,44 +116,54 @@ img { display: block; max-width: 100%; }
   cursor: pointer; text-decoration: none;
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
   font-size: 14px; line-height: 1.2; color: var(--color-text);
-  background: transparent; border: none;
+  background: transparent; border: 1px solid transparent;
   padding: var(--space-2) calc(var(--space-3) * 1.2);
   border-radius: var(--radius-md);
+  transition: background-color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, transform 0.1s ease;
 }
 .btn svg { display: block; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn-primary { background: var(--color-accent); color: var(--color-bg); }
-.btn-primary:hover { background: var(--color-accent-600); }
-.btn-secondary { background: var(--color-surface); color: var(--color-text); }
-.btn-secondary:hover { background: var(--color-neutral-200); }
-.btn-ghost { color: var(--color-accent); padding-inline: var(--space-1); background: transparent; }
-.btn-ghost:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+.btn-primary { background: var(--color-accent); color: #fff; box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 35%, transparent); }
+.btn-primary:hover { background: var(--color-accent-600); box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 45%, transparent); transform: translateY(-1px); }
+.btn-secondary { background: #fff; color: var(--color-text); border-color: var(--color-divider); }
+.btn-secondary:hover { background: var(--color-neutral-100); border-color: color-mix(in srgb, var(--color-text) 24%, transparent); }
+.btn-ghost { color: var(--color-accent-700); padding-inline: var(--space-1); background: transparent; }
+.btn-ghost:hover { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
 .btn-icon { width: 36px; height: 36px; padding: 0; }
 
 .field > label { display: block; font-size: 12px; margin-bottom: 5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
 .input {
   width: 100%; min-height: 36px; padding: 6px 10px; font: inherit;
   font-size: 14px; color: var(--color-text); caret-color: var(--color-accent);
-  background: var(--color-surface); border: none; border-radius: var(--radius-md);
+  background: #fff; border: 1px solid var(--color-divider); border-radius: var(--radius-md);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
-.input:hover { background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface)); }
-.input:focus-visible { box-shadow: 0 0 0 2px var(--color-accent); outline: none; }
-.seg { display: inline-flex; overflow: hidden; border: none; background: var(--color-surface); border-radius: var(--radius-md); }
-.seg-opt { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; cursor: pointer; }
-.seg-opt + .seg-opt { border-left: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); }
-.seg-opt:has(input:checked) { background: var(--color-accent); color: var(--color-bg); }
+.input:hover { border-color: color-mix(in srgb, var(--color-text) 26%, transparent); }
+.input:focus-visible { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent); outline: none; }
+.seg { display: inline-flex; overflow: hidden; border: 1px solid var(--color-divider); background: #fff; border-radius: var(--radius-md); }
+.seg-opt { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; cursor: pointer; transition: background-color 0.14s ease, color 0.14s ease; }
+.seg-opt + .seg-opt { border-left: 1px solid var(--color-divider); }
+.seg-opt:has(input:checked) { background: var(--color-accent); color: #fff; }
 .seg-opt input { position: absolute; opacity: 0; width: 0; height: 0; }
 
-.card { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md); background: #fff; box-shadow: var(--shadow-sm); }
-.card:hover { box-shadow: var(--shadow-md); }
-.card-kicker { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent); }
+.card {
+  display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3);
+  border-radius: var(--radius-md); background: #fff;
+  border: 1px solid color-mix(in srgb, var(--color-text) 6%, transparent);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
+}
+.card:hover { box-shadow: var(--shadow-md); border-color: color-mix(in srgb, var(--color-text) 10%, transparent); transform: translateY(-1px); }
+.card-kicker { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-700); font-weight: 600; }
 .card-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 17px; line-height: 1.2; }
 .card-body { margin: 0; font-size: 13px; opacity: 0.8; flex: 1; }
 
-.tag { display: inline-flex; align-items: center; font-size: 11px; letter-spacing: 0.02em; padding: 3px 10px; border-radius: calc(var(--radius-md) * 0.75); }
+.tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; padding: 3px 10px; border-radius: calc(var(--radius-md) * 0.75); }
 .tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); }
 .tag-neutral { background: var(--color-neutral-100); color: var(--color-neutral-800); }
-.tag-outline { border: 1px solid var(--color-accent); color: var(--color-accent); }
+.tag-outline { border: 1px solid var(--color-accent); color: var(--color-accent-700); }
+.tag-danger { background: var(--color-danger-100); color: var(--color-danger-800); }
+.tag-warning { background: var(--color-warning-100); color: var(--color-warning-800); }
 
 /* Always horizontally scrollable rather than squishing columns or
    overflowing the page — wide tables (e.g. the flat-rate payroll grid,
@@ -193,8 +222,8 @@ img { display: block; max-width: 100%; }
    ancestor instead, so the sticky header attaches to that one correctly. */
 .table-nested { max-height: none; overflow: visible; }
 
-.dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent); z-index: 50; }
-.dialog { width: min(440px, 100%); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-lg); max-height: calc(100dvh - var(--space-8)); overflow-y: auto; }
+.dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--color-neutral-900) 55%, transparent); backdrop-filter: blur(2px); z-index: 50; }
+.dialog { width: min(440px, 100%); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface); border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); box-shadow: var(--shadow-lg); max-height: calc(100dvh - var(--space-8)); overflow-y: auto; }
 .dialog-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 20px; }
 .dialog-body { font-size: 14px; opacity: 0.85; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }

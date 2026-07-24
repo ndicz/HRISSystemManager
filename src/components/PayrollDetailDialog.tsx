@@ -168,7 +168,7 @@ export function PayrollDetailDialog({
                     </tbody>
                   </table>
                   <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
-                    {amountsError && <span style={{ fontSize: 12, color: "var(--color-accent-800)" }}>{amountsError}</span>}
+                    {amountsError && <span style={{ fontSize: 12, color: "var(--color-danger)" }}>{amountsError}</span>}
                     {amountsSaved && !amountsPending && <span style={{ fontSize: 12, color: "var(--color-accent)" }}>Tersimpan.</span>}
                     <button type="button" className="btn btn-secondary" disabled={amountsPending} onClick={saveAmounts}>
                       {amountsPending ? "Menyimpan…" : "Simpan jumlah"}
@@ -190,7 +190,7 @@ export function PayrollDetailDialog({
                         {bpjsPending ? "Menyimpan…" : "Simpan"}
                       </button>
                     </div>
-                    {bpjsError && <p style={{ fontSize: 13, color: "var(--color-accent-800)", marginTop: 8, marginBottom: 0 }}>{bpjsError}</p>}
+                    {bpjsError && <p style={{ fontSize: 13, color: "var(--color-danger)", marginTop: 8, marginBottom: 0 }}>{bpjsError}</p>}
                     {bpjsSaved && !bpjsPending && <p style={{ fontSize: 12, color: "var(--color-accent)", marginTop: 8, marginBottom: 0 }}>Tersimpan.</p>}
                   </div>
                 </>

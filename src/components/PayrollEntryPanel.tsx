@@ -102,7 +102,7 @@ export function PayrollEntryPanel({
             </tbody>
           </table>
         )}
-        {dayError && <p style={{ color: "var(--color-accent-800)", fontSize: 13 }}>{dayError}</p>}
+        {dayError && <p style={{ color: "var(--color-danger)", fontSize: 13 }}>{dayError}</p>}
         <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-end", flexWrap: "wrap" }}>
           <div className="field" style={{ marginBottom: 0 }}>
             <label htmlFor="new-overtime-date">Tanggal</label>

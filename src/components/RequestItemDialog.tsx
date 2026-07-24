@@ -151,7 +151,7 @@ export function RequestItemDialog({ items, employees, siteNames }: { items: Item
                 <label htmlFor="req-note">Keterangan (opsional)</label>
                 <input className="input" id="req-note" name="note" placeholder="mis. Untuk ruang admin baru" />
               </div>
-              {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
                 <button type="submit" className="btn btn-primary" disabled={pending || !itemId || !requesterName}>{pending ? "Memproses…" : "Ajukan pengambilan"}</button>

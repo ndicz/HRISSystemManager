@@ -153,7 +153,7 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
                     </tbody>
                   </table>
 
-                  {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13 }}>{error}</p>}
+                  {error && <p style={{ color: "var(--color-danger)", fontSize: 13 }}>{error}</p>}
 
                   <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-end", flexWrap: "wrap" }}>
                     <div className="field" style={{ marginBottom: 0, flex: 1, minWidth: 160 }}>

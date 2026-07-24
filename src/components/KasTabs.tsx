@@ -292,7 +292,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
                       <td className="text-muted">{r.dueDate.toLocaleDateString("id-ID")}</td>
                       <td><DocHandoverDateInput type={r.type} id={r.id} value={r.docHandoverDate} /></td>
                       <td style={{ fontWeight: 600 }}>{formatRp(r.amount)}</td>
-                      <td><span className={r.bucket === "Belum jatuh tempo" ? "tag tag-accent" : "tag tag-neutral"}>{r.bucket}</span></td>
+                      <td><span className={r.bucket === "Belum jatuh tempo" ? "tag tag-accent" : r.bucket === ">90 hari" ? "tag tag-danger" : "tag tag-warning"}>{r.bucket}</span></td>
                     </tr>
                   ))}
                 </tbody>

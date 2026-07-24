@@ -14,7 +14,7 @@ import { GenerateInvoiceButton } from "@/components/GenerateInvoiceButton";
 
 function statusTag(status: string) {
   if (status === "lunas") return "tag tag-accent";
-  if (status === "dibatalkan") return "tag tag-neutral";
+  if (status === "dibatalkan") return "tag tag-danger";
   if (status === "terkirim") return "tag tag-outline";
   return "tag tag-neutral";
 }

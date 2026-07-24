@@ -16,7 +16,7 @@ function ActiveToggle({ id, active }: { id: string; active: boolean }) {
   return (
     <button
       type="button"
-      className={active ? "tag tag-accent" : "tag tag-neutral"}
+      className={active ? "tag tag-accent" : "tag tag-warning"}
       style={{ border: "none", cursor: pending ? "default" : "pointer" }}
       disabled={pending}
       onClick={() => startTransition(() => toggleInventoryItemActive(id, !active))}
@@ -30,7 +30,7 @@ function ActiveToggle({ id, active }: { id: string; active: boolean }) {
 const REQUEST_STATUS_TAG: Record<string, string> = {
   berjalan: "tag tag-outline",
   selesai: "tag tag-accent",
-  dibatalkan: "tag tag-neutral",
+  dibatalkan: "tag tag-danger",
 };
 const REQUEST_STATUS_LABEL: Record<string, string> = {
   berjalan: "Berjalan",
@@ -48,7 +48,7 @@ function CompleteButton({ id }: { id: string }) {
       }); }}>
         {pending ? "…" : "Selesaikan"}
       </button>
-      {error && <div style={{ fontSize: 11, color: "var(--color-accent-800)" }}>{error}</div>}
+      {error && <div style={{ fontSize: 11, color: "var(--color-danger)" }}>{error}</div>}
     </div>
   );
 }

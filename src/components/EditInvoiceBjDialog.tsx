@@ -48,7 +48,7 @@ export function EditInvoiceBjDialog({ invoice, clients, siteNames }: { invoice: 
                   items: invoice.items.map((it) => ({ desc: it.desc, qty: it.qty, price: it.price })),
                 }}
               />
-              {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
                 <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Menyimpan…" : "Simpan perubahan"}</button>

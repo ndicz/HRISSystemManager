@@ -55,7 +55,7 @@ export function InvoiceBjActions({ id, status, invoiceNo }: { id: string; status
           Batalkan
         </button>
       )}
-      {error && <span style={{ fontSize: 12, color: "var(--color-accent-800)" }}>{error}</span>}
+      {error && <span style={{ fontSize: 12, color: "var(--color-danger)" }}>{error}</span>}
     </span>
   );
 }

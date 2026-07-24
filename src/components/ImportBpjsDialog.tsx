@@ -89,7 +89,7 @@ export function ImportBpjsDialog() {
               {status === "parsing" && <p>Memproses file&hellip;</p>}
               {status === "error" && (
                 <>
-                  <p style={{ color: "var(--color-accent-800)" }}>Gagal membaca file: {error}</p>
+                  <p style={{ color: "var(--color-danger)" }}>Gagal membaca file: {error}</p>
                   <div className="field">
                     <label htmlFor="bpjs-file2">Coba file lain</label>
                     <input className="input" id="bpjs-file2" type="file" accept=".xlsx" onChange={handleFile} />
@@ -116,7 +116,7 @@ export function ImportBpjsDialog() {
                     Menerapkan akan mengganti potongan BPJS manual (override) untuk setiap karyawan yang ID-nya cocok — termasuk nilai Rp0 jika memang tertulis 0 di file. Baris yang kosong (&ldquo;(kosong)&rdquo;) tidak diubah. ID yang tidak cocok dengan karyawan manapun akan dilewati dan ditampilkan setelah selesai.
                   </p>
                   {applyError && (
-                    <p style={{ fontSize: 13, color: "var(--color-accent-800)", marginBottom: 0 }}>Gagal menerapkan: {applyError}</p>
+                    <p style={{ fontSize: 13, color: "var(--color-danger)", marginBottom: 0 }}>Gagal menerapkan: {applyError}</p>
                   )}
                 </>
               )}
@@ -126,7 +126,7 @@ export function ImportBpjsDialog() {
                     Berhasil diterapkan — {applySummary.matched} karyawan diperbarui.
                   </p>
                   {applySummary.unmatched.length > 0 && (
-                    <p style={{ fontSize: 13, color: "var(--color-accent-800)" }}>
+                    <p style={{ fontSize: 13, color: "var(--color-danger)" }}>
                       {applySummary.unmatched.length} ID tidak cocok dengan karyawan manapun: {applySummary.unmatched.join(", ")}
                     </p>
                   )}

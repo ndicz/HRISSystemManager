@@ -17,7 +17,7 @@ const STATUS_LABEL: Record<string, string> = {
 function statusTag(status: string) {
   if (status === "aktif") return "tag tag-accent";
   if (status === "diterima") return "tag tag-outline";
-  if (status === "ditolak") return "tag tag-neutral";
+  if (status === "ditolak") return "tag tag-danger";
   return "tag tag-outline";
 }
 

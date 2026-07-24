@@ -93,7 +93,7 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
               {status === "parsing" && <p>Memproses file&hellip;</p>}
               {status === "error" && (
                 <>
-                  <p style={{ color: "var(--color-accent-800)" }}>Gagal membaca file: {error}</p>
+                  <p style={{ color: "var(--color-danger)" }}>Gagal membaca file: {error}</p>
                   <div className="field">
                     <label htmlFor="imp-file2">Coba file lain</label>
                     <input className="input" id="imp-file2" type="file" accept=".xlsx" onChange={handleFile} />
@@ -108,7 +108,7 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
                   <div className="field" style={{ maxWidth: 280 }}>
                     <label htmlFor="imp-site">Tempat kerja untuk personil baru</label>
                     {sites.length === 0 ? (
-                      <p style={{ fontSize: 13, color: "var(--color-accent-800)", margin: "4px 0 0" }}>
+                      <p style={{ fontSize: 13, color: "var(--color-danger)", margin: "4px 0 0" }}>
                         Belum ada tempat kerja — tambahkan dulu di bagian &ldquo;Tempat Kerja&rdquo; pada halaman ini sebelum menerapkan.
                       </p>
                     ) : (
@@ -138,7 +138,7 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
                     Menerapkan akan menambahkan personil yang belum ada ke data karyawan dan memperbarui status kehadiran personil yang cocok (dicocokkan berdasarkan nama).
                   </p>
                   {applyError && (
-                    <p style={{ fontSize: 13, color: "var(--color-accent-800)", marginBottom: 0 }}>Gagal menerapkan: {applyError}</p>
+                    <p style={{ fontSize: 13, color: "var(--color-danger)", marginBottom: 0 }}>Gagal menerapkan: {applyError}</p>
                   )}
                 </>
               )}

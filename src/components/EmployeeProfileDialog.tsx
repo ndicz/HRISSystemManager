@@ -218,7 +218,7 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
                     </table>
                   )}
 
-                  {certError && <p style={{ color: "var(--color-accent-800)", fontSize: 13 }}>{certError}</p>}
+                  {certError && <p style={{ color: "var(--color-danger)", fontSize: 13 }}>{certError}</p>}
 
                   <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-end", flexWrap: "wrap" }}>
                     <div className="field" style={{ marginBottom: 0, flex: 1, minWidth: 160 }}>

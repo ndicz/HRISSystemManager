@@ -79,7 +79,7 @@ export function TotpSetupCard({ initialEnabled }: { initialEnabled: boolean }) {
               placeholder="000000"
             />
           </div>
-          {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
+          {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
             <button type="button" className="btn btn-secondary" onClick={() => { setSetup(null); setCode(""); setError(""); }} disabled={pending}>
               Batal

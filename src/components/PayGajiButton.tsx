@@ -57,7 +57,7 @@ export function PayGajiButton({
                     Membayar gaji {employeeIds.length} karyawan untuk periode {period}, total {formatRp(totalAmount)}.
                     Ini akan mencatat transaksi pengeluaran ke Kas (COA Gaji Karyawan). Karyawan yang sudah dibayar untuk periode ini otomatis dilewati.
                   </p>
-                  {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13 }}>{error}</p>}
+                  {error && <p style={{ color: "var(--color-danger)", fontSize: 13 }}>{error}</p>}
                 </>
               ) : (
                 <p style={{ marginTop: 0 }}>

@@ -72,7 +72,7 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
                     {restockPending ? "Menyimpan…" : "Tambah stok"}
                   </button>
                 </div>
-                {restockError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: "8px 0 0" }}>{restockError}</p>}
+                {restockError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: "8px 0 0" }}>{restockError}</p>}
               </div>
             )}
 
@@ -92,7 +92,7 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
                   </label>
                 </div>
                 {item.trackStock && !trackStock && (
-                  <p style={{ fontSize: 12, color: "var(--color-accent-800)", margin: "4px 0 0" }}>
+                  <p style={{ fontSize: 12, color: "var(--color-danger)", margin: "4px 0 0" }}>
                     Stok saat ini ({item.qty} {item.unit}) akan direset ke 0 kalau disimpan sebagai &ldquo;Beli sesuai permintaan&rdquo;.
                   </p>
                 )}
@@ -112,8 +112,8 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
                 </div>
               </div>
               {item.trackStock && <p style={{ fontSize: 12, opacity: 0.6, margin: 0 }}>Nilai stok saat ini: {formatRp(item.qty * item.price)}</p>}
-              {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
-              {delError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{delError}</p>}
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+              {delError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{delError}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-ghost" disabled={delPending} onClick={handleDelete} style={{ marginRight: "auto" }}>
                   {delPending ? "Menghapus…" : "Hapus"}

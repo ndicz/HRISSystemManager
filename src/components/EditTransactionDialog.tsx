@@ -84,7 +84,7 @@ export function EditTransactionDialog({ tx, accounts, cashAccounts, disabled }: 
                 <label htmlFor="edit-amount">Jumlah (Rp)</label>
                 <RupiahInput id="edit-amount" name="amount" defaultValue={tx.amount} />
               </div>
-              {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
                 <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Menyimpan…" : "Simpan"}</button>

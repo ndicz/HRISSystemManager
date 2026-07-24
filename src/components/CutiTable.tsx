@@ -9,7 +9,7 @@ import { SortableTh, useSortableRows } from "@/components/SortableHeader";
 
 function statusTag(status: string) {
   if (status === "disetujui") return "tag tag-accent";
-  if (status === "ditolak") return "tag tag-neutral";
+  if (status === "ditolak") return "tag tag-danger";
   return "tag tag-outline";
 }
 function statusLabel(status: string) {

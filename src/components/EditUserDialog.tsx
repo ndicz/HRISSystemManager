@@ -160,7 +160,7 @@ export function EditUserDialog({
                 </div>
               )}
 
-              {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions" style={{ justifyContent: "space-between" }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setPwOpen((v) => !v)}>
                   {pwOpen ? "Batal reset password" : "Reset password"}
@@ -198,7 +198,7 @@ export function EditUserDialog({
                   <label htmlFor={`pw-${user.id}`}>Password baru</label>
                   <input className="input" id={`pw-${user.id}`} name="password" type="password" required minLength={6} placeholder="Minimal 6 karakter" />
                 </div>
-                {pwError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{pwError}</p>}
+                {pwError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{pwError}</p>}
                 <button type="submit" className="btn btn-primary" style={{ width: "fit-content" }} disabled={pwPending}>
                   {pwPending ? "Menyimpan…" : "Simpan password baru"}
                 </button>

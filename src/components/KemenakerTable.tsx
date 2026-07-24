@@ -52,7 +52,7 @@ export function KemenakerTable({ rows }: { rows: Row[] }) {
                 <td>{formatRp(r.umrWilayah)}</td>
                 <td>{formatRp(r.gajiPokok)}</td>
                 <td>
-                  <span className={r.compliant ? "tag tag-accent" : "tag tag-neutral"}>{r.compliant ? "Sesuai UMR" : "Di bawah UMR"}</span>
+                  <span className={r.compliant ? "tag tag-accent" : "tag tag-danger"}>{r.compliant ? "Sesuai UMR" : "Di bawah UMR"}</span>
                 </td>
               </tr>
             ))}

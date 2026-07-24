@@ -8,7 +8,7 @@ import { cancelInventoryRequest, completeInventoryRequest } from "@/app/(app)/gu
 const STATUS_TAG: Record<string, string> = {
   berjalan: "tag tag-outline",
   selesai: "tag tag-accent",
-  dibatalkan: "tag tag-neutral",
+  dibatalkan: "tag tag-danger",
 };
 const STATUS_LABEL: Record<string, string> = {
   berjalan: "Berjalan",
@@ -119,8 +119,8 @@ export function InventoryRequestDetailDialog({ request }: { request: InventoryRe
                   Stok belum dikurangi dan belum tercatat di Kas — tandai &ldquo;Selesai&rdquo; setelah barang benar-benar diserahkan.
                 </p>
               )}
-              {completeError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{completeError}</p>}
-              {cancelError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{cancelError}</p>}
+              {completeError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{completeError}</p>}
+              {cancelError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{cancelError}</p>}
             </div>
             <div className="dialog-actions">
               {request.status !== "dibatalkan" && (

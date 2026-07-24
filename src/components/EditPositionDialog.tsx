@@ -69,8 +69,8 @@ export function EditPositionDialog({ position }: { position: Position }) {
                 <label htmlFor="edit-pos-salary">Gaji pokok default (Rp)</label>
                 <input className="input" id="edit-pos-salary" name="baseSalary" type="number" min={0} defaultValue={position.baseSalary} />
               </div>
-              {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
-              {delError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{delError}</p>}
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+              {delError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{delError}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-ghost" disabled={delPending} onClick={handleDelete} style={{ marginRight: "auto" }}>
                   {delPending ? "Menghapus…" : "Hapus"}
