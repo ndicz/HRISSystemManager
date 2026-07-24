@@ -5,10 +5,11 @@ import { updateInventoryItem, deleteInventoryItem, restockItem } from "@/app/(ap
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatRp } from "@/lib/payroll";
 
-type ItemRow = { id: string; name: string; unit: string; qty: number; price: number; category: string | null };
+type ItemRow = { id: string; name: string; unit: string; qty: number; price: number; category: string | null; trackStock: boolean };
 
 export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
   const [open, setOpen] = useState(false);
+  const [trackStock, setTrackStock] = useState(item.trackStock);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [delError, setDelError] = useState("");
@@ -59,24 +60,42 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit barang &mdash; {item.name}</div>
 
-            <div style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)", marginBottom: "var(--space-3)" }}>
-              <div className="card-kicker" style={{ marginBottom: "var(--space-2)" }}>Tambah stok (stok sekarang: {item.qty} {item.unit})</div>
-              <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-end", flexWrap: "wrap" }}>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label htmlFor="restock-qty">Jumlah tambahan</label>
-                  <input className="input" id="restock-qty" type="number" min={1} value={addQty} onChange={(e) => setAddQty(e.target.value)} placeholder="0" />
+            {item.trackStock && (
+              <div style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)", marginBottom: "var(--space-3)" }}>
+                <div className="card-kicker" style={{ marginBottom: "var(--space-2)" }}>Tambah stok (stok sekarang: {item.qty} {item.unit})</div>
+                <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-end", flexWrap: "wrap" }}>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label htmlFor="restock-qty">Jumlah tambahan</label>
+                    <input className="input" id="restock-qty" type="number" min={1} value={addQty} onChange={(e) => setAddQty(e.target.value)} placeholder="0" />
+                  </div>
+                  <button type="button" className="btn btn-secondary" disabled={restockPending || !addQty} onClick={handleRestock}>
+                    {restockPending ? "Menyimpan…" : "Tambah stok"}
+                  </button>
                 </div>
-                <button type="button" className="btn btn-secondary" disabled={restockPending || !addQty} onClick={handleRestock}>
-                  {restockPending ? "Menyimpan…" : "Tambah stok"}
-                </button>
+                {restockError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: "8px 0 0" }}>{restockError}</p>}
               </div>
-              {restockError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: "8px 0 0" }}>{restockError}</p>}
-            </div>
+            )}
 
             <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="edit-inv-name">Nama barang</label>
                 <input className="input" id="edit-inv-name" name="name" required defaultValue={item.name} />
+              </div>
+              <div className="field">
+                <label>Jenis barang</label>
+                <div className="seg" role="radiogroup">
+                  <label className="seg-opt">
+                    <input type="radio" name="trackStock" value="on" checked={trackStock} onChange={() => setTrackStock(true)} /> Stok fisik
+                  </label>
+                  <label className="seg-opt">
+                    <input type="radio" name="trackStock" value="off" checked={!trackStock} onChange={() => setTrackStock(false)} /> Beli sesuai permintaan
+                  </label>
+                </div>
+                {item.trackStock && !trackStock && (
+                  <p style={{ fontSize: 12, color: "var(--color-accent-800)", margin: "4px 0 0" }}>
+                    Stok saat ini ({item.qty} {item.unit}) akan direset ke 0 kalau disimpan sebagai &ldquo;Beli sesuai permintaan&rdquo;.
+                  </p>
+                )}
               </div>
               <div className="field">
                 <label htmlFor="edit-inv-category">Kategori</label>
@@ -92,7 +111,7 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
                   <RupiahInput id="edit-inv-price" name="price" defaultValue={item.price} />
                 </div>
               </div>
-              <p style={{ fontSize: 12, opacity: 0.6, margin: 0 }}>Nilai stok saat ini: {formatRp(item.qty * item.price)}</p>
+              {item.trackStock && <p style={{ fontSize: 12, opacity: 0.6, margin: 0 }}>Nilai stok saat ini: {formatRp(item.qty * item.price)}</p>}
               {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
               {delError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{delError}</p>}
               <div className="dialog-actions">

@@ -5,7 +5,7 @@ import { requestItem } from "@/app/(app)/gudang/actions";
 import { formatRp } from "@/lib/payroll";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
 
-type ItemOption = { id: string; name: string; unit: string; qty: number; price: number };
+type ItemOption = { id: string; name: string; unit: string; qty: number; price: number; trackStock: boolean };
 
 export function RequestItemDialog({ items, employees, siteNames }: { items: ItemOption[]; employees: EmployeeOption[]; siteNames: string[] }) {
   const [open, setOpen] = useState(false);
@@ -71,8 +71,10 @@ export function RequestItemDialog({ items, employees, siteNames }: { items: Item
                 <select className="input" id="req-itemId" name="itemId" required value={itemId} onChange={(e) => { setItemId(e.target.value); setError(""); }}>
                   <option value="">Pilih barang…</option>
                   {items.map((i) => (
-                    <option key={i.id} value={i.id} disabled={i.qty === 0}>
-                      {i.name} — sisa {i.qty} {i.unit} {i.qty === 0 ? "(habis)" : ""}
+                    <option key={i.id} value={i.id} disabled={i.trackStock && i.qty === 0}>
+                      {i.trackStock
+                        ? `${i.name} — sisa ${i.qty} ${i.unit}${i.qty === 0 ? " (habis)" : ""}`
+                        : `${i.name} (beli sesuai permintaan)`}
                     </option>
                   ))}
                 </select>
@@ -86,7 +88,7 @@ export function RequestItemDialog({ items, employees, siteNames }: { items: Item
                     name="qty"
                     type="number"
                     min={1}
-                    max={selected?.qty ?? undefined}
+                    max={selected?.trackStock ? selected.qty : undefined}
                     value={qty}
                     onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
                   />

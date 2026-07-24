@@ -14,7 +14,7 @@ export default async function InventoryRequestPrintPage({ params }: { params: Pr
   return (
     <PrintDocument
       title={`Bukti Pengeluaran Barang — ${req.itemName}`}
-      docTitle="Bukti Pengeluaran Barang Gudang"
+      docTitle={req.cancelledAt ? "Bukti Pengeluaran Barang Gudang (DIBATALKAN)" : "Bukti Pengeluaran Barang Gudang"}
       meta={
         <>
           Diserahkan kepada: <strong>{req.requesterName}</strong>
@@ -22,6 +22,14 @@ export default async function InventoryRequestPrintPage({ params }: { params: Pr
           <br />
           Tanggal: {req.date.toLocaleDateString("id-ID")}
           {req.note && <><br />Keterangan: {req.note}</>}
+          {req.cancelledAt && (
+            <>
+              <br />
+              <strong style={{ color: "#b3261e" }}>
+                Dibatalkan pada {req.cancelledAt.toLocaleDateString("id-ID")} — dokumen ini tidak lagi berlaku sebagai bukti pengeluaran.
+              </strong>
+            </>
+          )}
         </>
       }
       signLeftLabel="Diterima oleh"

@@ -449,6 +449,8 @@ model InventoryItem {
   price     Int      // harga satuan sekarang (Rp) — dipakai sebagai default saat permintaan baru
   category  String?
   active    Boolean  @default(true) // nonaktifkan barang tanpa menghapusnya — tetap muncul di riwayat, tidak lagi bisa diambil
+  // false = barang "beli sesuai permintaan" — tidak dibatasi/dikurangi stok saat diambil, dan tidak dihitung ke Total Nilai Stok (mis. jasa/pembelian khusus per pengambilan). true = stok fisik seperti biasa (qty dikurangi tiap diambil).
+  trackStock Boolean @default(true)
   requests  InventoryRequest[]
   createdAt DateTime @default(now())
 
@@ -472,6 +474,7 @@ model InventoryRequest {
   note          String?
   date          DateTime      @default(now())
   transactionId String?
+  cancelledAt   DateTime? // set = dibatalkan: stok dikembalikan (jika trackStock) + koreksi otomatis di Kas
   createdById   String?
   createdAt     DateTime      @default(now())
 

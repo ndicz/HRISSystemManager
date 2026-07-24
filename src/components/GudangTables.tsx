@@ -54,8 +54,9 @@ export function GudangTables({
   }, [requests, qReq]);
   const { paged: pagedRequests, page: pageReq, setPage: setPageReq, totalItems: totalReq } = usePagedRows(filteredRequests);
 
-  const totalStockValue = items.reduce((s, i) => s + i.qty * i.price, 0);
-  const lowStockCount = items.filter((i) => i.qty <= 2).length;
+  const trackedItems = items.filter((i) => i.trackStock);
+  const totalStockValue = trackedItems.reduce((s, i) => s + i.qty * i.price, 0);
+  const lowStockCount = trackedItems.filter((i) => i.qty <= 2).length;
   const requestableItems = items.filter((i) => i.active);
 
   return (
@@ -71,7 +72,7 @@ export function GudangTables({
           <div className="card-kicker">Daftar Barang</div>
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
             <RequestItemDialog
-              items={requestableItems.map((i) => ({ id: i.id, name: i.name, unit: i.unit, qty: i.qty, price: i.price }))}
+              items={requestableItems.map((i) => ({ id: i.id, name: i.name, unit: i.unit, qty: i.qty, price: i.price, trackStock: i.trackStock }))}
               employees={employees}
               siteNames={siteNames}
             />
@@ -94,6 +95,7 @@ export function GudangTables({
               <tr>
                 <th>Nama barang</th>
                 <th>Kategori</th>
+                <th>Jenis</th>
                 <th>Stok</th>
                 <th>Harga satuan</th>
                 <th>Nilai stok</th>
@@ -106,12 +108,19 @@ export function GudangTables({
                 <tr key={i.id}>
                   <td>{i.name}</td>
                   <td className="text-muted">{i.category || "-"}</td>
+                  <td className="text-muted">{i.trackStock ? "Stok fisik" : "Sesuai permintaan"}</td>
                   <td>
-                    {i.qty} {i.unit}
-                    {i.qty <= 2 && <span className="tag tag-outline" style={{ marginLeft: 8 }}>Menipis</span>}
+                    {i.trackStock ? (
+                      <>
+                        {i.qty} {i.unit}
+                        {i.qty <= 2 && <span className="tag tag-outline" style={{ marginLeft: 8 }}>Menipis</span>}
+                      </>
+                    ) : (
+                      <span className="text-muted">&mdash;</span>
+                    )}
                   </td>
                   <td>{formatRp(i.price)}</td>
-                  <td style={{ fontWeight: 600 }}>{formatRp(i.qty * i.price)}</td>
+                  <td style={{ fontWeight: 600 }}>{i.trackStock ? formatRp(i.qty * i.price) : <span className="text-muted" style={{ fontWeight: 400 }}>&mdash;</span>}</td>
                   <td><ActiveToggle id={i.id} active={i.active} /></td>
                   <td><EditInventoryItemDialog item={i} /></td>
                 </tr>
@@ -144,19 +153,23 @@ export function GudangTables({
                   <th>Total</th>
                   <th>Peminta</th>
                   <th>Departemen</th>
+                  <th>Status</th>
                   <th></th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {pagedRequests.map((r) => (
-                  <tr key={r.id}>
+                  <tr key={r.id} style={r.cancelledAt ? { opacity: 0.55 } : undefined}>
                     <td className="text-muted">{r.date.toLocaleDateString("id-ID")}</td>
                     <td>{r.itemName}</td>
                     <td>{r.qty}</td>
                     <td style={{ fontWeight: 600 }}>{formatRp(r.qty * r.unitPrice)}</td>
                     <td>{r.requesterName}</td>
                     <td className="text-muted">{r.department || "-"}</td>
+                    <td>
+                      {r.cancelledAt ? <span className="tag tag-neutral">Dibatalkan</span> : <span className="tag tag-accent">Selesai</span>}
+                    </td>
                     <td><InventoryRequestDetailDialog request={r} /></td>
                     <td><a href={`/print/inventory-request/${r.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
                   </tr>
