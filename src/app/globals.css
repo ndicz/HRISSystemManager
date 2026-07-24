@@ -183,6 +183,16 @@ img { display: block; max-width: 100%; }
 .table td { padding: var(--space-2); border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); white-space: nowrap; }
 .table tbody tr:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
 
+/* For a .table nested inside a dialog's own bounded, already-scrolling
+   dialog-body (instead of a page-level .card) — giving the table its OWN
+   max-height+overflow on top of that creates two independently-scrolling
+   boxes that fight over which one the sticky header belongs to (the
+   header sticks to the table's own box, so once dialog-body scrolls the
+   table out from under it, the header disappears with it). Removing the
+   table's own scroll box here makes dialog-body the single scrolling
+   ancestor instead, so the sticky header attaches to that one correctly. */
+.table-nested { max-height: none; overflow: visible; }
+
 .dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent); z-index: 50; }
 .dialog { width: min(440px, 100%); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-lg); max-height: calc(100dvh - var(--space-8)); overflow-y: auto; }
 .dialog-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 20px; }

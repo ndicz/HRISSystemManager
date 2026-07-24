@@ -67,3 +67,39 @@ export async function rejectCandidate(id: string) {
   await db.candidate.update({ where: { id }, data: { status: "ditolak" } });
   revalidatePath("/rekrutmen");
 }
+
+export async function updateCandidate(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const position = String(formData.get("position") ?? "");
+  if (!name) throw new Error("Nama wajib diisi.");
+
+  await db.candidate.update({ where: { id }, data: { name, position } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "candidate.update", entity: "Candidate", entityId: id },
+  });
+
+  revalidatePath("/rekrutmen");
+}
+
+// Nothing references Candidate.id via foreign key (activation copies the
+// data into a brand-new Employee row rather than linking back), so this is
+// a plain, unguarded delete.
+export async function deleteCandidate(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const c = await db.candidate.findUnique({ where: { id } });
+  if (!c) return;
+
+  await db.candidate.delete({ where: { id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "candidate.delete", entity: "Candidate", entityId: id, detail: c.name },
+  });
+
+  revalidatePath("/rekrutmen");
+}

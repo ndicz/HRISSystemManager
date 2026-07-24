@@ -34,3 +34,42 @@ export async function setLeaveStatus(id: string, status: "disetujui" | "ditolak"
 
   revalidatePath("/cuti");
 }
+
+// Cuti quota used (cutiTerpakai) is computed live from approved
+// LeaveRequest rows, not a separately posted/cached figure — so editing or
+// deleting one, even an already-approved one, safely and automatically
+// recalculates the quota with no orphaned record left behind.
+export async function updateLeaveRequest(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const type = String(formData.get("type") ?? "Cuti Tahunan");
+  const startDate = String(formData.get("startDate") ?? "");
+  const endDate = String(formData.get("endDate") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim() || "-";
+  if (!startDate || !endDate) throw new Error("Tanggal wajib diisi.");
+
+  await db.leaveRequest.update({
+    where: { id },
+    data: { type, startDate: new Date(startDate), endDate: new Date(endDate), reason },
+  });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "leave.update", entity: "LeaveRequest", entityId: id },
+  });
+
+  revalidatePath("/cuti");
+}
+
+export async function deleteLeaveRequest(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  await db.leaveRequest.delete({ where: { id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "leave.delete", entity: "LeaveRequest", entityId: id },
+  });
+
+  revalidatePath("/cuti");
+}

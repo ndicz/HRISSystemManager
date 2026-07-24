@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import type { Candidate } from "@prisma/client";
 import { CandidateActions } from "@/components/CandidateActions";
+import { EditCandidateDialog } from "@/components/EditCandidateDialog";
+
+type PositionOption = { id: string; name: string };
 
 const STATUS_LABEL: Record<string, string> = {
   lamaran: "Lamaran Masuk",
@@ -18,7 +21,7 @@ function statusTag(status: string) {
   return "tag tag-outline";
 }
 
-export function RekrutmenTable({ candidates }: { candidates: Candidate[] }) {
+export function RekrutmenTable({ candidates, positions }: { candidates: Candidate[]; positions: PositionOption[] }) {
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
@@ -48,6 +51,7 @@ export function RekrutmenTable({ candidates }: { candidates: Candidate[] }) {
               <th>Tanggal lamar</th>
               <th>Status</th>
               <th></th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -57,6 +61,7 @@ export function RekrutmenTable({ candidates }: { candidates: Candidate[] }) {
                 <td>{c.position}</td>
                 <td className="text-muted">{c.appliedDate.toLocaleDateString("id-ID")}</td>
                 <td><span className={statusTag(c.status)}>{STATUS_LABEL[c.status]}</span></td>
+                <td><EditCandidateDialog candidate={c} positions={positions} /></td>
                 <td><CandidateActions id={c.id} status={c.status} /></td>
               </tr>
             ))}

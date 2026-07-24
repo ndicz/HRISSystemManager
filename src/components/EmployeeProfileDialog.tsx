@@ -192,7 +192,7 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
               ) : (
                 <>
                   {certs.length > 0 && (
-                    <table className="table" style={{ marginBottom: "var(--space-3)" }}>
+                    <table className="table table-nested" style={{ marginBottom: "var(--space-3)" }}>
                       <thead>
                         <tr>
                           <th>Nama sertifikat</th>

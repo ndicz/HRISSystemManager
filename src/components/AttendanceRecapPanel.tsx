@@ -171,7 +171,7 @@ export function AttendanceRecapPanel({ employeeId, employeeName }: { employeeId:
       {monthRecords.length === 0 ? (
         <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada catatan harian untuk bulan ini.</p>
       ) : (
-        <table className="table">
+        <table className="table table-nested">
           <thead>
             <tr>
               <th>No</th>

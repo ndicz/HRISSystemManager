@@ -89,12 +89,12 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Komponen Gaji &mdash; {employeeName}</div>
-            <div className="dialog-body">
+            <div className="dialog-body" style={{ maxHeight: "60vh", overflowY: "auto" }}>
               {components === null ? (
                 <p>Memuat&hellip;</p>
               ) : (
                 <>
-                  <table className="table" style={{ marginBottom: "var(--space-3)" }}>
+                  <table className="table table-nested" style={{ marginBottom: "var(--space-3)" }}>
                     <thead>
                       <tr>
                         <th>Komponen</th>

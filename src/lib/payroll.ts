@@ -108,9 +108,23 @@ export function computeMonthlyPayroll(
     },
     components,
   );
+  const entry = opts?.entry;
+
   // Completed Penugasan Tambahan for this period — earned pay on top of
-  // the regular run, independent of whether a flat PayrollRate is set.
-  const penugasanTambahan = (opts?.assignments ?? []).reduce((s, a) => s + a.cost, 0);
+  // the regular run, independent of whether a flat PayrollRate is set. A
+  // manual override replaces the assignments-sum figure entirely, same
+  // swap-before-total semantics as the other override fields below.
+  const autoPenugasanTambahan = (opts?.assignments ?? []).reduce((s, a) => s + a.cost, 0);
+  const penugasanTambahan = entry?.penugasanTambahanOverride ?? autoPenugasanTambahan;
+
+  // Gaji pokok and kasbon deduction both default to the formula-derived
+  // figure but can be corrected by hand — same override pattern as
+  // lembur/potongan below. These only replace the number shown/paid; they
+  // don't cascade into other computed lines (e.g. an overridden gaji pokok
+  // doesn't retroactively change potongan absensi), keeping each override
+  // a simple, predictable substitution.
+  const gajiPokok = entry?.gajiPokokOverride ?? base.gajiPokok;
+  const kasbonBulanIni = entry?.kasbonOverride ?? base.kasbonBulanIni;
 
   // Counted from the specific dates HR recorded (via "tanggal lembur"), not
   // a manually typed total — the dates are the source of truth either way,
@@ -130,10 +144,13 @@ export function computeMonthlyPayroll(
     // genuinely differ per person) replaces this figure entirely.
     const lemburRatePerJam = Math.round(base.gajiPokok / 173 * 1.5);
     const autoLembur = lemburRegulerCount * 8 * lemburRatePerJam + lemburMerahCount * 8 * lemburRatePerJam * 2;
-    const lembur = opts?.entry?.lemburOverride ?? autoLembur;
-    const total = base.total - base.lembur + lembur + penugasanTambahan;
+    const lembur = entry?.lemburOverride ?? autoLembur;
+    const potonganAbsensi = entry?.potonganAbsensiOverride ?? base.potonganAbsensi;
+    const potongan = potonganAbsensi + base.bpjs + kasbonBulanIni;
+    const total = gajiPokok - potongan + lembur + penugasanTambahan;
     return {
       ...base,
+      gajiPokok, potonganAbsensi, kasbonBulanIni, potongan,
       lembur, total,
       potonganIzin: 0, potonganAlpha: 0, potonganTerlambat: 0,
       lemburReguler: 0, lemburMerah: 0, allowance: 0, penugasanTambahan,
@@ -141,7 +158,7 @@ export function computeMonthlyPayroll(
     };
   }
 
-  const { rate, entry } = opts;
+  const { rate } = opts;
   // A per-employee-per-period override (set via the "Lembur & Allowance"
   // dialog) replaces the attendance×rate calculation entirely for that one
   // category, for cases HR needs to correct by hand.
@@ -154,17 +171,17 @@ export function computeMonthlyPayroll(
   // Rates genuinely differ per person in practice — a manual override (Rp)
   // replaces the reguler+merah×rate figure entirely when HR sets one.
   const lembur = entry?.lemburOverride ?? (lemburReguler + lemburMerah);
-  const potongan = potonganIzin + potonganAlpha + potonganTerlambat + base.bpjs + base.kasbonBulanIni;
-  const total = base.gajiPokok - potongan + lembur + allowance + penugasanTambahan;
+  const potongan = potonganIzin + potonganAlpha + potonganTerlambat + base.bpjs + kasbonBulanIni;
+  const total = gajiPokok - potongan + lembur + allowance + penugasanTambahan;
 
   return {
-    gajiPokok: base.gajiPokok,
+    gajiPokok,
     potonganAbsensi: 0,
     potonganIzin, potonganAlpha, potonganTerlambat,
     bpjs: base.bpjs,
     bpjsKesehatan: base.bpjsKesehatan,
     bpjsKetenagakerjaan: base.bpjsKetenagakerjaan,
-    kasbonBulanIni: base.kasbonBulanIni,
+    kasbonBulanIni,
     lembur, lemburReguler, lemburMerah, allowance, penugasanTambahan,
     potongan, total,
     usesFlatRate: true as const,

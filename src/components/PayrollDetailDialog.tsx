@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { PayrollEntry, OvertimeDay } from "@prisma/client";
 import { formatRp, computeMonthlyPayroll } from "@/lib/payroll";
-import { updateBpjsOverride } from "@/app/(app)/penggajian/actions";
+import { updateBpjsOverride, updatePayrollAmounts } from "@/app/(app)/penggajian/actions";
 import { PayrollEntryPanel } from "@/components/PayrollEntryPanel";
 import { AttendanceRecapPanel } from "@/components/AttendanceRecapPanel";
 import { PayGajiButton } from "@/components/PayGajiButton";
@@ -58,26 +58,71 @@ export function PayrollDetailDialog({
       .finally(() => setBpjsPending(false));
   }
 
+  // Direct inline edits for the four amounts that had no override anywhere
+  // else (gaji pokok, potongan absensi, penugasan tambahan, kasbon) — same
+  // null-means-auto convention as BPJS above, but saved separately since
+  // this form's fields don't overlap with either the BPJS box or the
+  // "Lembur & Potongan" tab's own overrides.
+  const [gajiPokok, setGajiPokok] = useState(entry?.gajiPokokOverride?.toString() ?? "");
+  const [potonganAbsensi, setPotonganAbsensi] = useState(entry?.potonganAbsensiOverride?.toString() ?? "");
+  const [penugasanTambahan, setPenugasanTambahan] = useState(entry?.penugasanTambahanOverride?.toString() ?? "");
+  const [kasbon, setKasbon] = useState(entry?.kasbonOverride?.toString() ?? "");
+  const [amountsPending, setAmountsPending] = useState(false);
+  const [amountsError, setAmountsError] = useState("");
+  const [amountsSaved, setAmountsSaved] = useState(false);
+
+  function toOverride(v: string): number | null {
+    return v.trim() ? Math.max(0, parseInt(v, 10) || 0) : null;
+  }
+
+  function saveAmounts() {
+    setAmountsError("");
+    setAmountsPending(true);
+    setAmountsSaved(false);
+    updatePayrollAmounts(employeeId, period, {
+      gajiPokokOverride: toOverride(gajiPokok),
+      potonganAbsensiOverride: toOverride(potonganAbsensi),
+      penugasanTambahanOverride: toOverride(penugasanTambahan),
+      kasbonOverride: toOverride(kasbon),
+    })
+      .then(() => setAmountsSaved(true))
+      .catch((err) => setAmountsError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setAmountsPending(false));
+  }
+
   function close() {
     setOpen(false);
     setTab("ringkasan");
   }
 
-  const rows: [string, number][] = p.usesFlatRate
+  type Row = { key: string; label: string; amount: number; editable?: { value: string; onChange: (v: string) => void } };
+
+  const gajiPokokEdit = { value: gajiPokok, onChange: (v: string) => { setGajiPokok(v); setAmountsSaved(false); } };
+  const potonganAbsensiEdit = { value: potonganAbsensi, onChange: (v: string) => { setPotonganAbsensi(v); setAmountsSaved(false); } };
+  const penugasanTambahanEdit = { value: penugasanTambahan, onChange: (v: string) => { setPenugasanTambahan(v); setAmountsSaved(false); } };
+  const kasbonEdit = { value: kasbon, onChange: (v: string) => { setKasbon(v); setAmountsSaved(false); } };
+
+  const rows: Row[] = p.usesFlatRate
     ? [
-        ["Gaji pokok", p.gajiPokok],
-        ["Potongan izin", -p.potonganIzin],
-        ["Potongan alfa", -p.potonganAlpha],
-        ["Potongan terlambat", -p.potonganTerlambat],
-        ["Lembur reguler", p.lemburReguler],
-        ["Lembur merah", p.lemburMerah],
-        ["Allowance", p.allowance],
+        { key: "gajiPokok", label: "Gaji pokok", amount: p.gajiPokok, editable: gajiPokokEdit },
+        { key: "izin", label: "Potongan izin", amount: -p.potonganIzin },
+        { key: "alfa", label: "Potongan alfa", amount: -p.potonganAlpha },
+        { key: "terlambat", label: "Potongan terlambat", amount: -p.potonganTerlambat },
+        { key: "lemburReguler", label: "Lembur reguler", amount: p.lemburReguler },
+        { key: "lemburMerah", label: "Lembur merah", amount: p.lemburMerah },
+        { key: "allowance", label: "Allowance", amount: p.allowance },
       ]
     : [
-        ["Gaji pokok", p.gajiPokok],
-        ["Potongan absensi", -p.potonganAbsensi],
-        ["Lembur", p.lembur],
+        { key: "gajiPokok", label: "Gaji pokok", amount: p.gajiPokok, editable: gajiPokokEdit },
+        { key: "potonganAbsensi", label: "Potongan absensi", amount: -p.potonganAbsensi, editable: potonganAbsensiEdit },
+        { key: "lembur", label: "Lembur", amount: p.lembur },
       ];
+  rows.push(
+    { key: "penugasan", label: "Penugasan tambahan", amount: p.penugasanTambahan, editable: penugasanTambahanEdit },
+    { key: "bpjsKes", label: "Potongan BPJS Kesehatan", amount: -p.bpjsKesehatan },
+    { key: "bpjsTk", label: "Potongan BPJS Ketenagakerjaan", amount: -p.bpjsKetenagakerjaan },
+    { key: "kasbon", label: "Potongan kasbon", amount: -p.kasbonBulanIni, editable: kasbonEdit },
+  );
 
   return (
     <>
@@ -98,19 +143,37 @@ export function PayrollDetailDialog({
             <div className="dialog-body" style={{ maxHeight: "62vh", overflowY: "auto" }}>
               {tab === "ringkasan" && (
                 <>
-                  <table className="table" style={{ marginBottom: "var(--space-4)" }}>
+                  <table className="table table-nested" style={{ marginBottom: "var(--space-2)" }}>
                     <thead><tr><th>Komponen</th><th>Jumlah</th></tr></thead>
                     <tbody>
-                      {rows.map(([label, amount]) => (
-                        <tr key={label}><td>{label}</td><td>{formatRp(amount)}</td></tr>
+                      {rows.map((r) => (
+                        <tr key={r.key}>
+                          <td>{r.label}</td>
+                          <td>
+                            {r.editable ? (
+                              <input
+                                className="input"
+                                type="number"
+                                min={0}
+                                placeholder={`Otomatis (${formatRp(Math.abs(r.amount))})`}
+                                value={r.editable.value}
+                                onChange={(e) => r.editable!.onChange(e.target.value)}
+                                style={{ maxWidth: 180, minHeight: 30, fontSize: 13 }}
+                              />
+                            ) : formatRp(r.amount)}
+                          </td>
+                        </tr>
                       ))}
-                      <tr><td>Penugasan tambahan</td><td>{formatRp(p.penugasanTambahan)}</td></tr>
-                      <tr><td>Potongan BPJS Kesehatan</td><td>-{formatRp(p.bpjsKesehatan)}</td></tr>
-                      <tr><td>Potongan BPJS Ketenagakerjaan</td><td>-{formatRp(p.bpjsKetenagakerjaan)}</td></tr>
-                      <tr><td>Potongan kasbon</td><td>-{formatRp(p.kasbonBulanIni)}</td></tr>
                       <tr style={{ fontWeight: 700 }}><td>Total diterima</td><td>{formatRp(p.total)}</td></tr>
                     </tbody>
                   </table>
+                  <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
+                    {amountsError && <span style={{ fontSize: 12, color: "var(--color-accent-800)" }}>{amountsError}</span>}
+                    {amountsSaved && !amountsPending && <span style={{ fontSize: 12, color: "var(--color-accent)" }}>Tersimpan.</span>}
+                    <button type="button" className="btn btn-secondary" disabled={amountsPending} onClick={saveAmounts}>
+                      {amountsPending ? "Menyimpan…" : "Simpan jumlah"}
+                    </button>
+                  </div>
 
                   <div style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)" }}>
                     <div className="card-kicker" style={{ marginBottom: "var(--space-2)" }}>Potongan BPJS (kosongkan = pakai rumus otomatis)</div>

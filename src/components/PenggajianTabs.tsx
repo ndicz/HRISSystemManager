@@ -157,82 +157,102 @@ export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; 
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-        <div className="seg" role="radiogroup" style={{ width: "fit-content" }}>
-          <label className="seg-opt"><input type="radio" checked={tab === "gaji"} onChange={() => setTab("gaji")} /> Gaji Bulanan</label>
-          <label className="seg-opt"><input type="radio" checked={tab === "thr"} onChange={() => setTab("thr")} /> THR</label>
-          <label className="seg-opt"><input type="radio" checked={tab === "insentif"} onChange={() => setTab("insentif")} /> Insentif/Bonus</label>
-        </div>
-        <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-          <input
-            type="text"
-            className="input"
-            placeholder="Cari nama, ID, tempat kerja..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            style={{ width: "100%", maxWidth: 220 }}
-          />
-          <select className="input" value={siteFilter} onChange={(e) => setSiteFilter(e.target.value)} style={{ maxWidth: 180 }}>
-            <option value="">Semua tempat kerja</option>
-            {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <select className="input" value={positionFilter} onChange={(e) => setPositionFilter(e.target.value)} style={{ maxWidth: 180 }}>
-            <option value="">Semua posisi</option>
-            {positionOptions.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
+      <div className="seg" role="radiogroup" style={{ width: "fit-content", marginBottom: "var(--space-3)" }}>
+        <label className="seg-opt"><input type="radio" checked={tab === "gaji"} onChange={() => setTab("gaji")} /> Gaji Bulanan</label>
+        <label className="seg-opt"><input type="radio" checked={tab === "thr"} onChange={() => setTab("thr")} /> THR</label>
+        <label className="seg-opt"><input type="radio" checked={tab === "insentif"} onChange={() => setTab("insentif")} /> Insentif/Bonus</label>
+      </div>
+      <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
+        <input
+          type="text"
+          className="input"
+          placeholder="Cari nama, ID, tempat kerja..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          style={{ width: "100%", maxWidth: 220 }}
+        />
+        <select className="input" value={siteFilter} onChange={(e) => setSiteFilter(e.target.value)} style={{ maxWidth: 180 }}>
+          <option value="">Semua tempat kerja</option>
+          {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <select className="input" value={positionFilter} onChange={(e) => setPositionFilter(e.target.value)} style={{ maxWidth: 180 }}>
+          <option value="">Semua posisi</option>
+          {positionOptions.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
       </div>
 
       {tab === "gaji" && (
         <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
-            <div className="field" style={{ maxWidth: 220, marginBottom: 0 }}>
-              <label htmlFor="gaji-period">Periode</label>
-              <select className="input" id="gaji-period" value={period} onChange={(e) => setPeriod(e.target.value)}>
-                {monthOptions().map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
+          <div style={{ marginBottom: "var(--space-4)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "var(--space-3)", marginBottom: "var(--space-3)" }}>
+              <div className="field" style={{ maxWidth: 220, marginBottom: 0 }}>
+                <label htmlFor="gaji-period">Periode</label>
+                <select className="input" id="gaji-period" value={period} onChange={(e) => setPeriod(e.target.value)}>
+                  {monthOptions().map((p) => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={filteredEmployees.length === 0}
+                  onClick={() => window.open(`/print/slip-batch?ids=${filteredEmployees.map((e) => e.id).join(",")}&period=${period}`, "_blank")}
+                >
+                  Cetak slip ({filteredEmployees.length})
+                </button>
+                <button type="button" className="btn btn-secondary" disabled={bankReadyRows.length === 0} onClick={downloadBankTransfer}>
+                  Transfer bank
+                </button>
+                <PayrollRateDialog period={period} sites={sites} rates={rates} />
+                <PayGajiButton
+                  employeeIds={unpaidRows.map((r) => r.e.id)}
+                  period={period}
+                  totalAmount={unpaidTotal}
+                  label={`Bayar Gaji (${unpaidRows.length} belum dibayar)`}
+                  onPaid={() => setSelectedIds(new Set())}
+                />
+              </div>
             </div>
-            <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={filteredEmployees.length === 0}
-                onClick={() => window.open(`/print/slip-batch?ids=${filteredEmployees.map((e) => e.id).join(",")}&period=${period}`, "_blank")}
+
+            {selectedIds.size > 0 && (
+              <div
+                className="card"
+                style={{
+                  padding: "var(--space-3)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "var(--space-2)",
+                  background: "color-mix(in srgb, var(--color-accent) 8%, transparent)",
+                }}
               >
-                Cetak slip ({filteredEmployees.length} karyawan{siteFilter || positionFilter ? " · sesuai filter" : ""})
-              </button>
-              <button type="button" className="btn btn-secondary" disabled={bankReadyRows.length === 0} onClick={downloadBankTransfer}>
-                Download untuk transfer bank
-              </button>
-              {selectedIds.size > 0 && (
-                <>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{selectedIds.size} karyawan dipilih</span>
+                <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     className="btn btn-secondary"
                     onClick={() => window.open(`/print/slip-batch?ids=${selectedRows.map((r) => r.e.id).join(",")}&period=${period}`, "_blank")}
                   >
-                    Cetak Slip Terpilih ({selectedIds.size})
+                    Cetak Slip Terpilih
                   </button>
                   <PayGajiButton
                     employeeIds={selectedRows.map((r) => r.e.id)}
                     period={period}
                     totalAmount={selectedTotal}
-                    label={`Bayar Gaji Terpilih (${selectedIds.size})`}
+                    label="Bayar Gaji Terpilih"
                     onPaid={() => setSelectedIds(new Set())}
                   />
-                </>
-              )}
-              <PayGajiButton
-                employeeIds={unpaidRows.map((r) => r.e.id)}
-                period={period}
-                totalAmount={unpaidTotal}
-                label={`Bayar Gaji (${unpaidRows.length} belum dibayar${siteFilter || positionFilter ? " · sesuai filter" : ""})`}
-                onPaid={() => setSelectedIds(new Set())}
-              />
-              <PayrollRateDialog period={period} sites={sites} rates={rates} />
-            </div>
+                </div>
+              </div>
+            )}
+            {(siteFilter || positionFilter) && (
+              <p style={{ fontSize: 12, opacity: 0.6, marginTop: "var(--space-2)", marginBottom: 0 }}>
+                &quot;Cetak slip&quot; dan &quot;Bayar Gaji&quot; di atas mengikuti filter tempat kerja/posisi yang sedang aktif.
+              </p>
+            )}
           </div>
 
           {bankMissingCount > 0 && (

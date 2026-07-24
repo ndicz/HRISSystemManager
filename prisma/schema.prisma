@@ -211,9 +211,13 @@ model PayrollEntry {
   potonganIzinOverride      Int?
   potonganAlphaOverride     Int?
   potonganTerlambatOverride Int?
+  potonganAbsensiOverride   Int? // no-rate branch's proportional potongan absensi
   // Rate lembur beda-beda per orang di dunia nyata — kosongkan untuk hitung
   // otomatis dari jumlah OvertimeDay, isi untuk pakai angka manual.
   lemburOverride            Int?
+  gajiPokokOverride         Int?
+  penugasanTambahanOverride Int? // ganti total dari jumlah Assignment.cost
+  kasbonOverride            Int? // ganti potongan kasbon bulan ini
   // Set together when the monthly payroll run for this employee/period is
   // paid out via "Bayar Gaji" — paid stays false until then so re-running
   // payment for a site skips whoever's already been paid instead of
@@ -332,6 +336,7 @@ model Invoice {
   period       String   // "2026-07"
   status       String   @default("draft") // draft | terkirim | lunas
   dueDate      DateTime?
+  docHandoverDate DateTime? // tanggal dokumen invoice fisik diserahkan ke klien
   gajiTotal    Int
   feeTotal     Int
   total        Int
@@ -350,7 +355,12 @@ model InvoiceBj {
   client      Client        @relation(fields: [clientId], references: [id])
   date        DateTime
   dueDate     DateTime
+  docHandoverDate DateTime? // tanggal dokumen invoice fisik diserahkan ke klien
   withPpn     Boolean       @default(true)
+  jobTitle    String?       // judul pekerjaan/proyek yang ditagihkan
+  discountDesc    String?   // keterangan diskon, mis. "Diskon pelanggan lama"
+  discountPercent Int       @default(0) // 0-100, persen dari subtotal
+  signerName  String?       // nama penandatangan pihak WSP di invoice ini
   status      String        @default("draft") // draft | terkirim | lunas
   items       InvoiceBjItem[]
   createdAt   DateTime      @default(now())
@@ -384,6 +394,7 @@ model CashAccount {
   id       String  @id @default(cuid())
   name     String
   opening  Int     @default(0)
+  kind     String  @default("besar") // "kecil" | "besar" — memisahkan kas kecil (petty cash) dari kas besar (rekening bank/operasional)
 
   transactions Transaction[]
 }
@@ -426,4 +437,43 @@ model ClosedPeriod {
   period   String   @unique // "2026-07"
   closedAt DateTime @default(now())
   closedBy String?
+}
+
+// ── Gudang (inventory) ──────────────────────────────────────────────────
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  name      String
+  unit      String   // satuan, mis. "unit", "pcs", "set"
+  qty       Int      @default(0) // stok saat ini
+  price     Int      // harga satuan sekarang (Rp) — dipakai sebagai default saat permintaan baru
+  category  String?
+  requests  InventoryRequest[]
+  createdAt DateTime @default(now())
+
+  @@index([name])
+}
+
+// Satu baris = satu kali barang diambil/diminta dari gudang. itemName dan
+// unitPrice di-snapshot pada saat pengambilan (bukan diambil live dari
+// InventoryItem) supaya buktinya tetap akurat meski harga/nama barang di
+// katalog berubah belakangan — sama seperti Transaction.amount yang juga
+// tidak pernah dihitung ulang dari sumbernya.
+model InventoryRequest {
+  id            String        @id @default(cuid())
+  itemId        String
+  item          InventoryItem @relation(fields: [itemId], references: [id])
+  itemName      String
+  qty           Int
+  unitPrice     Int
+  requesterName String
+  department    String?
+  note          String?
+  date          DateTime      @default(now())
+  transactionId String?
+  createdById   String?
+  createdAt     DateTime      @default(now())
+
+  @@index([itemId])
+  @@index([date])
 }

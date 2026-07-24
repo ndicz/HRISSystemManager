@@ -99,7 +99,7 @@ export function ImportBpjsDialog() {
               {(status === "done" || status === "applying") && rows && (
                 <>
                   <p style={{ marginTop: 0 }}>{rows.length} baris terbaca.</p>
-                  <table className="table">
+                  <table className="table table-nested">
                     <thead><tr><th>ID</th><th>Nama</th><th>BPJS Kesehatan</th><th>BPJS Ketenagakerjaan</th></tr></thead>
                     <tbody>
                       {rows.map((row, i) => (

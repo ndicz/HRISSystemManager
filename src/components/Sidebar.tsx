@@ -107,6 +107,13 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
       <path d="M9 21v-4h6v4" />
     </Icon>
   ),
+  "/gudang": (
+    <Icon>
+      <path d="M3 8l9-5 9 5-9 5-9-5z" />
+      <path d="M3 8v9l9 5 9-5V8" />
+      <line x1="12" y1="13" x2="12" y2="22" />
+    </Icon>
+  ),
   "/pajak": (
     <Icon>
       <path d="M6 2h12v19l-3-2-3 2-3-2-3 2V2z" />

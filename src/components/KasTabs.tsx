@@ -3,13 +3,16 @@
 import { useMemo, useState, useTransition } from "react";
 import type { Account, CashAccount, Payable, Transaction } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
-import { laporanLabaRugi, monthKey, saldoKasSampai, saldoKasSebelum } from "@/lib/finance";
+import { laporanLabaRugi, monthKey, saldoKasSampai, saldoKasSebelum, AGING_BUCKET_ORDER, type AgingRow } from "@/lib/finance";
 import { AddTransactionDialog } from "@/components/AddTransactionDialog";
+import { EditTransactionDialog } from "@/components/EditTransactionDialog";
 import { AddAccountDialog } from "@/components/AddAccountDialog";
+import { EditAccountDialog } from "@/components/EditAccountDialog";
 import { AddPayableDialog } from "@/components/AddPayableDialog";
 import { PayableActions } from "@/components/PayableActions";
 import { TransferDialog } from "@/components/TransferDialog";
 import { BudgetEditButton } from "@/components/BudgetEditButton";
+import { DocHandoverDateInput } from "@/components/DocHandoverDateInput";
 import { closePeriod, reopenPeriod } from "@/app/(app)/kas/actions";
 
 type Props = {
@@ -18,9 +21,10 @@ type Props = {
   transactions: (Transaction & { account: Account; cashAccount: CashAccount })[];
   payables: Payable[];
   closedPeriods: string[];
+  agingRows: AgingRow[];
 };
 
-const TABS = ["transaksi", "labarugi", "neraca", "aruskas", "coa", "hutang", "rekening", "anggaran"] as const;
+const TABS = ["transaksi", "labarugi", "neraca", "aruskas", "coa", "piutang", "hutang", "rekening", "anggaran"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABEL: Record<Tab, string> = {
   transaksi: "Transaksi",
@@ -28,6 +32,7 @@ const TAB_LABEL: Record<Tab, string> = {
   neraca: "Neraca",
   aruskas: "Arus Kas",
   coa: "Daftar Akun (COA)",
+  piutang: "Piutang Usaha",
   hutang: "Hutang Usaha",
   rekening: "Rekening",
   anggaran: "Anggaran",
@@ -38,7 +43,7 @@ function monthOptions() {
   return names.map((n, i) => ({ value: "2026-" + String(i + 1).padStart(2, "0"), label: n + " 2026" }));
 }
 
-export function KasTabs({ accounts, cashAccounts, transactions, payables, closedPeriods }: Props) {
+export function KasTabs({ accounts, cashAccounts, transactions, payables, closedPeriods, agingRows }: Props) {
   const [tab, setTab] = useState<Tab>("transaksi");
   const [period, setPeriod] = useState(() => monthKey(new Date()));
   const [qTx, setQTx] = useState("");
@@ -77,8 +82,13 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
 
   const lr = useMemo(() => laporanLabaRugi(accounts, transactions, period), [accounts, transactions, period]);
 
-  const piutangKasbon = 0; // computed on server pages that need it; kept simple here
-  const totalAset = saldoAkhir + piutangKasbon;
+  const totalPiutang = agingRows.reduce((s, r) => s + r.amount, 0);
+  const agingTotals = AGING_BUCKET_ORDER.map((b) => ({
+    bucket: b,
+    total: agingRows.filter((r) => r.bucket === b).reduce((s, r) => s + r.amount, 0),
+  }));
+
+  const totalAset = saldoAkhir + totalPiutang;
 
   const cashAccountBalance = (id: string) => {
     const acc = cashAccounts.find((c) => c.id === id);
@@ -119,10 +129,11 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
         </div>
       )}
 
-      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card"><div className="card-kicker">Saldo kas (s.d. akhir periode)</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(saldoAkhir)}</div></div>
         <div className="card"><div className="card-kicker">Dana masuk periode ini</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumMasuk)}</div></div>
         <div className="card"><div className="card-kicker">Dana keluar periode ini</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumKeluar)}</div></div>
+        <div className="card"><div className="card-kicker">Total piutang belum lunas</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalPiutang)}</div></div>
       </div>
 
       <div className="seg" role="radiogroup" style={{ width: "fit-content", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
@@ -136,42 +147,56 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
 
       {tab === "transaksi" && (
         <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)", flexWrap: "wrap", gap: "var(--space-2)" }}>
-            <input
-              type="text"
-              className="input"
-              placeholder="Cari akun, rekening, keterangan..."
-              value={qTx}
-              onChange={(e) => setQTx(e.target.value)}
-              style={{ width: "100%", maxWidth: 280 }}
-            />
-            <AddTransactionDialog accounts={accounts} cashAccounts={cashAccounts} disabled={isTodayPeriodClosed} />
-          </div>
-          <div className="card">
-            {filteredTx.length === 0 ? (
-              <p style={{ fontSize: 13, opacity: 0.6 }}>{periodTx.length === 0 ? "Belum ada transaksi periode ini." : "Tidak ada hasil."}</p>
-            ) : (
-              <table className="table">
-                <thead><tr><th>Tanggal</th><th>Akun</th><th>Rekening</th><th>Keterangan</th><th>Jumlah</th><th>Lampiran</th></tr></thead>
-                <tbody>
-                  {filteredTx.map((t) => (
-                    <tr key={t.id}>
-                      <td className="text-muted">{t.date.toLocaleDateString("id-ID")}</td>
-                      <td>{t.account.code} · {t.account.name}</td>
-                      <td>{t.cashAccount.name}</td>
-                      <td>{t.desc}</td>
-                      <td className={t.type === "masuk" ? "text-accent" : ""}>{t.type === "masuk" ? "+" : "-"}{formatRp(t.amount)}</td>
-                      <td>
-                        {t.attachmentUrl ? (
-                          <a href={t.attachmentUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Lihat</a>
-                        ) : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <input
+            type="text"
+            className="input"
+            placeholder="Cari akun, rekening, keterangan..."
+            value={qTx}
+            onChange={(e) => setQTx(e.target.value)}
+            style={{ width: "100%", maxWidth: 280, marginBottom: "var(--space-4)" }}
+          />
+          {(["kecil", "besar"] as const).map((kind) => {
+            const kindAccounts = cashAccounts.filter((c) => c.kind === kind);
+            const kindTx = filteredTx.filter((t) => t.cashAccount.kind === kind);
+            return (
+              <div key={kind} style={{ marginBottom: "var(--space-6)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)", flexWrap: "wrap", gap: "var(--space-2)" }}>
+                  <div className="card-kicker">Transaksi Kas {kind === "kecil" ? "Kecil" : "Besar"}</div>
+                  <AddTransactionDialog accounts={accounts} cashAccounts={kindAccounts} disabled={isTodayPeriodClosed} />
+                </div>
+                <div className="card">
+                  {kindTx.length === 0 ? (
+                    <p style={{ fontSize: 13, opacity: 0.6 }}>{periodTx.filter((t) => t.cashAccount.kind === kind).length === 0 ? "Belum ada transaksi periode ini." : "Tidak ada hasil."}</p>
+                  ) : (
+                    <table className="table">
+                      <thead><tr><th>Tanggal</th><th>Akun</th><th>Rekening</th><th>Keterangan</th><th>Jumlah</th><th>Lampiran</th><th></th></tr></thead>
+                      <tbody>
+                        {kindTx.map((t) => (
+                          <tr key={t.id}>
+                            <td className="text-muted">{t.date.toLocaleDateString("id-ID")}</td>
+                            <td>{t.account.code} · {t.account.name}</td>
+                            <td>{t.cashAccount.name}</td>
+                            <td>{t.desc}</td>
+                            <td className={t.type === "masuk" ? "text-accent" : ""}>{t.type === "masuk" ? "+" : "-"}{formatRp(t.amount)}</td>
+                            <td>
+                              {t.attachmentUrl ? (
+                                <a href={t.attachmentUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Lihat</a>
+                              ) : "-"}
+                            </td>
+                            <td>
+                              {!t.isTransfer && (
+                                <EditTransactionDialog tx={t} accounts={accounts} cashAccounts={cashAccounts} disabled={closedList.includes(monthKey(t.date))} />
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </>
       )}
 
@@ -207,6 +232,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
             <tbody>
               <tr><td style={{ fontWeight: 600 }}>Aset</td><td></td></tr>
               <tr><td className="text-muted" style={{ paddingLeft: 20 }}>Kas &amp; Setara Kas</td><td style={{ textAlign: "right" }}>{formatRp(saldoAkhir)}</td></tr>
+              <tr><td className="text-muted" style={{ paddingLeft: 20 }}>Piutang Usaha</td><td style={{ textAlign: "right" }}>{formatRp(totalPiutang)}</td></tr>
               <tr><td style={{ fontWeight: 600, borderTop: "1px solid var(--color-divider)" }}>Total Aset</td><td style={{ textAlign: "right", fontWeight: 600, borderTop: "1px solid var(--color-divider)" }}>{formatRp(totalAset)}</td></tr>
               <tr><td style={{ fontWeight: 600, paddingTop: 12 }}>Liabilitas</td><td></td></tr>
               <tr><td className="text-muted" style={{ paddingLeft: 20 }}>Tidak ada liabilitas tercatat</td><td style={{ textAlign: "right" }}>{formatRp(0)}</td></tr>
@@ -233,15 +259,63 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
         </div>
       )}
 
+      {tab === "piutang" && (
+        <>
+          <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+            {agingTotals.map((b) => (
+              <div key={b.bucket} className="card" style={{ padding: "var(--space-3)" }}>
+                <div className="card-kicker" style={{ fontSize: 11 }}>{b.bucket}</div>
+                <div style={{ fontWeight: 600 }}>{formatRp(b.total)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            {agingRows.length === 0 ? (
+              <p style={{ fontSize: 13, opacity: 0.6 }}>Tidak ada piutang tertunggak.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th>Sumber</th>
+                    <th>Jatuh tempo</th>
+                    <th>Tgl. penyerahan dokumen</th>
+                    <th>Jumlah</th>
+                    <th>Umur</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {agingRows.map((r) => (
+                    <tr key={r.type + r.id}>
+                      <td>{r.name}</td>
+                      <td className="text-muted">{r.source}</td>
+                      <td className="text-muted">{r.dueDate.toLocaleDateString("id-ID")}</td>
+                      <td><DocHandoverDateInput type={r.type} id={r.id} value={r.docHandoverDate} /></td>
+                      <td style={{ fontWeight: 600 }}>{formatRp(r.amount)}</td>
+                      <td><span className={r.bucket === "Belum jatuh tempo" ? "tag tag-accent" : "tag tag-neutral"}>{r.bucket}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+
       {tab === "coa" && (
         <>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}><AddAccountDialog /></div>
           <div className="card">
             <table className="table">
-              <thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th></tr></thead>
+              <thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th></th></tr></thead>
               <tbody>
                 {accounts.map((a) => (
-                  <tr key={a.id}><td className="text-muted">{a.code}</td><td>{a.name}</td><td><span className={a.type === "masuk" ? "tag tag-accent" : "tag tag-neutral"}>{a.type === "masuk" ? "Pendapatan" : "Beban"}</span></td></tr>
+                  <tr key={a.id}>
+                    <td className="text-muted">{a.code}</td>
+                    <td>{a.name}</td>
+                    <td><span className={a.type === "masuk" ? "tag tag-accent" : "tag tag-neutral"}>{a.type === "masuk" ? "Pendapatan" : "Beban"}</span></td>
+                    <td><EditAccountDialog account={a} /></td>
+                  </tr>
                 ))}
               </tbody>
             </table>

@@ -75,7 +75,7 @@ export function PayrollEntryPanel({
       <div style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)", marginBottom: "var(--space-4)" }}>
         <div className="card-kicker" style={{ marginBottom: "var(--space-2)" }}>Tanggal lembur</div>
         {overtimeDays.length > 0 && (
-          <table className="table" style={{ marginBottom: "var(--space-2)" }}>
+          <table className="table table-nested" style={{ marginBottom: "var(--space-2)" }}>
             <thead>
               <tr>
                 <th>Tanggal</th>

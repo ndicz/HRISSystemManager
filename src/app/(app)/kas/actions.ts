@@ -82,6 +82,45 @@ export async function addTransaction(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function updateTransaction(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const existing = await db.transaction.findUnique({ where: { id } });
+  if (!existing) throw new Error("Transaksi tidak ditemukan.");
+
+  const dateRaw = String(formData.get("date") ?? "");
+  const date = dateRaw ? new Date(dateRaw) : existing.date;
+  if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
+
+  // A correction can move a transaction across periods — both the period it
+  // used to belong to and the one it's moving into must still be open.
+  await assertPeriodOpen(existing.date);
+  await assertPeriodOpen(date);
+
+  const accountCoaId = String(formData.get("accountCoaId") ?? "");
+  const cashAccountId = String(formData.get("cashAccountId") ?? "");
+  const desc = String(formData.get("desc") ?? "").trim() || "Transaksi kas";
+  const amount = Math.max(0, parseInt(String(formData.get("amount") ?? "0"), 10) || 0);
+  const type = String(formData.get("type") ?? "keluar");
+
+  if (!accountCoaId || !cashAccountId || !amount) {
+    throw new Error("Akun, rekening, dan jumlah wajib diisi.");
+  }
+
+  await db.transaction.update({
+    where: { id },
+    data: { date, accountCoaId, cashAccountId, desc, amount, type },
+  });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "transaction.update", entity: "Transaction", entityId: id },
+  });
+
+  revalidatePath("/kas");
+  revalidatePath("/");
+}
+
 export async function addAccount(formData: FormData) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
@@ -100,6 +139,60 @@ export async function setBudget(accountId: string, budget: number) {
   if (!session?.user) throw new Error("Unauthorized");
 
   await db.account.update({ where: { id: accountId }, data: { budget } });
+  revalidatePath("/kas");
+}
+
+// Codes several actions across the app look up directly (bayarGaji, THR,
+// bonus, penugasan tambahan, hutang usaha, pembayaran invoice, transfer
+// antar rekening) — those postings fail silently (an `if (account && ...)`
+// guard just skips the Kas entry) if the code goes missing, so renaming or
+// deleting these specific ones is blocked rather than breaking Kas posting
+// invisibly.
+const PROTECTED_ACCOUNT_CODES = ["4001", "5001", "5007", "5008", "5009", "5010", "5011", "9001"];
+
+export async function updateAccount(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const account = await db.account.findUnique({ where: { id } });
+  if (!account) throw new Error("Akun tidak ditemukan.");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const type = String(formData.get("type") ?? account.type);
+  if (!name) throw new Error("Nama akun wajib diisi.");
+  if (PROTECTED_ACCOUNT_CODES.includes(account.code) && type !== account.type) {
+    throw new Error(`Akun ${account.code} dipakai otomatis oleh sistem — jenisnya (masuk/keluar) tidak bisa diubah.`);
+  }
+
+  await db.account.update({ where: { id }, data: { name, type } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "account.update", entity: "Account", entityId: id },
+  });
+
+  revalidatePath("/kas");
+}
+
+export async function deleteAccount(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const account = await db.account.findUnique({ where: { id }, include: { _count: { select: { transactions: true } } } });
+  if (!account) return;
+
+  if (PROTECTED_ACCOUNT_CODES.includes(account.code)) {
+    throw new Error(`Akun ${account.code} · ${account.name} dipakai otomatis oleh sistem (gaji, THR, bonus, dll) dan tidak bisa dihapus.`);
+  }
+  if (account._count.transactions > 0) {
+    throw new Error(`Akun tidak bisa dihapus — masih ada ${account._count.transactions} transaksi yang tercatat di akun ini.`);
+  }
+
+  await db.account.delete({ where: { id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "account.delete", entity: "Account", entityId: id, detail: `${account.code} ${account.name}` },
+  });
+
   revalidatePath("/kas");
 }
 
@@ -126,7 +219,7 @@ export async function payPayable(id: string) {
   if (!payable || payable.status === "lunas") return;
 
   const account = await db.account.findFirst({ where: { code: "5009" } });
-  const cashAccount = await db.cashAccount.findFirst();
+  const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
   if (account && cashAccount) {
     await db.transaction.create({
       data: {

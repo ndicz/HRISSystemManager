@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { LeaveRequest, Employee, Site, Position } from "@prisma/client";
 import { LeaveActions } from "@/components/LeaveActions";
+import { EditLeaveRequestDialog } from "@/components/EditLeaveRequestDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
 
@@ -75,6 +76,7 @@ export function CutiTable({ requests }: { requests: Req[] }) {
               <th>Alasan</th>
               <th>Status</th>
               <th></th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -87,6 +89,7 @@ export function CutiTable({ requests }: { requests: Req[] }) {
                 </td>
                 <td>{r.reason}</td>
                 <td><span className={statusTag(r.status)}>{statusLabel(r.status)}</span></td>
+                <td><EditLeaveRequestDialog request={{ id: r.id, employeeName: r.employee.name, type: r.type, startDate: r.startDate, endDate: r.endDate, reason: r.reason }} /></td>
                 <td><LeaveActions id={r.id} disabled={r.status !== "menunggu"} /></td>
               </tr>
             ))}

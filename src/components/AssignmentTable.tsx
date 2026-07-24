@@ -3,6 +3,7 @@
 import type { Assignment, Employee } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
 import { AssignmentActions } from "@/components/AssignmentActions";
+import { EditAssignmentDialog } from "@/components/EditAssignmentDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
 
@@ -31,6 +32,7 @@ export function AssignmentTable({ assignments }: { assignments: A[] }) {
             <th>Biaya</th>
             <th>Status</th>
             <th></th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -44,6 +46,11 @@ export function AssignmentTable({ assignments }: { assignments: A[] }) {
                 <span className={a.status === "selesai" ? "tag tag-accent" : "tag tag-outline"}>
                   {a.status === "selesai" ? "Selesai" : "Berjalan"}
                 </span>
+              </td>
+              <td>
+                {a.status !== "selesai" && (
+                  <EditAssignmentDialog assignment={{ id: a.id, employeeName: a.employee.name, title: a.title, mandays: a.mandays, cost: a.cost, period: a.period }} />
+                )}
               </td>
               <td><AssignmentActions id={a.id} disabled={a.status === "selesai"} /></td>
             </tr>

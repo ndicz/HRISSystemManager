@@ -3,25 +3,26 @@
 import { useMemo, useState } from "react";
 import type { Client, Employee, InvoiceBj, InvoiceBjItem, Invoice } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
+import { invoiceBjTotal } from "@/lib/finance";
 import { AddClientDialog } from "@/components/AddClientDialog";
+import { EditClientDialog } from "@/components/EditClientDialog";
 import { AddInvoiceBjDialog } from "@/components/AddInvoiceBjDialog";
+import { EditInvoiceBjDialog } from "@/components/EditInvoiceBjDialog";
 import { InvoiceBjActions } from "@/components/InvoiceBjActions";
 import { InvoiceActions } from "@/components/InvoiceActions";
 import { GenerateInvoiceButton } from "@/components/GenerateInvoiceButton";
 
 function statusTag(status: string) {
   if (status === "lunas") return "tag tag-accent";
+  if (status === "dibatalkan") return "tag tag-neutral";
   if (status === "terkirim") return "tag tag-outline";
   return "tag tag-neutral";
 }
 function statusLabel(status: string) {
   if (status === "lunas") return "Lunas";
+  if (status === "dibatalkan") return "Dibatalkan";
   if (status === "terkirim") return "Terkirim";
   return "Draft";
-}
-function invoiceTotal(items: { qty: number; price: number }[], withPpn: boolean) {
-  const subtotal = items.reduce((s, it) => s + it.qty * it.price, 0);
-  return withPpn ? Math.round(subtotal * 1.11) : subtotal;
 }
 
 type ClientRow = Client & { employees: Employee[] };
@@ -32,10 +33,12 @@ export function KlienTables({
   clients,
   invoicesBj,
   invoices,
+  siteNames,
 }: {
   clients: ClientRow[];
   invoicesBj: InvoiceBjRow[];
   invoices: InvoiceRow[];
+  siteNames: string[];
 }) {
   const [qClient, setQClient] = useState("");
   const [qBj, setQBj] = useState("");
@@ -84,6 +87,7 @@ export function KlienTables({
                 <th>PIC</th>
                 <th>Karyawan ditempatkan</th>
                 <th>Skema fee</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -93,6 +97,7 @@ export function KlienTables({
                   <td>{c.pic || "-"}</td>
                   <td>{c.employees.length}</td>
                   <td>{c.feeType === "percent" ? c.feeValue + "% dari gaji" : formatRp(c.feeValue) + "/karyawan"}</td>
+                  <td><EditClientDialog client={c} /></td>
                 </tr>
               ))}
             </tbody>
@@ -103,7 +108,7 @@ export function KlienTables({
       <div className="card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
           <div className="card-kicker">Invoice Barang &amp; Jasa</div>
-          <AddInvoiceBjDialog clients={clients} />
+          <AddInvoiceBjDialog clients={clients} siteNames={siteNames} />
         </div>
         <input
           type="text"
@@ -121,9 +126,11 @@ export function KlienTables({
               <tr>
                 <th>No. Invoice</th>
                 <th>Klien</th>
+                <th>Nama pekerjaan</th>
                 <th>Tanggal</th>
                 <th>Total</th>
                 <th>Status</th>
+                <th></th>
                 <th></th>
                 <th></th>
               </tr>
@@ -133,10 +140,16 @@ export function KlienTables({
                 <tr key={inv.id}>
                   <td>{inv.invoiceNo}</td>
                   <td>{inv.client.name}</td>
+                  <td className="text-muted">{inv.jobTitle || "-"}</td>
                   <td className="text-muted">{inv.date.toLocaleDateString("id-ID")}</td>
-                  <td style={{ fontWeight: 600 }}>{formatRp(invoiceTotal(inv.items, inv.withPpn))}</td>
+                  <td style={{ fontWeight: 600 }}>{formatRp(invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn))}</td>
                   <td><span className={statusTag(inv.status)}>{statusLabel(inv.status)}</span></td>
-                  <td><InvoiceBjActions id={inv.id} status={inv.status} /></td>
+                  <td>
+                    {(inv.status === "draft" || inv.status === "terkirim") && (
+                      <EditInvoiceBjDialog invoice={inv} clients={clients} siteNames={siteNames} />
+                    )}
+                  </td>
+                  <td><InvoiceBjActions id={inv.id} status={inv.status} invoiceNo={inv.invoiceNo} /></td>
                   <td><a href={`/print/invoice-bj/${inv.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
                 </tr>
               ))}
@@ -187,7 +200,7 @@ export function KlienTables({
                   <td>{formatRp(inv.feeTotal)}</td>
                   <td style={{ fontWeight: 600 }}>{formatRp(inv.total)}</td>
                   <td><span className={statusTag(inv.status)}>{statusLabel(inv.status)}</span></td>
-                  <td><InvoiceActions id={inv.id} status={inv.status} /></td>
+                  <td><InvoiceActions id={inv.id} status={inv.status} invoiceNo={inv.invoiceNo} /></td>
                   <td><a href={`/print/invoice-outsourcing/${inv.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
                 </tr>
               ))}

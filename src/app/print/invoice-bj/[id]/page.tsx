@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatRp } from "@/lib/payroll";
+import { terbilang, invoiceBjSubtotal, invoiceBjDiscountValue } from "@/lib/finance";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
 export default async function InvoiceBjPrintPage({ params }: { params: Promise<{ id: string }> }) {
@@ -8,9 +9,11 @@ export default async function InvoiceBjPrintPage({ params }: { params: Promise<{
   const inv = await db.invoiceBj.findUnique({ where: { id }, include: { client: true, items: true } });
   if (!inv) notFound();
 
-  const subtotal = inv.items.reduce((s, it) => s + it.qty * it.price, 0);
-  const ppn = inv.withPpn ? Math.round(subtotal * 0.11) : 0;
-  const total = subtotal + ppn;
+  const subtotal = invoiceBjSubtotal(inv.items);
+  const discountValue = invoiceBjDiscountValue(inv.items, inv.discountPercent);
+  const afterDiscount = subtotal - discountValue;
+  const ppn = inv.withPpn ? Math.round(afterDiscount * 0.11) : 0;
+  const total = afterDiscount + ppn;
 
   return (
     <PrintDocument
@@ -22,11 +25,15 @@ export default async function InvoiceBjPrintPage({ params }: { params: Promise<{
           <br />
           {inv.client.address || "-"}
           <br />
-          No. Invoice: <strong>{inv.invoiceNo}</strong> &middot; Tanggal: {inv.date.toLocaleDateString("id-ID")} &middot; Jatuh tempo: {inv.dueDate.toLocaleDateString("id-ID")}
+          No. Invoice: <strong>{inv.invoiceNo}</strong>
+          {inv.jobTitle && <><br />Nama Pekerjaan: <strong>{inv.jobTitle}</strong></>}
+          <br />
+          Tanggal: {inv.date.toLocaleDateString("id-ID")} &middot; Jatuh tempo: {inv.dueDate.toLocaleDateString("id-ID")}
         </>
       }
       signLeftLabel="Diterima oleh"
       signLeftName={inv.client.name}
+      signRightName={inv.signerName || undefined}
     >
       <table>
         <thead>
@@ -50,16 +57,29 @@ export default async function InvoiceBjPrintPage({ params }: { params: Promise<{
             <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif", borderBottom: "none" }}>Subtotal</td>
             <td>{formatRp(subtotal)}</td>
           </tr>
-          <tr>
-            <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif", borderBottom: "none" }}>PPN 11%</td>
-            <td>{formatRp(ppn)}</td>
-          </tr>
+          {inv.discountPercent > 0 && (
+            <tr>
+              <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif", borderBottom: "none" }}>
+                Diskon {inv.discountPercent}%{inv.discountDesc ? ` (${inv.discountDesc})` : ""}
+              </td>
+              <td>-{formatRp(discountValue)}</td>
+            </tr>
+          )}
+          {inv.withPpn && (
+            <tr>
+              <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif", borderBottom: "none" }}>PPN 11%</td>
+              <td>{formatRp(ppn)}</td>
+            </tr>
+          )}
           <tr className="total">
             <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif" }}>Total Tagihan</td>
             <td>{formatRp(total)}</td>
           </tr>
         </tbody>
       </table>
+      <p style={{ fontFamily: "system-ui, sans-serif", fontSize: 11.5, fontStyle: "italic", marginTop: 10 }}>
+        Terbilang: {terbilang(total)}
+      </p>
     </PrintDocument>
   );
 }

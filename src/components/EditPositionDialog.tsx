@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { updatePosition } from "@/app/(app)/karyawan/actions";
+import { updatePosition, deletePosition } from "@/app/(app)/karyawan/actions";
 
 type Position = { id: string; name: string; salaryType: string; baseSalary: number };
 
@@ -10,6 +10,8 @@ export function EditPositionDialog({ position }: { position: Position }) {
   const [salaryType, setSalaryType] = useState(position.salaryType);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [delError, setDelError] = useState("");
+  const [delPending, setDelPending] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
@@ -23,6 +25,16 @@ export function EditPositionDialog({ position }: { position: Position }) {
     } finally {
       setPending(false);
     }
+  }
+
+  function handleDelete() {
+    if (!window.confirm(`Hapus posisi "${position.name}"? Aksi ini tidak bisa dibatalkan.`)) return;
+    setDelError("");
+    setDelPending(true);
+    deletePosition(position.id)
+      .then(() => setOpen(false))
+      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setDelPending(false));
   }
 
   return (
@@ -58,7 +70,11 @@ export function EditPositionDialog({ position }: { position: Position }) {
                 <input className="input" id="edit-pos-salary" name="baseSalary" type="number" min={0} defaultValue={position.baseSalary} />
               </div>
               {error && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{error}</p>}
+              {delError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{delError}</p>}
               <div className="dialog-actions">
+                <button type="button" className="btn btn-ghost" disabled={delPending} onClick={handleDelete} style={{ marginRight: "auto" }}>
+                  {delPending ? "Menghapus…" : "Hapus"}
+                </button>
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
                   Batal
                 </button>

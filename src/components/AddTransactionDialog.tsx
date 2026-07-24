@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { addTransaction } from "@/app/(app)/kas/actions";
+import { RupiahInput } from "@/components/RupiahInput";
 
 type Option = { id: string; name: string; type?: string };
 
@@ -9,6 +10,7 @@ export function AddTransactionDialog({ accounts, cashAccounts, disabled }: { acc
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("keluar");
   const [pending, setPending] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
 
   const filteredAccounts = accounts.filter((a) => a.type === type);
@@ -19,6 +21,7 @@ export function AddTransactionDialog({ accounts, cashAccounts, disabled }: { acc
       await addTransaction(formData);
       setOpen(false);
       formRef.current?.reset();
+      setFormKey((k) => k + 1);
     } finally {
       setPending(false);
     }
@@ -33,7 +36,7 @@ export function AddTransactionDialog({ accounts, cashAccounts, disabled }: { acc
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Catat transaksi kas</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label>Tipe</label>
                 <div className="seg" role="radiogroup">
@@ -69,7 +72,7 @@ export function AddTransactionDialog({ accounts, cashAccounts, disabled }: { acc
               </div>
               <div className="field">
                 <label htmlFor="amount">Jumlah (Rp)</label>
-                <input className="input" id="amount" name="amount" type="number" required placeholder="0" />
+                <RupiahInput id="amount" name="amount" placeholder="0" />
               </div>
               <div className="field">
                 <label htmlFor="attachment">Lampiran bukti (opsional)</label>

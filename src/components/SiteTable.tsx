@@ -4,6 +4,7 @@ import type { Site } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
+import { EditSiteDialog } from "@/components/EditSiteDialog";
 
 type S = Site & { employees: unknown[] };
 
@@ -28,6 +29,7 @@ export function SiteTable({ sites }: { sites: S[] }) {
             <th>Penanggung jawab</th>
             <th>UMR/UMK</th>
             <th>Karyawan</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -38,6 +40,7 @@ export function SiteTable({ sites }: { sites: S[] }) {
               <td>{s.supervisor}</td>
               <td>{formatRp(s.umr)}</td>
               <td>{s.employees.length}</td>
+              <td><EditSiteDialog site={s} /></td>
             </tr>
           ))}
         </tbody>

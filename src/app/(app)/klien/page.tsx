@@ -1,54 +1,21 @@
 import { db } from "@/lib/db";
 import { formatRp } from "@/lib/payroll";
+import { computeAgingRows, AGING_BUCKET_ORDER } from "@/lib/finance";
 import { KlienTables } from "@/components/KlienTables";
-
-function invoiceTotal(items: { qty: number; price: number }[], withPpn: boolean) {
-  const subtotal = items.reduce((s, it) => s + it.qty * it.price, 0);
-  return withPpn ? Math.round(subtotal * 1.11) : subtotal;
-}
-
-function agingBucket(dueDate: Date, ref: Date): string {
-  const days = Math.floor((ref.getTime() - dueDate.getTime()) / 86400000);
-  if (days <= 0) return "Belum jatuh tempo";
-  if (days <= 30) return "1-30 hari";
-  if (days <= 60) return "31-60 hari";
-  if (days <= 90) return "61-90 hari";
-  return ">90 hari";
-}
+import { DocHandoverDateInput } from "@/components/DocHandoverDateInput";
 
 export default async function KlienPage() {
-  const [clients, invoicesBj, invoices] = await Promise.all([
+  const [clients, invoicesBj, invoices, sites] = await Promise.all([
     db.client.findMany({ include: { employees: true }, orderBy: { createdAt: "desc" } }),
     db.invoiceBj.findMany({ include: { client: true, items: true }, orderBy: { createdAt: "desc" } }),
     db.invoice.findMany({ include: { client: true }, orderBy: { period: "desc" } }),
+    db.site.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
   ]);
+  const siteNames = sites.map((s) => s.name);
 
   const now = new Date();
-  const bucketOrder = ["Belum jatuh tempo", "1-30 hari", "31-60 hari", "61-90 hari", ">90 hari"];
-  const agingRows: { name: string; source: string; dueDate: Date; amount: number; bucket: string }[] = [];
-
-  for (const inv of invoicesBj) {
-    if (inv.status === "lunas") continue;
-    agingRows.push({
-      name: inv.client.name + " — " + inv.invoiceNo,
-      source: "Barang & Jasa",
-      dueDate: inv.dueDate,
-      amount: invoiceTotal(inv.items, inv.withPpn),
-      bucket: agingBucket(inv.dueDate, now),
-    });
-  }
-  for (const inv of invoices) {
-    if (inv.status === "lunas" || !inv.dueDate) continue;
-    agingRows.push({
-      name: inv.client.name + " — " + inv.invoiceNo,
-      source: "Outsourcing",
-      dueDate: inv.dueDate,
-      amount: inv.total,
-      bucket: agingBucket(inv.dueDate, now),
-    });
-  }
-  agingRows.sort((a, b) => bucketOrder.indexOf(a.bucket) - bucketOrder.indexOf(b.bucket));
-  const agingTotals = bucketOrder.map((b) => ({
+  const agingRows = computeAgingRows(invoicesBj, invoices, now);
+  const agingTotals = AGING_BUCKET_ORDER.map((b) => ({
     bucket: b,
     total: agingRows.filter((r) => r.bucket === b).reduce((s, r) => s + r.amount, 0),
   }));
@@ -61,7 +28,7 @@ export default async function KlienPage() {
         <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Data klien, skema fee jasa, dan invoice barang &amp; jasa</p>
       </div>
 
-      <KlienTables clients={clients} invoicesBj={invoicesBj} invoices={invoices} />
+      <KlienTables clients={clients} invoicesBj={invoicesBj} invoices={invoices} siteNames={siteNames} />
 
       <div className="card" style={{ marginTop: "var(--space-6)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
@@ -85,16 +52,18 @@ export default async function KlienPage() {
                 <th>Invoice</th>
                 <th>Sumber</th>
                 <th>Jatuh tempo</th>
+                <th>Tgl. penyerahan dokumen</th>
                 <th>Jumlah</th>
                 <th>Umur</th>
               </tr>
             </thead>
             <tbody>
-              {agingRows.map((r, i) => (
-                <tr key={i}>
+              {agingRows.map((r) => (
+                <tr key={r.type + r.id}>
                   <td>{r.name}</td>
                   <td className="text-muted">{r.source}</td>
                   <td className="text-muted">{r.dueDate.toLocaleDateString("id-ID")}</td>
+                  <td><DocHandoverDateInput type={r.type} id={r.id} value={r.docHandoverDate} /></td>
                   <td style={{ fontWeight: 600 }}>{formatRp(r.amount)}</td>
                   <td><span className={r.bucket === "Belum jatuh tempo" ? "tag tag-accent" : "tag tag-neutral"}>{r.bucket}</span></td>
                 </tr>

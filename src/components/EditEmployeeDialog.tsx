@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { updateEmployeeDetails } from "@/app/(app)/karyawan/actions";
+import { updateEmployeeDetails, deleteEmployee } from "@/app/(app)/karyawan/actions";
 import { formatRp, kasbonPerBulan } from "@/lib/payroll";
 
 type Emp = {
@@ -30,6 +30,8 @@ export function EditEmployeeDialog({ employee, sites }: { employee: Emp; sites: 
   const [kasbon, setKasbon] = useState(employee.kasbon);
   const [kasbonCicilan, setKasbonCicilan] = useState(employee.kasbonCicilan || 1);
   const [pending, setPending] = useState(false);
+  const [delError, setDelError] = useState("");
+  const [delPending, setDelPending] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
@@ -40,6 +42,16 @@ export function EditEmployeeDialog({ employee, sites }: { employee: Emp; sites: 
     } finally {
       setPending(false);
     }
+  }
+
+  function handleDelete() {
+    if (!window.confirm(`Hapus data karyawan "${employee.name}" secara permanen? Hanya bisa jika belum ada riwayat absensi/gaji. Aksi ini tidak bisa dibatalkan.`)) return;
+    setDelError("");
+    setDelPending(true);
+    deleteEmployee(employee.id)
+      .then(() => setOpen(false))
+      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setDelPending(false));
   }
 
   return (
@@ -147,7 +159,11 @@ export function EditEmployeeDialog({ employee, sites }: { employee: Emp; sites: 
                 </div>
               </div>
 
+              {delError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{delError}</p>}
               <div className="dialog-actions">
+                <button type="button" className="btn btn-ghost" disabled={delPending} onClick={handleDelete} style={{ marginRight: "auto" }}>
+                  {delPending ? "Menghapus…" : "Hapus"}
+                </button>
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
                   Batal
                 </button>

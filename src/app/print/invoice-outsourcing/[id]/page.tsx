@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { baseSalary, formatRp } from "@/lib/payroll";
+import { terbilang } from "@/lib/finance";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
 export default async function InvoiceOutsourcingPrintPage({ params }: { params: Promise<{ id: string }> }) {
@@ -66,6 +67,9 @@ export default async function InvoiceOutsourcingPrintPage({ params }: { params: 
           </tr>
         </tbody>
       </table>
+      <p style={{ fontFamily: "system-ui, sans-serif", fontSize: 11.5, fontStyle: "italic", marginTop: 10 }}>
+        Terbilang: {terbilang(inv.total)}
+      </p>
     </PrintDocument>
   );
 }

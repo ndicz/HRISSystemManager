@@ -119,7 +119,7 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
                       </select>
                     )}
                   </div>
-                  <table className="table">
+                  <table className="table table-nested">
                     <thead><tr><th>Nama</th><th>Kode</th><th>Hadir</th><th>Sakit/Izin</th><th>Alpha</th><th>Libur</th></tr></thead>
                     <tbody>
                       {result.rows.map((row, i) => (

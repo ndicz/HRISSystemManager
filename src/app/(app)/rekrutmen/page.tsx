@@ -33,7 +33,7 @@ export default async function RekrutmenPage() {
         <AddCandidateDialog positions={positions} />
       </div>
 
-      <RekrutmenTable candidates={candidates} />
+      <RekrutmenTable candidates={candidates} positions={positions} />
     </div>
   );
 }

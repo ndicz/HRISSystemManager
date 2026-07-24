@@ -51,6 +51,9 @@ async function main() {
   // --- Chart of Accounts --------------------------------------------------
   const accounts = [
     { code: "4001", name: "Dana Klien", type: "masuk" },
+    { code: "4002", name: "Pengembalian Sisa Project", type: "masuk" },
+    { code: "4003", name: "Pengembalian Sisa Transportasi", type: "masuk" },
+    { code: "4004", name: "Pengembalian Lain-lain", type: "masuk" },
     { code: "5001", name: "Gaji Karyawan", type: "keluar", budget: 200000000 },
     { code: "5002", name: "Sewa Tempat", type: "keluar", budget: 40000000 },
     { code: "5003", name: "Utilitas", type: "keluar", budget: 10000000 },
@@ -61,6 +64,7 @@ async function main() {
     { code: "5008", name: "Beban THR", type: "keluar" },
     { code: "5009", name: "Pembayaran Utang Usaha", type: "keluar" },
     { code: "5010", name: "Bonus/Insentif Karyawan", type: "keluar" },
+    { code: "5011", name: "Pengeluaran Barang Gudang", type: "keluar" },
   ];
   for (const a of accounts) {
     await db.account.upsert({ where: { code: a.code }, update: {}, create: a });
@@ -68,12 +72,12 @@ async function main() {
 
   // --- Cash accounts --------------------------------------------------------
   const cashAccounts = [
-    { id: "ca1", name: "Kas Kecil", opening: 10000000 },
-    { id: "ca2", name: "Bank BCA — 452xxxxxx1", opening: 200000000 },
-    { id: "ca3", name: "Bank Mandiri — 128xxxxxx7", opening: 40000000 },
+    { id: "ca1", name: "Kas Kecil", opening: 10000000, kind: "kecil" },
+    { id: "ca2", name: "Bank BCA — 452xxxxxx1", opening: 200000000, kind: "besar" },
+    { id: "ca3", name: "Bank Mandiri — 128xxxxxx7", opening: 40000000, kind: "besar" },
   ];
   for (const ca of cashAccounts) {
-    await db.cashAccount.upsert({ where: { id: ca.id }, update: {}, create: ca });
+    await db.cashAccount.upsert({ where: { id: ca.id }, update: { kind: ca.kind }, create: ca });
   }
 
   console.log("Seed selesai.");

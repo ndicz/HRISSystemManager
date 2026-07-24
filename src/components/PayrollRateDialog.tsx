@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { PayrollRate } from "@prisma/client";
-import { savePayrollRate } from "@/app/(app)/penggajian/actions";
+import { savePayrollRate, deletePayrollRate } from "@/app/(app)/penggajian/actions";
 
 type Site = { id: string; name: string };
 
@@ -10,6 +10,8 @@ export function PayrollRateDialog({ period, sites, rates }: { period: string; si
   const [open, setOpen] = useState(false);
   const [siteId, setSiteId] = useState("");
   const [pending, setPending] = useState(false);
+  const [delError, setDelError] = useState("");
+  const [delPending, setDelPending] = useState(false);
 
   const current = rates.find((r) => r.period === period && r.siteId === (siteId || null)) ?? null;
 
@@ -21,6 +23,17 @@ export function PayrollRateDialog({ period, sites, rates }: { period: string; si
     } finally {
       setPending(false);
     }
+  }
+
+  function handleDelete() {
+    if (!current) return;
+    if (!window.confirm("Hapus tarif ini? Periode/tempat kerja ini akan kembali pakai potongan proporsional otomatis.")) return;
+    setDelError("");
+    setDelPending(true);
+    deletePayrollRate(period, siteId || null)
+      .then(() => setOpen(false))
+      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setDelPending(false));
   }
 
   return (
@@ -86,7 +99,13 @@ export function PayrollRateDialog({ period, sites, rates }: { period: string; si
                 </div>
               </div>
 
+              {delError && <p style={{ color: "var(--color-accent-800)", fontSize: 13, margin: 0 }}>{delError}</p>}
               <div className="dialog-actions">
+                {current && (
+                  <button type="button" className="btn btn-ghost" disabled={delPending} onClick={handleDelete} style={{ marginRight: "auto" }}>
+                    {delPending ? "Menghapus…" : "Hapus tarif ini"}
+                  </button>
+                )}
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
                   Batal
                 </button>

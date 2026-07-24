@@ -99,6 +99,40 @@ export async function resignEmployee(formData: FormData) {
   revalidatePath("/penggajian");
 }
 
+// Hard delete is only for a genuine mistake (added the wrong person, no
+// history yet) — once there's attendance, payroll, or allowance history,
+// use "resign" instead (above) so that history stays intact. Cascades
+// (SalaryComponent/Certificate/LeaveRequest/Assignment/OvertimeDay) are
+// harmless to lose for an employee with no activity yet.
+export async function deleteEmployee(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const emp = await db.employee.findUnique({
+    where: { id },
+    include: { user: true, _count: { select: { attendance: true, payrollEntries: true, allowancePayments: true } } },
+  });
+  if (!emp) return;
+
+  if (emp.user) {
+    throw new Error("Karyawan ini punya akun login terhubung — hapus/lepas akunnya dulu di halaman Pengguna sebelum menghapus data karyawan.");
+  }
+  const { attendance, payrollEntries, allowancePayments } = emp._count;
+  if (attendance > 0 || payrollEntries > 0 || allowancePayments > 0) {
+    throw new Error("Karyawan ini sudah punya riwayat absensi/gaji — gunakan \"Resign\" untuk menonaktifkan, bukan hapus, supaya riwayatnya tetap tersimpan.");
+  }
+
+  await db.employee.delete({ where: { id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "employee.delete", entity: "Employee", entityId: id, detail: emp.name },
+  });
+
+  revalidatePath("/karyawan");
+  revalidatePath("/absensi");
+  revalidatePath("/penggajian");
+}
+
 export async function updateEmployeeDetails(formData: FormData) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
@@ -349,6 +383,49 @@ export async function addSite(formData: FormData) {
   revalidatePath("/karyawan");
 }
 
+export async function updateSite(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const supervisor = String(formData.get("supervisor") ?? "").trim();
+  const umr = Math.max(0, parseInt(String(formData.get("umr") ?? "0"), 10) || 0);
+  if (!name) throw new Error("Nama tempat kerja wajib diisi.");
+
+  await db.site.update({ where: { id }, data: { name, address: address || "-", supervisor: supervisor || "-", umr } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "site.update", entity: "Site", entityId: id },
+  });
+
+  revalidatePath("/karyawan");
+  revalidatePath("/penggajian");
+  revalidatePath("/absensi");
+}
+
+// Blocked while any employee is still placed at this site — reassign them
+// first (PayrollRate rows referencing this site are safe: onDelete:SetNull
+// just drops back to "no rate configured" for that period/site).
+export async function deleteSite(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const site = await db.site.findUnique({ where: { id }, include: { _count: { select: { employees: true } } } });
+  if (!site) return;
+  if (site._count.employees > 0) {
+    throw new Error(`Tempat kerja tidak bisa dihapus — masih ada ${site._count.employees} karyawan yang ditempatkan di sini. Pindahkan dulu sebelum menghapus.`);
+  }
+
+  await db.site.delete({ where: { id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "site.delete", entity: "Site", entityId: id, detail: site.name },
+  });
+
+  revalidatePath("/karyawan");
+}
+
 export async function addPosition(formData: FormData) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
@@ -400,6 +477,29 @@ export async function updatePosition(formData: FormData) {
   revalidatePath("/penggajian");
 }
 
+// Blocked while any employee still holds this position — reassign them
+// first (mirrors deleteSite's guard).
+export async function deletePosition(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const position = await db.position.findUnique({ where: { id }, include: { _count: { select: { employees: true } } } });
+  if (!position) return;
+  if (position._count.employees > 0) {
+    throw new Error(`Posisi tidak bisa dihapus — masih ada ${position._count.employees} karyawan dengan posisi ini. Ubah posisi mereka dulu sebelum menghapus.`);
+  }
+
+  await db.position.delete({ where: { id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "position.delete", entity: "Position", entityId: id, detail: position.name },
+  });
+
+  revalidatePath("/karyawan");
+  revalidatePath("/rekrutmen");
+  revalidatePath("/absensi");
+}
+
 export async function addAssignment(formData: FormData) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
@@ -429,7 +529,7 @@ export async function completeAssignment(id: string) {
   if (!assignment || assignment.status === "selesai") return;
 
   const account = await db.account.findFirst({ where: { code: "5007" } });
-  const cashAccount = await db.cashAccount.findFirst();
+  const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
   if (account && cashAccount) {
     await db.transaction.create({
       data: {
@@ -451,6 +551,51 @@ export async function completeAssignment(id: string) {
 
   revalidatePath("/karyawan");
   revalidatePath("/kas");
+}
+
+// Only while "berjalan" — once "selesai" it's already posted a Transaction
+// to Kas (above), so editing the cost or deleting it afterward would
+// silently desync from what was actually recorded as paid. Same guard
+// rail as invoices/payables elsewhere in this app.
+export async function updateAssignment(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const existing = await db.assignment.findUnique({ where: { id } });
+  if (!existing) throw new Error("Penugasan tidak ditemukan.");
+  if (existing.status === "selesai") throw new Error("Penugasan yang sudah selesai tidak bisa diedit — biayanya sudah tercatat di Kas.");
+
+  const title = String(formData.get("title") ?? "").trim();
+  const mandays = Math.max(0, parseInt(String(formData.get("mandays") ?? "0"), 10) || 0);
+  const cost = Math.max(0, parseInt(String(formData.get("cost") ?? "0"), 10) || 0);
+  const periodRaw = String(formData.get("period") ?? "").trim();
+  const period = /^\d{4}-\d{2}$/.test(periodRaw) ? periodRaw : null;
+  if (!title) throw new Error("Judul penugasan wajib diisi.");
+
+  await db.assignment.update({ where: { id }, data: { title, mandays, cost, period } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "assignment.update", entity: "Assignment", entityId: id, detail: JSON.stringify({ title }) },
+  });
+
+  revalidatePath("/karyawan");
+}
+
+export async function deleteAssignment(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const assignment = await db.assignment.findUnique({ where: { id } });
+  if (!assignment) return;
+  if (assignment.status === "selesai") throw new Error("Penugasan yang sudah selesai tidak bisa dihapus — biayanya sudah tercatat di Kas.");
+
+  await db.assignment.delete({ where: { id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "assignment.delete", entity: "Assignment", entityId: id, detail: assignment.title },
+  });
+
+  revalidatePath("/karyawan");
 }
 
 // ── BPJS bulk import ──────────────────────────────────────────────────

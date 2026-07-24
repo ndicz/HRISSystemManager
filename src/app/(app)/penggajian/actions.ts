@@ -16,7 +16,7 @@ export async function bayarThr(employeeId: string) {
 
   const { thr } = computeThr(emp, emp.salaryComponents);
   const account = await db.account.findFirst({ where: { code: "5008" } });
-  const cashAccount = await db.cashAccount.findFirst();
+  const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
 
   if (account && cashAccount) {
     await db.transaction.create({
@@ -66,7 +66,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
     }),
     db.payrollRate.findMany({ where: { period } }),
     db.account.findFirst({ where: { code: "5001" } }),
-    db.cashAccount.findFirst(),
+    db.cashAccount.findFirst({ where: { kind: "besar" } }),
   ]);
   if (!account || !cashAccount) throw new Error("Akun kas / COA Gaji Karyawan belum tersedia — jalankan ulang seed.");
 
@@ -151,6 +151,26 @@ export async function savePayrollRate(formData: FormData) {
   revalidatePath("/print/slip");
 }
 
+// Removes a configured rate entirely — the period/site combination just
+// falls back to "no rate configured" (proportional deduction math) again,
+// same as before it was ever set.
+export async function deletePayrollRate(period: string, siteId: string | null) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const existing = await db.payrollRate.findFirst({ where: { period, siteId } });
+  if (!existing) return;
+
+  await db.payrollRate.delete({ where: { id: existing.id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "payrollRate.delete", entity: "PayrollRate", detail: JSON.stringify({ period, siteId }) },
+  });
+
+  revalidatePath("/penggajian");
+  revalidatePath("/print/slip");
+}
+
 export async function savePayrollEntry(formData: FormData) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
@@ -184,6 +204,43 @@ export async function savePayrollEntry(formData: FormData) {
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "payrollEntry.save", entity: "Employee", entityId: employeeId, detail: JSON.stringify({ period }) },
+  });
+
+  revalidatePath("/penggajian");
+  revalidatePath("/print/slip");
+}
+
+// Inline overrides from the Ringkasan tab of the payroll detail dialog —
+// a separate, narrowly-scoped upsert (mirrors updateBpjsOverride below)
+// rather than reusing savePayrollEntry: that action's form lives on a
+// different tab and doesn't carry these fields, so folding this into it
+// would null out gajiPokok/potonganAbsensi/penugasanTambahan/kasbon
+// overrides on every "Lembur & Potongan" save (and vice versa).
+export async function updatePayrollAmounts(
+  employeeId: string,
+  period: string,
+  amounts: { gajiPokokOverride: number | null; potonganAbsensiOverride: number | null; penugasanTambahanOverride: number | null; kasbonOverride: number | null },
+) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+  if (!employeeId || !/^\d{4}-\d{2}$/.test(period)) throw new Error("Data tidak valid.");
+
+  const clamp = (n: number | null) => (n !== null ? Math.max(0, n) : null);
+  const data = {
+    gajiPokokOverride: clamp(amounts.gajiPokokOverride),
+    potonganAbsensiOverride: clamp(amounts.potonganAbsensiOverride),
+    penugasanTambahanOverride: clamp(amounts.penugasanTambahanOverride),
+    kasbonOverride: clamp(amounts.kasbonOverride),
+  };
+
+  await db.payrollEntry.upsert({
+    where: { employeeId_period: { employeeId, period } },
+    update: data,
+    create: { employeeId, period, ...data },
+  });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "payrollEntry.amounts", entity: "Employee", entityId: employeeId, detail: JSON.stringify({ period, ...data }) },
   });
 
   revalidatePath("/penggajian");
@@ -278,7 +335,7 @@ export async function payAllowanceBatch(rows: { employeeId: string; amount: numb
   if (rows.some((r) => !empById.has(r.employeeId))) throw new Error("Salah satu karyawan tidak ditemukan.");
 
   const account = await db.account.findFirst({ where: { code: "5010" } });
-  const cashAccount = await db.cashAccount.findFirst();
+  const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
   if (!account || !cashAccount) throw new Error("Akun kas / COA Bonus-Insentif belum tersedia — jalankan ulang seed.");
 
   await mapLimit(rows, 8, async (row) => {

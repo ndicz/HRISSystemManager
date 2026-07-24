@@ -2,10 +2,12 @@
 
 import { useState, useRef } from "react";
 import { addPayable } from "@/app/(app)/kas/actions";
+import { RupiahInput } from "@/components/RupiahInput";
 
 export function AddPayableDialog() {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
@@ -14,6 +16,7 @@ export function AddPayableDialog() {
       await addPayable(formData);
       setOpen(false);
       formRef.current?.reset();
+      setFormKey((k) => k + 1);
     } finally {
       setPending(false);
     }
@@ -26,7 +29,7 @@ export function AddPayableDialog() {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Catat hutang usaha</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="vendorName">Nama vendor</label>
                 <input className="input" id="vendorName" name="vendorName" required placeholder="Nama perusahaan/supplier" />
@@ -38,7 +41,7 @@ export function AddPayableDialog() {
               <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field">
                   <label htmlFor="amount">Jumlah (Rp)</label>
-                  <input className="input" id="amount" name="amount" type="number" required placeholder="0" />
+                  <RupiahInput id="amount" name="amount" placeholder="0" />
                 </div>
                 <div className="field">
                   <label htmlFor="dueDate">Jatuh tempo</label>
