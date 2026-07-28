@@ -19,6 +19,7 @@ export function RupiahInput({
   placeholder,
   className = "input",
   style,
+  onValueChange,
 }: {
   name: string;
   id?: string;
@@ -26,6 +27,7 @@ export function RupiahInput({
   placeholder?: string;
   className?: string;
   style?: React.CSSProperties;
+  onValueChange?: (raw: number) => void;
 }) {
   const [display, setDisplay] = useState(() => {
     const raw = defaultValue !== undefined && defaultValue !== null && defaultValue !== ""
@@ -35,7 +37,9 @@ export function RupiahInput({
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setDisplay(formatThousands(e.target.value.replace(/\D/g, "")));
+    const digits = e.target.value.replace(/\D/g, "");
+    setDisplay(formatThousands(digits));
+    onValueChange?.(parseInt(digits, 10) || 0);
   }
 
   return (

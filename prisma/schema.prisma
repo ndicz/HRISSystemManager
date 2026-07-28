@@ -16,36 +16,36 @@ datasource db {
 // ── Auth & access control ──────────────────────────────────────────────
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
+  id           String     @id @default(cuid())
+  email        String     @unique
   // Separate login ID (e.g. "hrwana1"), distinct from email — either one
   // can be used to log in. Nullable so pre-existing accounts (which only
   // ever had email) keep working unchanged.
-  username      String?  @unique
-  passwordHash  String
-  name          String
-  role          String   // ADMIN | HR | FINANCE | SUPERVISOR | EMPLOYEE
-  active        Boolean  @default(true)
+  username     String?    @unique
+  passwordHash String
+  name         String
+  role         String // ADMIN | HR | FINANCE | SUPERVISOR | EMPLOYEE
+  active       Boolean    @default(true)
   // Explicit page allowlist (nav hrefs) for this user. Empty = fall back
   // to the role's default pages; non-empty overrides the role default.
-  pageAccess    String[] @default([])
-  totpSecret    String?  // base32 — set once 2FA setup starts, kept even while unconfirmed
-  totpEnabled   Boolean  @default(false)
-  employeeId    String?  @unique
-  employee      Employee? @relation(fields: [employeeId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  auditLogs     AuditLog[]
+  pageAccess   String[]   @default([])
+  totpSecret   String? // base32 — set once 2FA setup starts, kept even while unconfirmed
+  totpEnabled  Boolean    @default(false)
+  employeeId   String?    @unique
+  employee     Employee?  @relation(fields: [employeeId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
-  action    String   // e.g. "employee.update", "payroll.pay", "invoice.markPaid"
-  entity    String   // e.g. "Employee", "Invoice"
+  action    String // e.g. "employee.update", "payroll.pay", "invoice.markPaid"
+  entity    String // e.g. "Employee", "Invoice"
   entityId  String?
-  detail    String?  // JSON string with before/after or extra context
+  detail    String? // JSON string with before/after or extra context
   createdAt DateTime @default(now())
 
   @@index([entity, entityId])
@@ -66,75 +66,76 @@ model Site {
 }
 
 model Position {
-  id          String     @id @default(cuid())
-  name        String     @unique
-  salaryType  String     // "bulanan" | "harian"
-  baseSalary  Int
-  employees   Employee[]
+  id         String     @id @default(cuid())
+  name       String     @unique
+  salaryType String // "bulanan" | "harian"
+  baseSalary Int
+  employees  Employee[]
 }
 
 model Client {
-  id             String        @id @default(cuid())
-  name           String
-  pic            String
-  picPhone       String?
-  address        String?
-  contractStart  DateTime
-  contractEnd    DateTime
-  feeType        String        // "percent" | "flat"
-  feeValue       Int
-  employees      Employee[]
-  invoicesBj     InvoiceBj[]
-  invoices       Invoice[]
-  createdAt      DateTime      @default(now())
+  id            String      @id @default(cuid())
+  name          String
+  pic           String
+  picPhone      String?
+  address       String?
+  contractStart DateTime
+  contractEnd   DateTime
+  feeType       String // "percent" | "flat"
+  feeValue      Int
+  employees     Employee[]
+  invoicesBj    InvoiceBj[]
+  invoices      Invoice[]
+  mbps          Mbp[]
+  createdAt     DateTime    @default(now())
 }
 
 // ── Employees & lifecycle ──────────────────────────────────────────────
 
 model Employee {
-  id              String   @id @default(cuid())
-  empCode         String   @unique // e.g. EMP-0001
-  name            String
-  siteId          String
-  site            Site     @relation(fields: [siteId], references: [id])
-  positionId      String
-  position        Position @relation(fields: [positionId], references: [id])
-  clientId        String?
-  client          Client?  @relation(fields: [clientId], references: [id])
-  hireDate        DateTime
-  contractType    String   // "PKWT" | "PKWTT"
-  contractEnd     DateTime?
-  cutiKuota       Int      @default(12)
-  kasbon          Int      @default(0) // total outstanding balance
-  kasbonCicilan   Int      @default(1) // over how many months to deduct it (1 = full amount at once)
-  status          String   @default("aktif") // "aktif" | "resign"
-  thrPaid         Boolean  @default(false)
-  thrOverride     Int?
+  id                          String    @id @default(cuid())
+  empCode                     String    @unique // e.g. EMP-0001
+  name                        String
+  siteId                      String
+  site                        Site      @relation(fields: [siteId], references: [id])
+  positionId                  String
+  position                    Position  @relation(fields: [positionId], references: [id])
+  clientId                    String?
+  client                      Client?   @relation(fields: [clientId], references: [id])
+  hireDate                    DateTime
+  contractType                String // "PKWT" | "PKWTT"
+  contractEnd                 DateTime?
+  cutiKuota                   Int       @default(12)
+  kasbon                      Int       @default(0) // total outstanding balance
+  kasbonCicilan               Int       @default(1) // over how many months to deduct it (1 = full amount at once)
+  status                      String    @default("aktif") // "aktif" | "resign"
+  thrPaid                     Boolean   @default(false)
+  thrOverride                 Int?
   // null = use the standard formula (computeBpjsKesehatan / computeBpjsKetenagakerjaanKaryawan);
   // set = deduct this exact amount instead, for cases the formula doesn't match reality.
   bpjsKesehatanOverride       Int?
   bpjsKetenagakerjaanOverride Int?
-  overtimeHours   Int      @default(0)
-  workDays        Int      @default(22)
-  presentDays     Int      @default(22)
-  leaveDays       Int      @default(0)
-  attStatus       String   @default("Hadir") // today's status: Hadir | Izin | Alpha
-  checkIn         String?
-  checkOut        String?
+  overtimeHours               Int       @default(0)
+  workDays                    Int       @default(22)
+  presentDays                 Int       @default(22)
+  leaveDays                   Int       @default(0)
+  attStatus                   String    @default("Hadir") // today's status: Hadir | Izin | Alpha
+  checkIn                     String?
+  checkOut                    String?
 
-  ktpNumber       String?
-  phone           String?
-  contractNumber  String?  // "No PKWT" — contract doc reference, distinct from contractType
-  education       String?
-  bankName        String?
-  bankAccount     String?
-  birthPlace      String?
-  birthDate       DateTime?
-  address         String?
-  gender          String?  // "Pria" | "Wanita"
-  religion        String?  // "Islam" | "Kristen" | "Katolik" | "Hindu" | "Buddha" | "Konghucu" | "Lainnya"
+  ktpNumber      String?
+  phone          String?
+  contractNumber String? // "No PKWT" — contract doc reference, distinct from contractType
+  education      String?
+  bankName       String?
+  bankAccount    String?
+  birthPlace     String?
+  birthDate      DateTime?
+  address        String?
+  gender         String? // "Pria" | "Wanita"
+  religion       String? // "Islam" | "Kristen" | "Katolik" | "Hindu" | "Buddha" | "Konghucu" | "Lainnya"
 
-  salaryComponents SalaryComponent[]
+  salaryComponents  SalaryComponent[]
   leaveRequests     LeaveRequest[]
   assignments       Assignment[]
   attendance        AttendanceRecord[]
@@ -144,8 +145,8 @@ model Employee {
   overtimeDays      OvertimeDay[]
   user              User?
 
-  resignDate      DateTime?
-  resignReason    String?
+  resignDate   DateTime?
+  resignReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -159,7 +160,7 @@ model SalaryComponent {
   id         String   @id @default(cuid())
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  name       String   // "Gaji Pokok", "Tunjangan Transport", ...
+  name       String // "Gaji Pokok", "Tunjangan Transport", ...
   amount     Int
 
   @@index([employeeId])
@@ -181,7 +182,7 @@ model Certificate {
 // to every site that doesn't have its own override for that period.
 model PayrollRate {
   id                String   @id @default(cuid())
-  period            String   // "2026-06"
+  period            String // "2026-06"
   siteId            String?
   site              Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
   izinRate          Int      @default(0)
@@ -200,12 +201,12 @@ model PayrollRate {
 // unlike Employee.overtimeHours (a single live/current value), this is
 // scoped to a specific payroll period.
 model PayrollEntry {
-  id            String   @id @default(cuid())
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  period        String
-  allowance     Int      @default(0) // Rp
-  note          String?
+  id                        String   @id @default(cuid())
+  employeeId                String
+  employee                  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  period                    String
+  allowance                 Int      @default(0) // Rp
+  note                      String?
   // null = compute from attendance count × PayrollRate as usual; set = deduct
   // this exact amount instead, for this employee in this period only.
   potonganIzinOverride      Int?
@@ -222,10 +223,10 @@ model PayrollEntry {
   // paid out via "Bayar Gaji" — paid stays false until then so re-running
   // payment for a site skips whoever's already been paid instead of
   // double-posting to Kas.
-  paid              Boolean  @default(false)
-  paidTransactionId String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  paid                      Boolean  @default(false)
+  paidTransactionId         String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   @@unique([employeeId, period])
   @@index([employeeId])
@@ -238,9 +239,9 @@ model OvertimeDay {
   id         String   @id @default(cuid())
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  period     String   // "2026-06" — derived from date, kept for cheap querying
+  period     String // "2026-06" — derived from date, kept for cheap querying
   date       DateTime
-  type       String   // "reguler" | "merah"
+  type       String // "reguler" | "merah"
   note       String?
   createdAt  DateTime @default(now())
 
@@ -265,19 +266,19 @@ model AllowancePayment {
 }
 
 model AttendanceRecord {
-  id         String   @id @default(cuid())
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  date       DateTime
-  status     String   // "Hadir" | "Izin" | "Alpha" | "Hari Libur"
-  checkIn    String?
-  checkOut   String?
+  id                String   @id @default(cuid())
+  employeeId        String
+  employee          Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date              DateTime
+  status            String // "Hadir" | "Izin" | "Alpha" | "Hari Libur"
+  checkIn           String?
+  checkOut          String?
   scheduledCheckIn  String?
   scheduledCheckOut String?
-  lateMin    Int      @default(0)
-  overtimeHours Int   @default(0)
-  location   String?
-  createdAt  DateTime @default(now())
+  lateMin           Int      @default(0)
+  overtimeHours     Int      @default(0)
+  location          String?
+  createdAt         DateTime @default(now())
 
   @@unique([employeeId, date])
   @@index([date])
@@ -287,7 +288,7 @@ model LeaveRequest {
   id         String   @id @default(cuid())
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  type       String   // "Cuti Tahunan" | "Sakit" | "Melahirkan" | "Lainnya"
+  type       String // "Cuti Tahunan" | "Sakit" | "Melahirkan" | "Lainnya"
   startDate  DateTime
   endDate    DateTime
   reason     String
@@ -316,85 +317,86 @@ model Assignment {
 }
 
 model Candidate {
-  id            String   @id @default(cuid())
-  name          String
-  position      String
-  appliedDate   DateTime
-  status        String   @default("lamaran") // lamaran | interview | diterima | aktif | ditolak
+  id              String   @id @default(cuid())
+  name            String
+  position        String
+  appliedDate     DateTime
+  status          String   @default("lamaran") // lamaran | interview | diterima | aktif | ditolak
   hiredEmployeeId String?
-  createdAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
 }
 
 // ── Client billing ──────────────────────────────────────────────────────
 
 model Invoice {
   // Monthly outsourcing-fee invoice, one per client per period.
-  id           String   @id @default(cuid())
-  clientId     String
-  client       Client   @relation(fields: [clientId], references: [id])
-  invoiceNo    String   @unique
-  period       String   // "2026-07"
-  status       String   @default("draft") // draft | terkirim | lunas
-  dueDate      DateTime?
+  id              String    @id @default(cuid())
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id])
+  invoiceNo       String    @unique
+  period          String // "2026-07"
+  status          String    @default("draft") // draft | terkirim | lunas
+  dueDate         DateTime?
   docHandoverDate DateTime? // tanggal dokumen invoice fisik diserahkan ke klien
-  gajiTotal    Int
-  feeTotal     Int
-  total        Int
-  sentAt       DateTime?
-  paidAt       DateTime?
-  createdAt    DateTime @default(now())
+  gajiTotal       Int
+  feeTotal        Int
+  total           Int
+  sentAt          DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
 
   @@unique([clientId, period])
   @@index([status])
 }
 
 model InvoiceBj {
-  id          String        @id @default(cuid())
-  invoiceNo   String        @unique
-  clientId    String
-  client      Client        @relation(fields: [clientId], references: [id])
-  date        DateTime
-  dueDate     DateTime
+  id              String          @id @default(cuid())
+  invoiceNo       String          @unique
+  clientId        String
+  client          Client          @relation(fields: [clientId], references: [id])
+  date            DateTime
+  dueDate         DateTime
   docHandoverDate DateTime? // tanggal dokumen invoice fisik diserahkan ke klien
-  withPpn     Boolean       @default(true)
-  jobTitle    String?       // judul pekerjaan/proyek yang ditagihkan
-  discountDesc    String?   // keterangan diskon, mis. "Diskon pelanggan lama"
-  discountPercent Int       @default(0) // 0-100, persen dari subtotal
-  signerName  String?       // nama penandatangan pihak WSP di invoice ini
-  status      String        @default("draft") // draft | terkirim | lunas
-  items       InvoiceBjItem[]
-  createdAt   DateTime      @default(now())
+  withPpn         Boolean         @default(true)
+  jobTitle        String? // judul pekerjaan/proyek yang ditagihkan
+  discountDesc    String? // keterangan diskon, mis. "Diskon pelanggan lama"
+  discountPercent Int             @default(0) // 0-100, persen dari subtotal
+  signerName      String? // nama penandatangan pihak WSP di invoice ini
+  status          String          @default("draft") // draft | terkirim | lunas
+  items           InvoiceBjItem[]
+  mbp             Mbp?
+  createdAt       DateTime        @default(now())
 
   @@index([clientId])
   @@index([status])
 }
 
 model InvoiceBjItem {
-  id          String    @id @default(cuid())
-  invoiceId   String
-  invoice     InvoiceBj @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  desc        String
-  qty         Int
-  price       Int
+  id        String    @id @default(cuid())
+  invoiceId String
+  invoice   InvoiceBj @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  desc      String
+  qty       Int
+  price     Int
 }
 
 // ── Finance: COA, cash accounts, transactions, payables ────────────────
 
 model Account {
-  id       String  @id @default(cuid())
-  code     String  @unique
-  name     String
-  type     String  // "masuk" | "keluar"
-  budget   Int?    // monthly budget, for "keluar" accounts
+  id     String @id @default(cuid())
+  code   String @unique
+  name   String
+  type   String // "masuk" | "keluar"
+  budget Int? // monthly budget, for "keluar" accounts
 
   transactions Transaction[]
 }
 
 model CashAccount {
-  id       String  @id @default(cuid())
-  name     String
-  opening  Int     @default(0)
-  kind     String  @default("besar") // "kecil" | "besar" — memisahkan kas kecil (petty cash) dari kas besar (rekening bank/operasional)
+  id      String @id @default(cuid())
+  name    String
+  opening Int    @default(0)
+  kind    String @default("besar") // "kecil" | "besar" — memisahkan kas kecil (petty cash) dari kas besar (rekening bank/operasional)
 
   transactions Transaction[]
 }
@@ -408,7 +410,7 @@ model Transaction {
   cashAccount   CashAccount @relation(fields: [cashAccountId], references: [id])
   desc          String
   amount        Int
-  type          String      // "masuk" | "keluar"
+  type          String // "masuk" | "keluar"
   isTransfer    Boolean     @default(false)
   attachmentUrl String?
   createdById   String?
@@ -420,14 +422,14 @@ model Transaction {
 }
 
 model Payable {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   vendorName String
   desc       String
   amount     Int
   dueDate    DateTime
-  status     String   @default("belum") // "belum" | "lunas"
+  status     String    @default("belum") // "belum" | "lunas"
   paidAt     DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([status])
 }
@@ -442,17 +444,18 @@ model ClosedPeriod {
 // ── Gudang (inventory) ──────────────────────────────────────────────────
 
 model InventoryItem {
-  id        String   @id @default(cuid())
-  name      String
-  unit      String   // satuan, mis. "unit", "pcs", "set"
-  qty       Int      @default(0) // stok saat ini
-  price     Int      // harga satuan sekarang (Rp) — dipakai sebagai default saat permintaan baru
-  category  String?
-  active    Boolean  @default(true) // nonaktifkan barang tanpa menghapusnya — tetap muncul di riwayat, tidak lagi bisa diambil
+  id          String             @id @default(cuid())
+  name        String
+  unit        String // satuan, mis. "unit", "pcs", "set"
+  qty         Int                @default(0) // stok saat ini
+  price       Int // harga satuan sekarang (Rp) — dipakai sebagai default saat permintaan baru
+  category    String?
+  active      Boolean            @default(true) // nonaktifkan barang tanpa menghapusnya — tetap muncul di riwayat, tidak lagi bisa diambil
   // false = barang "beli sesuai permintaan" — tidak dibatasi/dikurangi stok saat diambil, dan tidak dihitung ke Total Nilai Stok (mis. jasa/pembelian khusus per pengambilan). true = stok fisik seperti biasa (qty dikurangi tiap diambil).
-  trackStock Boolean @default(true)
-  requests  InventoryRequest[]
-  createdAt DateTime @default(now())
+  trackStock  Boolean            @default(true)
+  requests    InventoryRequest[]
+  mbpRequests MbpRequest[]
+  createdAt   DateTime           @default(now())
 
   @@index([name])
 }
@@ -488,4 +491,69 @@ model InventoryRequest {
   @@index([itemId])
   @@index([date])
   @@index([status])
+}
+
+// ── MBP (Material Budget Plan) — client quotation ───────────────────────
+
+// Field request for an item, pending office approval. Mirrors the
+// InventoryRequest deferred-status pattern above, but for items that may be
+// sourced from the Gudang catalog OR bought specifically for a client job
+// ("dari luar") — itemId is nullable to allow the latter.
+model MbpRequest {
+  id            String         @id @default(cuid())
+  itemId        String?
+  item          InventoryItem? @relation(fields: [itemId], references: [id])
+  itemName      String // snapshot; typed directly when itemId is null
+  unit          String
+  qty           Int
+  cost          Int // harga asli — snapshot dari InventoryItem.price, atau diketik manual untuk barang luar
+  requesterName String
+  siteName      String?
+  note          String?
+  status        String         @default("menunggu") // "menunggu" | "disetujui" | "ditolak"
+  decidedAt     DateTime?
+  decisionNote  String?
+  mbpId         String? // diisi begitu ditarik ke sebuah Mbp (mencegah dipakai dobel)
+  mbp           Mbp?           @relation(fields: [mbpId], references: [id])
+  createdById   String?
+  createdAt     DateTime       @default(now())
+
+  @@index([status])
+  @@index([mbpId])
+}
+
+// Dokumen penawaran berharga yang dikirim ke klien. Item menyimpan cost
+// (internal) dan price (harga jual bermarkup, tampil ke klien) — bentuknya
+// sama seperti InvoiceBjItem ditambah `cost` untuk visibilitas margin;
+// markup% sengaja tidak disimpan terpisah — price adalah satu-satunya
+// sumber kebenaran, dihitung langsung di form seperti InvoiceBjItem.
+model Mbp {
+  id               String       @id @default(cuid())
+  mbpNo            String       @unique // "{seq}-MBP-WSP-{mmYY}", pola sama seperti InvoiceBj.invoiceNo
+  clientId         String?
+  client           Client?      @relation(fields: [clientId], references: [id])
+  clientNameManual String? // diisi saat belum ada Client record (masih prospek)
+  date             DateTime     @default(now())
+  jobTitle         String?
+  signerName       String?
+  status           String       @default("draft") // "draft" | "terkirim" | "disetujui_klien" | "ditolak_klien" | "dibatalkan"
+  items            MbpItem[]
+  requests         MbpRequest[]
+  invoiceBjId      String?      @unique // diisi begitu dikonversi — lihat convertMbpToInvoice
+  invoiceBj        InvoiceBj?   @relation(fields: [invoiceBjId], references: [id])
+  createdById      String?
+  createdAt        DateTime     @default(now())
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model MbpItem {
+  id    String @id @default(cuid())
+  mbpId String
+  mbp   Mbp    @relation(fields: [mbpId], references: [id], onDelete: Cascade)
+  desc  String
+  qty   Int
+  cost  Int // internal, tidak pernah dicetak di dokumen ke klien
+  price Int // harga jual bermarkup — yang dicetak, dan yang jadi InvoiceBjItem.price saat konversi
 }

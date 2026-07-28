@@ -1,0 +1,281 @@
+"use server";
+
+import { db } from "@/lib/db";
+import { auth } from "@/auth";
+import { revalidatePath } from "next/cache";
+import { findOrCreateClientByName } from "@/app/(app)/klien/actions";
+
+// Field request for an item — pending office approval. Deliberately doesn't
+// touch anything else yet (no Mbp created here); same reasoning as
+// Gudang's requestItem: this only records that someone asked.
+export async function addMbpRequest(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const itemId = String(formData.get("itemId") ?? "").trim() || null;
+  const qty = Math.max(1, parseInt(String(formData.get("qty") ?? "1"), 10) || 1);
+  const requesterName = String(formData.get("requesterName") ?? "").trim();
+  const siteName = String(formData.get("siteName") ?? "").trim() || null;
+  const note = String(formData.get("note") ?? "").trim() || null;
+  if (!requesterName) throw new Error("Nama peminta wajib diisi.");
+
+  let itemName: string;
+  let unit: string;
+  let cost: number;
+
+  if (itemId) {
+    const item = await db.inventoryItem.findUnique({ where: { id: itemId } });
+    if (!item) throw new Error("Barang tidak ditemukan.");
+    itemName = item.name;
+    unit = item.unit;
+    cost = item.price;
+  } else {
+    itemName = String(formData.get("itemName") ?? "").trim();
+    unit = String(formData.get("unit") ?? "").trim() || "unit";
+    cost = Math.max(0, parseInt(String(formData.get("cost") ?? "0"), 10) || 0);
+    if (!itemName) throw new Error("Nama barang wajib diisi.");
+  }
+
+  const request = await db.mbpRequest.create({
+    data: { itemId, itemName, unit, qty, cost, requesterName, siteName, note, createdById: session.user.id },
+  });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "mbpRequest.create", entity: "MbpRequest", entityId: request.id, detail: JSON.stringify({ itemName, qty, requesterName }) },
+  });
+
+  revalidatePath("/mbp");
+}
+
+export async function decideMbpRequest(id: string, decision: "disetujui" | "ditolak", note?: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const request = await db.mbpRequest.findUnique({ where: { id } });
+  if (!request) return;
+  if (request.status !== "menunggu") throw new Error("Permintaan ini sudah diputuskan sebelumnya.");
+
+  await db.mbpRequest.update({
+    where: { id },
+    data: { status: decision, decidedAt: new Date(), decisionNote: note?.trim() || null },
+  });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "mbpRequest." + decision, entity: "MbpRequest", entityId: id, detail: request.itemName },
+  });
+
+  revalidatePath("/mbp");
+}
+
+type MbpItemInput = { desc: string; qty: number; cost: number; price: number; sourceRequestId: string | null };
+
+// Item rows are desc{i}/qty{i}/cost{i}/price{i}, same indexed-FormData shape
+// as InvoiceBjFormFields — plus an optional sourceRequestId{i} when the row
+// started life as a pulled-in approved MbpRequest (see CreateMbpDialog),
+// so that request can be marked consumed once the Mbp is actually saved.
+function parseMbpItems(formData: FormData): MbpItemInput[] {
+  const items: MbpItemInput[] = [];
+  for (let i = 1; formData.has(`desc${i}`); i++) {
+    const desc = String(formData.get(`desc${i}`) ?? "").trim();
+    if (!desc) continue;
+    const qty = Math.max(1, parseInt(String(formData.get(`qty${i}`) ?? "1"), 10) || 1);
+    const cost = Math.max(0, parseInt(String(formData.get(`cost${i}`) ?? "0"), 10) || 0);
+    const price = Math.max(0, parseInt(String(formData.get(`price${i}`) ?? "0"), 10) || 0);
+    const sourceRequestId = String(formData.get(`sourceRequestId${i}`) ?? "").trim() || null;
+    items.push({ desc, qty, cost, price, sourceRequestId });
+  }
+  return items;
+}
+
+async function nextMbpNo(): Promise<string> {
+  const count = await db.mbp.count();
+  const seq = String(count + 1).padStart(4, "0");
+  const mmYY = String(new Date().getMonth() + 1).padStart(2, "0") + String(new Date().getFullYear()).slice(-2);
+  return `${seq}-MBP-WSP-${mmYY}`;
+}
+
+export async function createMbp(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const clientId = String(formData.get("clientId") ?? "").trim() || null;
+  const clientNameManual = String(formData.get("clientNameManual") ?? "").trim() || null;
+  if (!clientId && !clientNameManual) throw new Error("Klien wajib dipilih atau diisi manual.");
+
+  const items = parseMbpItems(formData);
+  if (items.length === 0) throw new Error("Minimal 1 item wajib diisi.");
+
+  const jobTitle = String(formData.get("jobTitle") ?? "").trim() || null;
+  const signerName = String(formData.get("signerName") ?? "").trim() || null;
+  const mbpNo = await nextMbpNo();
+
+  const mbp = await db.mbp.create({
+    data: {
+      mbpNo,
+      clientId,
+      clientNameManual: clientId ? null : clientNameManual,
+      jobTitle,
+      signerName,
+      items: { create: items.map(({ desc, qty, cost, price }) => ({ desc, qty, cost, price })) },
+    },
+  });
+
+  const sourceIds = items.map((i) => i.sourceRequestId).filter((v): v is string => !!v);
+  if (sourceIds.length > 0) {
+    await db.mbpRequest.updateMany({ where: { id: { in: sourceIds }, status: "disetujui", mbpId: null }, data: { mbpId: mbp.id } });
+  }
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "mbp.create", entity: "Mbp", entityId: mbp.id, detail: mbpNo },
+  });
+
+  revalidatePath("/mbp");
+}
+
+export async function updateMbp(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const existing = await db.mbp.findUnique({ where: { id } });
+  if (!existing) throw new Error("MBP tidak ditemukan.");
+  if (existing.status === "dibatalkan" || existing.invoiceBjId) {
+    throw new Error("MBP yang sudah dibatalkan/dikonversi jadi invoice tidak bisa diedit.");
+  }
+
+  const clientId = String(formData.get("clientId") ?? "").trim() || null;
+  const clientNameManual = String(formData.get("clientNameManual") ?? "").trim() || null;
+  if (!clientId && !clientNameManual) throw new Error("Klien wajib dipilih atau diisi manual.");
+
+  const items = parseMbpItems(formData);
+  if (items.length === 0) throw new Error("Minimal 1 item wajib diisi.");
+
+  const jobTitle = String(formData.get("jobTitle") ?? "").trim() || null;
+  const signerName = String(formData.get("signerName") ?? "").trim() || null;
+
+  await db.mbp.update({
+    where: { id },
+    data: {
+      clientId,
+      clientNameManual: clientId ? null : clientNameManual,
+      jobTitle,
+      signerName,
+      items: { deleteMany: {}, create: items.map(({ desc, qty, cost, price }) => ({ desc, qty, cost, price })) },
+    },
+  });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "mbp.update", entity: "Mbp", entityId: id, detail: existing.mbpNo },
+  });
+
+  revalidatePath("/mbp");
+}
+
+const STATUS_FLOW: Record<string, string> = { draft: "terkirim", terkirim: "disetujui_klien" };
+
+// Pure status cycle — unlike InvoiceBj's "lunas" step, MBP never touches
+// Kas; the only downstream side effect happens later, in
+// convertMbpToInvoice, once the client has actually said yes.
+export async function advanceMbpStatus(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const mbp = await db.mbp.findUnique({ where: { id } });
+  if (!mbp) return;
+  const next = STATUS_FLOW[mbp.status];
+  if (!next) throw new Error("Status MBP ini tidak bisa dilanjutkan lagi.");
+
+  await db.mbp.update({ where: { id }, data: { status: next } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "mbp.advance", entity: "Mbp", entityId: id, detail: next },
+  });
+
+  revalidatePath("/mbp");
+}
+
+export async function rejectMbpByClient(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const mbp = await db.mbp.findUnique({ where: { id } });
+  if (!mbp) return;
+  if (mbp.status !== "terkirim") throw new Error("Hanya MBP yang sudah terkirim yang bisa ditandai ditolak klien.");
+
+  await db.mbp.update({ where: { id }, data: { status: "ditolak_klien" } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "mbp.rejectByClient", entity: "Mbp", entityId: id },
+  });
+
+  revalidatePath("/mbp");
+}
+
+export async function cancelMbp(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const mbp = await db.mbp.findUnique({ where: { id } });
+  if (!mbp) return;
+  if (mbp.status === "dibatalkan") throw new Error("MBP ini sudah dibatalkan sebelumnya.");
+  if (mbp.invoiceBjId) throw new Error("MBP ini sudah dikonversi jadi invoice — tidak bisa dibatalkan dari sini.");
+
+  await db.mbp.update({ where: { id }, data: { status: "dibatalkan" } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "mbp.cancel", entity: "Mbp", entityId: id, detail: mbp.mbpNo },
+  });
+
+  revalidatePath("/mbp");
+}
+
+// The hand-off into real billing: builds an InvoiceBj from this Mbp's items
+// (desc/qty/price — cost never crosses over) using the exact same invoiceNo
+// generator as addInvoiceBj in klien/actions.ts. If the Mbp was only ever
+// linked to a manual client name (no real Client record yet), resolves/
+// creates one via findOrCreateClientByName — reused as-is, not duplicated.
+export async function convertMbpToInvoice(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const mbp = await db.mbp.findUnique({ where: { id }, include: { items: true } });
+  if (!mbp) throw new Error("MBP tidak ditemukan.");
+  if (mbp.status !== "disetujui_klien") throw new Error("Hanya MBP yang sudah disetujui klien yang bisa dijadikan invoice.");
+  if (mbp.invoiceBjId) throw new Error("MBP ini sudah pernah dikonversi jadi invoice.");
+  if (mbp.items.length === 0) throw new Error("MBP ini tidak punya item.");
+
+  let clientId = mbp.clientId;
+  if (!clientId) {
+    if (!mbp.clientNameManual) throw new Error("MBP ini belum punya klien — lengkapi dulu sebelum dikonversi.");
+    const client = await findOrCreateClientByName(mbp.clientNameManual);
+    clientId = client.id;
+  }
+
+  const count = await db.invoiceBj.count();
+  const seq = String(count + 1).padStart(4, "0");
+  const mmYY = String(new Date().getMonth() + 1).padStart(2, "0") + String(new Date().getFullYear()).slice(-2);
+  const invoiceNo = `${seq}-INV-WSP-${mmYY}`;
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 14);
+
+  const invoice = await db.invoiceBj.create({
+    data: {
+      invoiceNo,
+      clientId,
+      date: new Date(),
+      dueDate,
+      withPpn: true,
+      jobTitle: mbp.jobTitle,
+      signerName: mbp.signerName,
+      items: { create: mbp.items.map((i) => ({ desc: i.desc, qty: i.qty, price: i.price })) },
+    },
+  });
+
+  await db.mbp.update({ where: { id }, data: { clientId, invoiceBjId: invoice.id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "mbp.convertToInvoice", entity: "Mbp", entityId: id, detail: JSON.stringify({ mbpNo: mbp.mbpNo, invoiceNo }) },
+  });
+
+  revalidatePath("/mbp");
+  revalidatePath("/klien");
+}

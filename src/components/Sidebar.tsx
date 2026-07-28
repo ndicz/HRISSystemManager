@@ -114,6 +114,13 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
       <line x1="12" y1="13" x2="12" y2="22" />
     </Icon>
   ),
+  "/mbp": (
+    <Icon>
+      <rect x="5" y="3" width="14" height="18" rx="1.5" />
+      <path d="M9 3v3h6V3" />
+      <polyline points="8.5 13 10.5 15 15.5 10" />
+    </Icon>
+  ),
   "/pajak": (
     <Icon>
       <path d="M6 2h12v19l-3-2-3 2-3-2-3 2V2z" />
