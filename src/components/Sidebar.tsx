@@ -173,16 +173,17 @@ function CloseIcon() {
   );
 }
 
-function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate: () => void }) {
+function NavLink({ item, active, badge, onNavigate }: { item: NavItem; active: boolean; badge?: number; onNavigate: () => void }) {
   return (
     <Link href={item.href} className={`nav-item${active ? " active" : ""}`} onClick={onNavigate}>
       {NAV_ICONS[item.href]}
       {item.label}
+      {!!badge && <span className="nav-badge">{badge > 99 ? "99+" : badge}</span>}
     </Link>
   );
 }
 
-function NavGroupSection({ group, items, pathname, onNavigate }: { group: NavGroup; items: NavItem[]; pathname: string; onNavigate: () => void }) {
+function NavGroupSection({ group, items, pathname, badgeCounts, onNavigate }: { group: NavGroup; items: NavItem[]; pathname: string; badgeCounts?: Record<string, number>; onNavigate: () => void }) {
   const storageKey = "sidebar-group-" + group;
   const containsActive = items.some((i) => isActive(pathname, i.href));
   const [expanded, setExpanded] = useState(true);
@@ -234,7 +235,7 @@ function NavGroupSection({ group, items, pathname, onNavigate }: { group: NavGro
       {expanded && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
           {items.map((item) => (
-            <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} onNavigate={onNavigate} />
+            <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} badge={badgeCounts?.[item.href]} onNavigate={onNavigate} />
           ))}
         </div>
       )}
@@ -242,7 +243,11 @@ function NavGroupSection({ group, items, pathname, onNavigate }: { group: NavGro
   );
 }
 
-export function Sidebar({ userName, userRole, pageAccess }: { userName: string; userRole: string; pageAccess?: string[] }) {
+export function Sidebar({
+  userName, userRole, pageAccess, badgeCounts,
+}: {
+  userName: string; userRole: string; pageAccess?: string[]; badgeCounts?: Record<string, number>;
+}) {
   const pathname = usePathname();
   const items = navForRole(userRole, pageAccess);
   const standalone = items.filter((i) => !i.group);
@@ -301,12 +306,12 @@ export function Sidebar({ userName, userRole, pageAccess }: { userName: string; 
           {standalone.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
               {standalone.map((item) => (
-                <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} onNavigate={close} />
+                <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} badge={badgeCounts?.[item.href]} onNavigate={close} />
               ))}
             </div>
           )}
           {groups.map(({ group, items: groupItems }) => (
-            <NavGroupSection key={group} group={group} items={groupItems} pathname={pathname} onNavigate={close} />
+            <NavGroupSection key={group} group={group} items={groupItems} pathname={pathname} badgeCounts={badgeCounts} onNavigate={close} />
           ))}
         </div>
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
