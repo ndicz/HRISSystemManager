@@ -13,6 +13,7 @@ import { PayGajiButton } from "@/components/PayGajiButton";
 import { PayrollDetailDialog } from "@/components/PayrollDetailDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
+import { BASE_PATH } from "@/lib/basePath";
 
 type Emp = Employee & {
   site: Site;
@@ -339,7 +340,7 @@ export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; 
                                 label={`Bayar gaji ${siteName} (${siteUnpaidIds.length} belum dibayar)`}
                               />
                               <a
-                                href={`/print/slip-batch?ids=${rows.map((r) => r.e.id).join(",")}&period=${period}`}
+                                href={`${BASE_PATH}/print/slip-batch?ids=${rows.map((r) => r.e.id).join(",")}&period=${period}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="btn btn-ghost"
@@ -383,7 +384,7 @@ export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; 
                               bpjsKetenagakerjaanOverride={e.bpjsKetenagakerjaanOverride}
                             />
                           </td>
-                          <td><a href={`/print/slip/${e.id}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak slip</a></td>
+                          <td><a href={`${BASE_PATH}/print/slip/${e.id}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak slip</a></td>
                         </tr>
                         );
                       })}

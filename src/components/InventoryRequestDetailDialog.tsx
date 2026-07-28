@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { InventoryRequest } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
 import { cancelInventoryRequest, completeInventoryRequest } from "@/app/(app)/gudang/actions";
+import { BASE_PATH } from "@/lib/basePath";
 
 const STATUS_TAG: Record<string, string> = {
   berjalan: "tag tag-outline",
@@ -133,7 +134,7 @@ export function InventoryRequestDetailDialog({ request }: { request: InventoryRe
                   {completePending ? "Menyimpan…" : "Tandai Selesai"}
                 </button>
               )}
-              <a href={`/print/inventory-request/${request.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+              <a href={`${BASE_PATH}/print/inventory-request/${request.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
                 Cetak bukti
               </a>
               <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Tutup</button>

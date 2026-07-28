@@ -3,6 +3,7 @@
 import type { Employee, Site, Position } from "@prisma/client";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
+import { BASE_PATH } from "@/lib/basePath";
 
 type Emp = Employee & { site: Site; position: Position };
 
@@ -44,7 +45,7 @@ export function ResignedTable({ resigned }: { resigned: Emp[] }) {
               <td>{e.resignReason ?? "-"}</td>
               <td>
                 {e.resignDate && (
-                  <a href={`/print/final-settlement/${e.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+                  <a href={`${BASE_PATH}/print/final-settlement/${e.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
                     Cetak slip terakhir
                   </a>
                 )}

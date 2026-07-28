@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AutoPrint } from "@/components/print/AutoPrint";
+import { BASE_PATH } from "@/lib/basePath";
 
 export const PRINT_CSS = `
   .print-doc{font-family:Georgia,"Times New Roman",serif;color:#1d1f20;padding:32px 40px;font-size:13px;line-height:1.5;max-width:760px;margin:0 auto;background:#fff}
@@ -50,7 +51,7 @@ export function PrintDocumentInner({
     <div className={"print-doc" + (pageBreak ? " page-break" : "")}>
       <div className="letterhead">
         {/* eslint-disable-next-line @next/next/no-img-element -- print output is server-rendered, plain HTML served straight to the print dialog, not part of Next's client image pipeline */}
-        <img className="letterhead-img" src="/kop-surat-wsp.jpg" alt="PT Wana Samudra Persada" />
+        <img className="letterhead-img" src={`${BASE_PATH}/kop-surat-wsp.jpg`} alt="PT Wana Samudra Persada" />
         <div className="company-addr">Jl. Kawaluyaan Indah XVII No.33, Jatisari, Kec. Buahbatu, Kota Bandung, Jawa Barat 40286</div>
       </div>
       <div className="doc-title">{docTitle}</div>

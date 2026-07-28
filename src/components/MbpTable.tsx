@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { advanceMbpStatus, rejectMbpByClient, cancelMbp, convertMbpToInvoice } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
 import { invoiceBjSubtotal } from "@/lib/finance";
+import { BASE_PATH } from "@/lib/basePath";
 
 type MbpRow = {
   id: string;
@@ -78,7 +79,7 @@ function RowActions({ mbp, onChanged }: { mbp: MbpRow; onChanged?: () => void })
         </button>
       )}
       {mbp.invoiceBjId && <span className="tag tag-accent">Sudah jadi Invoice</span>}
-      <a className="btn btn-ghost" href={`/print/mbp/${mbp.id}`} target="_blank" rel="noopener noreferrer">Cetak</a>
+      <a className="btn btn-ghost" href={`${BASE_PATH}/print/mbp/${mbp.id}`} target="_blank" rel="noopener noreferrer">Cetak</a>
       {canCancel && (
         <button type="button" className="btn btn-ghost" disabled={cancelPending} onClick={() => run(() => cancelMbp(mbp.id), startCancel, `Batalkan MBP "${mbp.mbpNo}"?`)}>
           Batalkan

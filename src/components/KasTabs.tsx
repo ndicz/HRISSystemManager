@@ -14,6 +14,7 @@ import { TransferDialog } from "@/components/TransferDialog";
 import { BudgetEditButton } from "@/components/BudgetEditButton";
 import { DocHandoverDateInput } from "@/components/DocHandoverDateInput";
 import { closePeriod, reopenPeriod } from "@/app/(app)/kas/actions";
+import { BASE_PATH } from "@/lib/basePath";
 
 type Props = {
   accounts: Account[];
@@ -180,7 +181,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
                             <td className={t.type === "masuk" ? "text-accent" : ""}>{t.type === "masuk" ? "+" : "-"}{formatRp(t.amount)}</td>
                             <td>
                               {t.attachmentUrl ? (
-                                <a href={t.attachmentUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Lihat</a>
+                                <a href={`${BASE_PATH}${t.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Lihat</a>
                               ) : "-"}
                             </td>
                             <td>

@@ -23,8 +23,14 @@ export default auth((req) => {
   const isPublic = PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p));
   const isAuthRoute = req.nextUrl.pathname.startsWith("/api/auth");
 
+  // req.nextUrl.clone() (not `new URL(path, req.nextUrl.origin)`) — a clone
+  // keeps NextURL's basePath tracking, so it gets re-added automatically
+  // when the redirect is serialized. Building a plain URL from origin+path
+  // drops the basePath entirely and would redirect outside the app.
   if (!req.auth && !isPublic && !isAuthRoute) {
-    const loginUrl = new URL("/login", req.nextUrl.origin);
+    const loginUrl = req.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
     loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
   }
@@ -33,10 +39,14 @@ export default auth((req) => {
     const role = req.auth.user.role;
     const home = HOME_REDIRECT[role];
     if (home && req.nextUrl.pathname === "/") {
-      return NextResponse.redirect(new URL(home, req.nextUrl.origin));
+      const homeUrl = req.nextUrl.clone();
+      homeUrl.pathname = home;
+      return NextResponse.redirect(homeUrl);
     }
     if (!canAccess(role, req.nextUrl.pathname, req.auth.user.pageAccess) && req.nextUrl.pathname !== "/akses-ditolak") {
-      return NextResponse.redirect(new URL("/akses-ditolak", req.nextUrl.origin));
+      const deniedUrl = req.nextUrl.clone();
+      deniedUrl.pathname = "/akses-ditolak";
+      return NextResponse.redirect(deniedUrl);
     }
   }
 });

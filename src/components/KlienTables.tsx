@@ -11,6 +11,7 @@ import { EditInvoiceBjDialog } from "@/components/EditInvoiceBjDialog";
 import { InvoiceBjActions } from "@/components/InvoiceBjActions";
 import { InvoiceActions } from "@/components/InvoiceActions";
 import { GenerateInvoiceButton } from "@/components/GenerateInvoiceButton";
+import { BASE_PATH } from "@/lib/basePath";
 
 function statusTag(status: string) {
   if (status === "lunas") return "tag tag-accent";
@@ -150,7 +151,7 @@ export function KlienTables({
                     )}
                   </td>
                   <td><InvoiceBjActions id={inv.id} status={inv.status} invoiceNo={inv.invoiceNo} /></td>
-                  <td><a href={`/print/invoice-bj/${inv.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
+                  <td><a href={`${BASE_PATH}/print/invoice-bj/${inv.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
                 </tr>
               ))}
             </tbody>
@@ -201,7 +202,7 @@ export function KlienTables({
                   <td style={{ fontWeight: 600 }}>{formatRp(inv.total)}</td>
                   <td><span className={statusTag(inv.status)}>{statusLabel(inv.status)}</span></td>
                   <td><InvoiceActions id={inv.id} status={inv.status} invoiceNo={inv.invoiceNo} /></td>
-                  <td><a href={`/print/invoice-outsourcing/${inv.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
+                  <td><a href={`${BASE_PATH}/print/invoice-outsourcing/${inv.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
                 </tr>
               ))}
             </tbody>

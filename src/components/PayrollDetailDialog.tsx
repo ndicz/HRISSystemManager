@@ -7,6 +7,7 @@ import { updateBpjsOverride, updatePayrollAmounts } from "@/app/(app)/penggajian
 import { PayrollEntryPanel } from "@/components/PayrollEntryPanel";
 import { AttendanceRecapPanel } from "@/components/AttendanceRecapPanel";
 import { PayGajiButton } from "@/components/PayGajiButton";
+import { BASE_PATH } from "@/lib/basePath";
 
 type Payroll = ReturnType<typeof computeMonthlyPayroll>;
 type Tab = "ringkasan" | "lembur" | "absensi";
@@ -211,7 +212,7 @@ export function PayrollDetailDialog({
               ) : (
                 <PayGajiButton employeeIds={[employeeId]} period={period} totalAmount={p.total} label="Bayar gaji" />
               )}
-              <a href={`/print/slip/${employeeId}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+              <a href={`${BASE_PATH}/print/slip/${employeeId}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
                 Cetak slip
               </a>
               <button type="button" className="btn btn-secondary" onClick={close}>

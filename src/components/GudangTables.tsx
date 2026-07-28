@@ -10,6 +10,7 @@ import { RequestItemDialog } from "@/components/RequestItemDialog";
 import { InventoryRequestDetailDialog } from "@/components/InventoryRequestDetailDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { toggleInventoryItemActive, completeInventoryRequest } from "@/app/(app)/gudang/actions";
+import { BASE_PATH } from "@/lib/basePath";
 
 function ActiveToggle({ id, active }: { id: string; active: boolean }) {
   const [pending, startTransition] = useTransition();
@@ -222,7 +223,7 @@ export function GudangTables({
                     <td><span className={REQUEST_STATUS_TAG[r.status]}>{REQUEST_STATUS_LABEL[r.status]}</span></td>
                     <td>{r.status === "berjalan" && <CompleteButton id={r.id} />}</td>
                     <td><InventoryRequestDetailDialog request={r} /></td>
-                    <td><a href={`/print/inventory-request/${r.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
+                    <td><a href={`${BASE_PATH}/print/inventory-request/${r.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak</a></td>
                   </tr>
                 ))}
               </tbody>
