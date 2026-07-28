@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Candidate } from "@prisma/client";
 import { CandidateActions } from "@/components/CandidateActions";
 import { EditCandidateDialog } from "@/components/EditCandidateDialog";
+import { Avatar } from "@/components/Avatar";
 
 type PositionOption = { id: string; name: string };
 
@@ -57,7 +58,7 @@ export function RekrutmenTable({ candidates, positions }: { candidates: Candidat
           <tbody>
             {filtered.map((c) => (
               <tr key={c.id}>
-                <td>{c.name}</td>
+                <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={c.name} />{c.name}</span></td>
                 <td>{c.position}</td>
                 <td className="text-muted">{c.appliedDate.toLocaleDateString("id-ID")}</td>
                 <td><span className={statusTag(c.status)}>{STATUS_LABEL[c.status]}</span></td>

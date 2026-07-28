@@ -9,6 +9,8 @@ import { SiteTable } from "@/components/SiteTable";
 import { PositionTable } from "@/components/PositionTable";
 import { AssignmentTable } from "@/components/AssignmentTable";
 import { ResignedTable } from "@/components/ResignedTable";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function KaryawanPage() {
   const [employees, resigned, sitesFull, positions, clients, assignments] = await Promise.all([
@@ -33,17 +35,12 @@ export default async function KaryawanPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "var(--space-6)", flexWrap: "wrap", gap: "var(--space-2)" }}>
-        <div className="page-header">
-          <h1 style={{ margin: 0 }}>Karyawan &amp; Tempat Kerja</h1>
-          <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Data karyawan dan lokasi penempatan</p>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
-        <ImportBpjsDialog />
-        <AddEmployeeDialog sites={sites} positions={positions} clients={clients} />
-      </div>
+      <PageHeader
+        icon={NAV_ICONS["/karyawan"]}
+        title="Karyawan & Tempat Kerja"
+        subtitle="Data karyawan dan lokasi penempatan"
+        actions={<><ImportBpjsDialog /><AddEmployeeDialog sites={sites} positions={positions} clients={clients} /></>}
+      />
 
       <KaryawanTable employees={employees} sites={sites} />
 

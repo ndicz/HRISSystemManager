@@ -68,7 +68,7 @@ export function DashboardTabs({
       </div>
 
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
-        <div className="card">
+        <div className="card stat-gradient stat-gradient-a">
           <div className="card-kicker">Total karyawan</div>
           <div className="card-title">{totalKaryawan}</div>
           <p className="card-body">Aktif di {totalSites} tempat kerja</p>
@@ -83,7 +83,7 @@ export function DashboardTabs({
           <div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalGajiBulanIni)}</div>
           <p className="card-body">Setelah potongan BPJS &amp; kasbon</p>
         </div>
-        <div className="card">
+        <div className="card stat-gradient stat-gradient-b">
           <div className="card-kicker">Saldo kas (s.d. akhir periode)</div>
           <div className="card-title" style={{ fontSize: 22 }}>{formatRp(saldoAkhir)}</div>
           <p className="card-body">{periodTx.length} transaksi periode ini</p>

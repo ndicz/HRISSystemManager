@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { DashboardTabs } from "@/components/DashboardTabs";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -27,12 +29,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "var(--space-6)", flexWrap: "wrap", gap: "var(--space-2)" }}>
-        <div className="page-header">
-          <h1 style={{ margin: 0 }}>Dashboard</h1>
-          <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Ringkasan keuangan dan kehadiran</p>
-        </div>
-      </div>
+      <PageHeader icon={NAV_ICONS["/"]} title="Dashboard" subtitle="Ringkasan keuangan dan kehadiran" />
 
       <DashboardTabs employees={employees} sites={sites} cashAccounts={cashAccounts} transactions={transactions} />
     </div>

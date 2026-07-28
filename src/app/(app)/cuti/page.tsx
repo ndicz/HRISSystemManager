@@ -2,6 +2,9 @@ import { db } from "@/lib/db";
 import { AddLeaveDialog } from "@/components/AddLeaveDialog";
 import { CutiTable } from "@/components/CutiTable";
 import { cutiTerpakai } from "@/lib/leave";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
+import { Avatar } from "@/components/Avatar";
 
 export default async function CutiPage() {
   const [requests, employees] = await Promise.all([
@@ -20,13 +23,15 @@ export default async function CutiPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ margin: 0 }}>Cuti</h1>
-        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Pengajuan dan persetujuan cuti karyawan</p>
-      </div>
+      <PageHeader
+        icon={NAV_ICONS["/cuti"]}
+        title="Cuti"
+        subtitle="Pengajuan dan persetujuan cuti karyawan"
+        actions={<AddLeaveDialog employees={employeeOptions} />}
+      />
 
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div className="card">
+        <div className="card stat-gradient stat-gradient-a">
           <div className="card-kicker">Menunggu persetujuan</div>
           <div className="card-title">{menunggu}</div>
         </div>
@@ -34,10 +39,6 @@ export default async function CutiPage() {
           <div className="card-kicker">Total pengajuan</div>
           <div className="card-title">{requests.length}</div>
         </div>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}>
-        <AddLeaveDialog employees={employeeOptions} />
       </div>
 
       <CutiTable requests={requests} />
@@ -59,7 +60,7 @@ export default async function CutiPage() {
             <tbody>
               {kuotaRows.map((k) => (
                 <tr key={k.id}>
-                  <td>{k.name}</td>
+                  <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={k.name} />{k.name}</span></td>
                   <td className="text-muted">{k.kuota} hari</td>
                   <td className="text-muted">{k.terpakai} hari</td>
                   <td>

@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { LaporanKehadiranTabs } from "@/components/LaporanKehadiranTabs";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function LaporanPage() {
   const [records, employees] = await Promise.all([
@@ -12,10 +14,7 @@ export default async function LaporanPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ margin: 0 }}>Laporan Kehadiran</h1>
-        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Performa kehadiran karyawan, bulanan dan tahunan</p>
-      </div>
+      <PageHeader icon={NAV_ICONS["/laporan"]} title="Laporan Kehadiran" subtitle="Performa kehadiran karyawan, bulanan dan tahunan" />
 
       <LaporanKehadiranTabs records={records} employees={employees} />
     </div>
