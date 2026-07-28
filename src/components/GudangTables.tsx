@@ -38,6 +38,55 @@ const REQUEST_STATUS_LABEL: Record<string, string> = {
   dibatalkan: "Dibatalkan",
 };
 
+function ItemsTable({ title, rows, emptyLabel }: { title: string; rows: InventoryItem[]; emptyLabel: string }) {
+  return (
+    <>
+      <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>{title}</div>
+      {rows.length === 0 ? (
+        <p style={{ fontSize: 13, opacity: 0.6 }}>{emptyLabel}</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Nama barang</th>
+              <th>Kategori</th>
+              <th>Jenis</th>
+              <th>Stok</th>
+              <th>Harga satuan</th>
+              <th>Nilai stok</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((i) => (
+              <tr key={i.id}>
+                <td>{i.name}</td>
+                <td className="text-muted">{i.category || "-"}</td>
+                <td className="text-muted">{i.trackStock ? "Stok fisik" : "Sesuai permintaan"}</td>
+                <td>
+                  {i.trackStock ? (
+                    <>
+                      {i.qty} {i.unit}
+                      {i.qty <= 2 && <span className="tag tag-outline" style={{ marginLeft: 8 }}>Menipis</span>}
+                    </>
+                  ) : (
+                    <span className="text-muted">&mdash;</span>
+                  )}
+                </td>
+                <td>{formatRp(i.price)}</td>
+                <td style={{ fontWeight: 600 }}>{i.trackStock ? formatRp(i.qty * i.price) : <span className="text-muted" style={{ fontWeight: 400 }}>&mdash;</span>}</td>
+                <td><ActiveToggle id={i.id} active={i.active} /></td>
+                <td><EditInventoryItemDialog item={i} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
+  );
+}
+
 function CompleteButton({ id }: { id: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -72,6 +121,8 @@ export function GudangTables({
     if (!needle) return items;
     return items.filter((i) => [i.name, i.category ?? ""].join(" ").toLowerCase().includes(needle));
   }, [items, qItem]);
+  const filteredStockItems = useMemo(() => filteredItems.filter((i) => i.purpose !== "mbp"), [filteredItems]);
+  const filteredMbpItems = useMemo(() => filteredItems.filter((i) => i.purpose === "mbp"), [filteredItems]);
 
   const filteredRequests = useMemo(() => {
     const needle = qReq.trim().toLowerCase();
@@ -80,7 +131,7 @@ export function GudangTables({
   }, [requests, qReq]);
   const { paged: pagedRequests, page: pageReq, setPage: setPageReq, totalItems: totalReq } = usePagedRows(filteredRequests);
 
-  const trackedItems = items.filter((i) => i.trackStock);
+  const trackedItems = items.filter((i) => i.trackStock && i.purpose !== "mbp");
   const totalStockValue = trackedItems.reduce((s, i) => s + i.qty * i.price, 0);
   const lowStockCount = trackedItems.filter((i) => i.qty <= 2).length;
   const requestableItems = items.filter((i) => i.active && i.purpose !== "mbp");
@@ -95,7 +146,7 @@ export function GudangTables({
 
       <div className="card" style={{ marginBottom: "var(--space-6)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)", flexWrap: "wrap", gap: "var(--space-2)" }}>
-          <div className="card-kicker">Daftar Barang</div>
+          <div className="card-kicker">Barang</div>
           <div style={{ display: "flex", gap: "var(--space-2)" }}>
             <RequestItemDialog
               items={requestableItems.map((i) => ({ id: i.id, name: i.name, unit: i.unit, qty: i.qty, price: i.price, trackStock: i.trackStock }))}
@@ -111,51 +162,23 @@ export function GudangTables({
           placeholder="Cari nama barang, kategori..."
           value={qItem}
           onChange={(e) => setQItem(e.target.value)}
-          style={{ marginBottom: "var(--space-3)", width: "100%", maxWidth: 320 }}
+          style={{ marginBottom: "var(--space-4)", width: "100%", maxWidth: 320 }}
         />
-        {filteredItems.length === 0 ? (
-          <p style={{ fontSize: 13, opacity: 0.6 }}>{items.length === 0 ? "Belum ada barang di gudang." : "Tidak ada hasil."}</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nama barang</th>
-                <th>Kategori</th>
-                <th>Untuk</th>
-                <th>Jenis</th>
-                <th>Stok</th>
-                <th>Harga satuan</th>
-                <th>Nilai stok</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.map((i) => (
-                <tr key={i.id}>
-                  <td>{i.name}</td>
-                  <td className="text-muted">{i.category || "-"}</td>
-                  <td><span className={i.purpose === "mbp" ? "tag tag-outline" : "tag tag-neutral"}>{i.purpose === "mbp" ? "Barang MBP" : "Stok internal"}</span></td>
-                  <td className="text-muted">{i.trackStock ? "Stok fisik" : "Sesuai permintaan"}</td>
-                  <td>
-                    {i.trackStock ? (
-                      <>
-                        {i.qty} {i.unit}
-                        {i.qty <= 2 && <span className="tag tag-outline" style={{ marginLeft: 8 }}>Menipis</span>}
-                      </>
-                    ) : (
-                      <span className="text-muted">&mdash;</span>
-                    )}
-                  </td>
-                  <td>{formatRp(i.price)}</td>
-                  <td style={{ fontWeight: 600 }}>{i.trackStock ? formatRp(i.qty * i.price) : <span className="text-muted" style={{ fontWeight: 400 }}>&mdash;</span>}</td>
-                  <td><ActiveToggle id={i.id} active={i.active} /></td>
-                  <td><EditInventoryItemDialog item={i} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+
+        <div style={{ marginBottom: "var(--space-6)" }}>
+          <ItemsTable
+            title="Stok Internal"
+            rows={filteredStockItems}
+            emptyLabel={items.filter((i) => i.purpose !== "mbp").length === 0 ? "Belum ada barang stok internal." : "Tidak ada hasil."}
+          />
+        </div>
+        <div>
+          <ItemsTable
+            title="Barang MBP"
+            rows={filteredMbpItems}
+            emptyLabel={items.filter((i) => i.purpose === "mbp").length === 0 ? "Belum ada barang khusus MBP." : "Tidak ada hasil."}
+          />
+        </div>
       </div>
 
       <div className="card">
