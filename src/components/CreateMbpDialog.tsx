@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createMbp } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
 import { RupiahInput } from "@/components/RupiahInput";
@@ -23,6 +24,7 @@ function markupLabel(cost: number, price: number): string {
 }
 
 export function CreateMbpDialog({ clients, pendingRequests }: { clients: ClientOption[]; pendingRequests: PendingRequest[] }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -70,6 +72,7 @@ export function CreateMbpDialog({ clients, pendingRequests }: { clients: ClientO
       formRef.current?.reset();
       resetForm();
       setFormKey((k) => k + 1);
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

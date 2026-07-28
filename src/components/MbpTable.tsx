@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { advanceMbpStatus, rejectMbpByClient, cancelMbp, convertMbpToInvoice } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
 import { invoiceBjSubtotal } from "@/lib/finance";
@@ -33,6 +34,7 @@ const STATUS_LABEL: Record<string, string> = {
 const ADVANCE_LABEL: Record<string, string> = { draft: "Kirim ke klien", terkirim: "Tandai disetujui klien" };
 
 function RowActions({ mbp }: { mbp: MbpRow }) {
+  const router = useRouter();
   const [advPending, startAdv] = useTransition();
   const [rejPending, startRej] = useTransition();
   const [cancelPending, startCancel] = useTransition();
@@ -50,6 +52,7 @@ function RowActions({ mbp }: { mbp: MbpRow }) {
     start(async () => {
       try {
         await action();
+        router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }

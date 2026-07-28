@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { addMbpRequest } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
 import { RupiahInput } from "@/components/RupiahInput";
@@ -17,6 +18,7 @@ export function MbpRequestForm({
   // they submit is attributed to their own name, not something they type.
   lockedRequesterName?: string;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -64,6 +66,7 @@ export function MbpRequestForm({
       formRef.current?.reset();
       resetFields();
       setFormKey((k) => k + 1);
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

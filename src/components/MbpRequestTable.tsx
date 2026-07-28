@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { decideMbpRequest } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
 
@@ -23,6 +24,7 @@ const STATUS_TAG: Record<string, string> = { menunggu: "tag tag-outline", disetu
 const STATUS_LABEL: Record<string, string> = { menunggu: "Menunggu", disetujui: "Disetujui", ditolak: "Ditolak" };
 
 function DecisionButtons({ id }: { id: string }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [drafting, setDrafting] = useState<"disetujui" | "ditolak" | null>(null);
@@ -37,6 +39,7 @@ function DecisionButtons({ id }: { id: string }) {
         await decideMbpRequest(id, decision, reason);
         setDrafting(null);
         setReason("");
+        router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
