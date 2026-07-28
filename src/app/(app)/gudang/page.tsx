@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { GudangTables } from "@/components/GudangTables";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function GudangPage() {
   const [items, requests, employees, sites] = await Promise.all([
@@ -12,10 +14,7 @@ export default async function GudangPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ margin: 0 }}>Gudang</h1>
-        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Stok barang, pengambilan barang, dan pencatatan otomatis ke Kas</p>
-      </div>
+      <PageHeader icon={NAV_ICONS["/gudang"]} title="Gudang" subtitle="Stok barang, pengambilan barang, dan pencatatan otomatis ke Kas" />
 
       <GudangTables items={items} requests={requests} employees={employees} siteNames={siteNames} />
     </div>

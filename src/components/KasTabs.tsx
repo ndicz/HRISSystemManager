@@ -131,7 +131,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
       )}
 
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div className="card"><div className="card-kicker">Saldo kas (s.d. akhir periode)</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(saldoAkhir)}</div></div>
+        <div className="card stat-gradient stat-gradient-a"><div className="card-kicker">Saldo kas (s.d. akhir periode)</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(saldoAkhir)}</div></div>
         <div className="card"><div className="card-kicker">Dana masuk periode ini</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumMasuk)}</div></div>
         <div className="card"><div className="card-kicker">Dana keluar periode ini</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumKeluar)}</div></div>
         <div className="card"><div className="card-kicker">Total piutang belum lunas</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalPiutang)}</div></div>

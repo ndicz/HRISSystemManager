@@ -14,6 +14,7 @@ import { PayrollDetailDialog } from "@/components/PayrollDetailDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
 import { BASE_PATH } from "@/lib/basePath";
+import { Avatar } from "@/components/Avatar";
 
 type Emp = Employee & {
   site: Site;
@@ -363,7 +364,7 @@ export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; 
                               onChange={() => toggleSelect(e.id)}
                             />
                           </td>
-                          <td className="text-muted">{e.empCode}</td><td>{e.name}</td>
+                          <td className="text-muted">{e.empCode}</td><td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={e.name} size={24} />{e.name}</span></td>
                           <td>{formatRp(p.gajiPokok)}</td>
                           <td>{formatRp(p.lembur)}</td>
                           <td>-{formatRp(p.potongan)}</td>
@@ -432,7 +433,7 @@ export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; 
                 <tbody>
                   {pagedThr.map(({ e, t }) => (
                     <tr key={e.id}>
-                      <td>{e.name}</td><td>{e.site.name}</td>
+                      <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={e.name} size={24} />{e.name}</span></td><td>{e.site.name}</td>
                       <td className="text-muted">{Math.floor(t.months / 12)} tahun {t.months % 12} bulan</td>
                       <td>{formatRp(t.thr)}</td>
                       <td><span className={e.thrPaid ? "tag tag-accent" : "tag tag-outline"}>{e.thrPaid ? "Sudah dibayar" : "Belum dibayar"}</span></td>

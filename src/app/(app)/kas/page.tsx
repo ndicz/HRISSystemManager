@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { computeAgingRows } from "@/lib/finance";
 import { KasTabs } from "@/components/KasTabs";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function KasPage() {
   const [accounts, cashAccounts, transactions, payables, closedPeriods, invoicesBj, invoices] = await Promise.all([
@@ -17,10 +19,7 @@ export default async function KasPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ margin: 0 }}>Pengeluaran &amp; Kas</h1>
-        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Arus kas, laba rugi, neraca, dan hutang usaha</p>
-      </div>
+      <PageHeader icon={NAV_ICONS["/kas"]} title="Pengeluaran & Kas" subtitle="Arus kas, laba rugi, neraca, dan hutang usaha" />
       <KasTabs
         accounts={accounts}
         cashAccounts={cashAccounts}

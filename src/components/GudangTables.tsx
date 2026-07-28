@@ -11,6 +11,7 @@ import { InventoryRequestDetailDialog } from "@/components/InventoryRequestDetai
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { toggleInventoryItemActive, completeInventoryRequest } from "@/app/(app)/gudang/actions";
 import { BASE_PATH } from "@/lib/basePath";
+import { Avatar } from "@/components/Avatar";
 
 function ActiveToggle({ id, active }: { id: string; active: boolean }) {
   const [pending, startTransition] = useTransition();
@@ -141,7 +142,7 @@ export function GudangTables({
     <>
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
         <div className="card"><div className="card-kicker">Jenis barang</div><div className="card-title" style={{ fontSize: 22 }}>{items.length}</div></div>
-        <div className="card"><div className="card-kicker">Total nilai stok</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalStockValue)}</div></div>
+        <div className="card stat-gradient stat-gradient-a"><div className="card-kicker">Total nilai stok</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalStockValue)}</div></div>
         <div className="card"><div className="card-kicker">Stok menipis (&le;2)</div><div className="card-title" style={{ fontSize: 22 }}>{lowStockCount}</div></div>
       </div>
 
@@ -218,7 +219,7 @@ export function GudangTables({
                     <td>{r.itemName}</td>
                     <td>{r.qty}</td>
                     <td style={{ fontWeight: 600 }}>{formatRp(r.qty * r.unitPrice)}</td>
-                    <td>{r.requesterName}</td>
+                    <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={r.requesterName} size={24} />{r.requesterName}</span></td>
                     <td className="text-muted">{r.department || "-"}</td>
                     <td><span className={REQUEST_STATUS_TAG[r.status]}>{REQUEST_STATUS_LABEL[r.status]}</span></td>
                     <td>{r.status === "berjalan" && <CompleteButton id={r.id} />}</td>
