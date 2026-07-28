@@ -38,8 +38,10 @@ function Icon({ children }: { children: React.ReactNode }) {
 }
 
 // One small line-icon per destination, keyed by href, so the drawer reads
-// at a glance instead of as a wall of text.
-const NAV_ICONS: Record<string, React.ReactNode> = {
+// at a glance instead of as a wall of text. Exported so PageHeader can
+// reuse the exact same icon in each page's own header — same route, same
+// icon, in both places.
+export const NAV_ICONS: Record<string, React.ReactNode> = {
   "/": (
     <Icon>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
