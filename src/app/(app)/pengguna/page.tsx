@@ -3,6 +3,9 @@ import { auth } from "@/auth";
 import { ASSIGNABLE_NAV_ITEMS } from "@/lib/rbac";
 import { AddUserDialog } from "@/components/AddUserDialog";
 import { EditUserDialog } from "@/components/EditUserDialog";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
+import { Avatar } from "@/components/Avatar";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",
@@ -25,14 +28,12 @@ export default async function PenggunaPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ margin: 0 }}>Pengguna</h1>
-        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Kelola akun login, peran, dan halaman yang boleh diakses tiap pengguna</p>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}>
-        <AddUserDialog assignableNavItems={ASSIGNABLE_NAV_ITEMS} employeeOptions={unlinkedEmployees} />
-      </div>
+      <PageHeader
+        icon={NAV_ICONS["/pengguna"]}
+        title="Pengguna"
+        subtitle="Kelola akun login, peran, dan halaman yang boleh diakses tiap pengguna"
+        actions={<AddUserDialog assignableNavItems={ASSIGNABLE_NAV_ITEMS} employeeOptions={unlinkedEmployees} />}
+      />
 
       <div className="card">
         <table className="table">
@@ -53,7 +54,7 @@ export default async function PenggunaPage() {
               const isSelf = u.id === session?.user?.id;
               return (
                 <tr key={u.id}>
-                  <td>{u.name}{isSelf && <span className="text-muted"> (Anda)</span>}</td>
+                  <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={u.name} size={24} />{u.name}{isSelf && <span className="text-muted"> (Anda)</span>}</span></td>
                   <td className="text-muted">{u.username ?? "-"}</td>
                   <td className="text-muted">{u.email}</td>
                   <td>{ROLE_LABEL[u.role] ?? u.role}</td>

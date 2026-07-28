@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { computePayroll, computeUmr, computeBpjsKesehatan, formatRp } from "@/lib/payroll";
 import { KemenakerTable } from "@/components/KemenakerTable";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function KemenakerPage() {
   const employees = await db.employee.findMany({
@@ -31,13 +33,10 @@ export default async function KemenakerPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ margin: 0 }}>Laporan Kemenaker</h1>
-        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Kepatuhan UMR, iuran BPJS Ketenagakerjaan &amp; Kesehatan</p>
-      </div>
+      <PageHeader icon={NAV_ICONS["/kemenaker"]} title="Laporan Kemenaker" subtitle="Kepatuhan UMR, iuran BPJS Ketenagakerjaan & Kesehatan" />
 
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div className="card">
+        <div className="card stat-gradient stat-gradient-a">
           <div className="card-kicker">Kepatuhan UMR/UMK</div>
           <div className="card-title" style={{ fontSize: 22 }}>{compliancePct}%</div>
           <p className="card-body">{employees.length - compliantCount} karyawan di bawah UMR</p>

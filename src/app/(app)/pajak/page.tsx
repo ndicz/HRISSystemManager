@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { computePayroll, computeTax, formatRp } from "@/lib/payroll";
 import { PajakTable } from "@/components/PajakTable";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function PajakPage() {
   const employees = await db.employee.findMany({
@@ -20,13 +22,10 @@ export default async function PajakPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ margin: 0 }}>Laporan Pajak</h1>
-        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Perhitungan PPh 21 (estimasi)</p>
-      </div>
+      <PageHeader icon={NAV_ICONS["/pajak"]} title="Laporan Pajak" subtitle="Perhitungan PPh 21 (estimasi)" />
 
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div className="card">
+        <div className="card stat-gradient stat-gradient-a">
           <div className="card-kicker">Total PPh 21 bulan ini</div>
           <div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumPph21)}</div>
         </div>

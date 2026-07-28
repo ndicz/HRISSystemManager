@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatRp } from "@/lib/payroll";
+import { Avatar } from "@/components/Avatar";
 
 type Row = {
   id: string;
@@ -48,7 +49,7 @@ export function PajakTable({ rows }: { rows: Row[] }) {
           <tbody>
             {filtered.map((r) => (
               <tr key={r.id}>
-                <td>{r.name}</td>
+                <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={r.name} size={24} />{r.name}</span></td>
                 <td>{r.siteName}</td>
                 <td>{formatRp(r.brutoBulan)}</td>
                 <td>{formatRp(r.pkp)}</td>
