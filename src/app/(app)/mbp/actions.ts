@@ -14,9 +14,19 @@ export async function addMbpRequest(formData: FormData) {
 
   const itemId = String(formData.get("itemId") ?? "").trim() || null;
   const qty = Math.max(1, parseInt(String(formData.get("qty") ?? "1"), 10) || 1);
-  const requesterName = String(formData.get("requesterName") ?? "").trim();
+  let requesterName = String(formData.get("requesterName") ?? "").trim();
   const siteName = String(formData.get("siteName") ?? "").trim() || null;
   const note = String(formData.get("note") ?? "").trim() || null;
+
+  // A field employee's own account can only ever request as themselves —
+  // re-derive from their linked Employee server-side rather than trusting
+  // whatever the client posted, in case the requester field was tampered
+  // with (the UI already hides/locks it, this is the actual enforcement).
+  if (session.user.role === "EMPLOYEE") {
+    const me = await db.user.findUnique({ where: { id: session.user.id }, select: { employee: { select: { name: true } } } });
+    if (!me?.employee) throw new Error("Akun Anda belum terhubung ke data karyawan.");
+    requesterName = me.employee.name;
+  }
   if (!requesterName) throw new Error("Nama peminta wajib diisi.");
 
   let itemName: string;

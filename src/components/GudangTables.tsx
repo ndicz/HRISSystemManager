@@ -83,7 +83,7 @@ export function GudangTables({
   const trackedItems = items.filter((i) => i.trackStock);
   const totalStockValue = trackedItems.reduce((s, i) => s + i.qty * i.price, 0);
   const lowStockCount = trackedItems.filter((i) => i.qty <= 2).length;
-  const requestableItems = items.filter((i) => i.active);
+  const requestableItems = items.filter((i) => i.active && i.purpose !== "mbp");
 
   return (
     <>
@@ -121,6 +121,7 @@ export function GudangTables({
               <tr>
                 <th>Nama barang</th>
                 <th>Kategori</th>
+                <th>Untuk</th>
                 <th>Jenis</th>
                 <th>Stok</th>
                 <th>Harga satuan</th>
@@ -134,6 +135,7 @@ export function GudangTables({
                 <tr key={i.id}>
                   <td>{i.name}</td>
                   <td className="text-muted">{i.category || "-"}</td>
+                  <td><span className={i.purpose === "mbp" ? "tag tag-outline" : "tag tag-neutral"}>{i.purpose === "mbp" ? "Barang MBP" : "Stok internal"}</span></td>
                   <td className="text-muted">{i.trackStock ? "Stok fisik" : "Sesuai permintaan"}</td>
                   <td>
                     {i.trackStock ? (

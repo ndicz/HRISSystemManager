@@ -13,7 +13,7 @@ import type { ClientOption } from "@/components/ClientCombobox";
 type RequestRow = {
   id: string; itemName: string; unit: string; qty: number; cost: number;
   requesterName: string; siteName: string | null; note: string | null;
-  status: string; mbpId: string | null; createdAt: Date;
+  status: string; decisionNote: string | null; mbpId: string | null; createdAt: Date;
 };
 type MbpRow = {
   id: string; mbpNo: string; clientName: string; date: Date; jobTitle: string | null;

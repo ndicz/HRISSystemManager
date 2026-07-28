@@ -9,6 +9,7 @@ export function AddInventoryItemDialog() {
   const [pending, setPending] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [trackStock, setTrackStock] = useState(true);
+  const [purpose, setPurpose] = useState<"stock" | "mbp">("stock");
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
@@ -18,6 +19,7 @@ export function AddInventoryItemDialog() {
       setOpen(false);
       formRef.current?.reset();
       setTrackStock(true);
+      setPurpose("stock");
       setFormKey((k) => k + 1);
     } finally {
       setPending(false);
@@ -50,6 +52,22 @@ export function AddInventoryItemDialog() {
                   {trackStock
                     ? "Stok dikurangi tiap kali barang ini diambil, dan dihitung ke Total Nilai Stok."
                     : "Tidak ada batas stok — barang ini selalu bisa diambil (mis. barang yang dibeli baru tiap dibutuhkan), dan tidak dihitung ke Total Nilai Stok."}
+                </p>
+              </div>
+              <div className="field">
+                <label>Untuk keperluan</label>
+                <div className="seg" role="radiogroup">
+                  <label className="seg-opt">
+                    <input type="radio" name="purpose" value="stock" checked={purpose === "stock"} onChange={() => setPurpose("stock")} /> Stok internal
+                  </label>
+                  <label className="seg-opt">
+                    <input type="radio" name="purpose" value="mbp" checked={purpose === "mbp"} onChange={() => setPurpose("mbp")} /> Barang MBP
+                  </label>
+                </div>
+                <p style={{ fontSize: 12, opacity: 0.6, margin: "4px 0 0" }}>
+                  {purpose === "stock"
+                    ? "Muncul di \"Ambil barang\" Gudang untuk kebutuhan internal."
+                    : "Muncul di menu MBP sebagai barang yang bisa dimintakan penawaran ke klien."}
                 </p>
               </div>
               <div className="field">

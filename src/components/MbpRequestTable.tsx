@@ -14,6 +14,7 @@ type RequestRow = {
   siteName: string | null;
   note: string | null;
   status: string;
+  decisionNote: string | null;
   mbpId: string | null;
   createdAt: Date;
 };
@@ -24,28 +25,59 @@ const STATUS_LABEL: Record<string, string> = { menunggu: "Menunggu", disetujui: 
 function DecisionButtons({ id }: { id: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [drafting, setDrafting] = useState<"disetujui" | "ditolak" | null>(null);
+  const [reason, setReason] = useState("");
 
-  function decide(decision: "disetujui" | "ditolak") {
+  function confirm() {
+    if (!drafting) return;
+    const decision = drafting;
     setError("");
     startTransition(async () => {
       try {
-        await decideMbpRequest(id, decision);
+        await decideMbpRequest(id, decision, reason);
+        setDrafting(null);
+        setReason("");
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
     });
   }
 
+  if (drafting) {
+    return (
+      <div style={{ display: "grid", gap: 4, minWidth: 200 }}>
+        <textarea
+          className="input"
+          rows={2}
+          style={{ fontSize: 12, minHeight: "auto" }}
+          placeholder={drafting === "disetujui" ? "Catatan persetujuan (opsional)" : "Alasan penolakan (opsional)"}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          autoFocus
+        />
+        <span style={{ display: "flex", gap: 6 }}>
+          <button type="button" className="btn btn-primary" disabled={pending} onClick={confirm} style={{ padding: "4px 10px", fontSize: 12 }}>
+            {pending ? "…" : drafting === "disetujui" ? "Konfirmasi ACC" : "Konfirmasi Tolak"}
+          </button>
+          <button type="button" className="btn btn-ghost" disabled={pending} onClick={() => { setDrafting(null); setReason(""); }} style={{ padding: "4px 10px", fontSize: 12 }}>
+            Batal
+          </button>
+        </span>
+        {error && <span style={{ fontSize: 12, color: "var(--color-danger)" }}>{error}</span>}
+      </div>
+    );
+  }
+
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}>
-      <button type="button" className="btn btn-ghost" disabled={pending} onClick={() => decide("disetujui")}>ACC</button>
-      <button type="button" className="btn btn-ghost" disabled={pending} onClick={() => decide("ditolak")}>Tolak</button>
+      <button type="button" className="btn btn-ghost" onClick={() => setDrafting("disetujui")}>ACC</button>
+      <button type="button" className="btn btn-ghost" onClick={() => setDrafting("ditolak")}>Tolak</button>
       {error && <span style={{ fontSize: 12, color: "var(--color-danger)" }}>{error}</span>}
     </span>
   );
 }
 
-export function MbpRequestTable({ requests }: { requests: RequestRow[] }) {
+export function MbpRequestTable({ requests, showDecisions = true }: { requests: RequestRow[]; showDecisions?: boolean }) {
   if (requests.length === 0) {
     return <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada permintaan barang.</p>;
   }
@@ -77,8 +109,9 @@ export function MbpRequestTable({ requests }: { requests: RequestRow[] }) {
               <td>
                 <span className={STATUS_TAG[r.status]}>{STATUS_LABEL[r.status]}</span>
                 {r.mbpId && <span className="tag tag-outline" style={{ marginLeft: 6 }}>Sudah di MBP</span>}
+                {r.decisionNote && <div style={{ fontSize: 11, opacity: 0.6, marginTop: 3 }}>&ldquo;{r.decisionNote}&rdquo;</div>}
               </td>
-              <td>{r.status === "menunggu" && <DecisionButtons id={r.id} />}</td>
+              <td>{showDecisions && r.status === "menunggu" && <DecisionButtons id={r.id} />}</td>
             </tr>
           ))}
         </tbody>

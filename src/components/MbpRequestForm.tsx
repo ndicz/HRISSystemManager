@@ -8,7 +8,15 @@ import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeComb
 
 type ItemOption = { id: string; name: string; unit: string; price: number };
 
-export function MbpRequestForm({ items, employees, siteNames }: { items: ItemOption[]; employees: EmployeeOption[]; siteNames: string[] }) {
+export function MbpRequestForm({
+  items, employees, siteNames, lockedRequesterName,
+}: {
+  items: ItemOption[]; employees: EmployeeOption[]; siteNames: string[];
+  // Set when the submitting user is a logged-in field employee (role
+  // EMPLOYEE) — the requester picker is hidden entirely and every request
+  // they submit is attributed to their own name, not something they type.
+  lockedRequesterName?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -29,7 +37,7 @@ export function MbpRequestForm({ items, employees, siteNames }: { items: ItemOpt
   const [requesterMode, setRequesterMode] = useState<"pilih" | "manual">(employees.length > 0 ? "pilih" : "manual");
   const [requesterEmployeeId, setRequesterEmployeeId] = useState("");
   const [requesterManualName, setRequesterManualName] = useState("");
-  const requesterName = requesterMode === "pilih" ? (employees.find((e) => e.id === requesterEmployeeId)?.name ?? "") : requesterManualName;
+  const requesterName = lockedRequesterName ?? (requesterMode === "pilih" ? (employees.find((e) => e.id === requesterEmployeeId)?.name ?? "") : requesterManualName);
 
   const [siteMode, setSiteMode] = useState<"pilih" | "manual">(siteNames.length > 0 ? "pilih" : "manual");
   const [sitePicked, setSitePicked] = useState("");
@@ -112,23 +120,31 @@ export function MbpRequestForm({ items, employees, siteNames }: { items: ItemOpt
                 <p style={{ fontSize: 13, margin: 0 }}>Total nilai (cost): <strong>{formatRp(total)}</strong> — harga jual ke klien ditentukan nanti saat dibuat MBP.</p>
               )}
 
-              <div className="field" style={{ marginBottom: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <label htmlFor="mbp-req-requester" style={{ marginBottom: 0 }}>Nama peminta</label>
-                  {employees.length > 0 && (
-                    <div className="seg" role="radiogroup">
-                      <label className="seg-opt"><input type="radio" checked={requesterMode === "pilih"} onChange={() => setRequesterMode("pilih")} /> Pilih karyawan</label>
-                      <label className="seg-opt"><input type="radio" checked={requesterMode === "manual"} onChange={() => setRequesterMode("manual")} /> Isi manual</label>
-                    </div>
-                  )}
+              {lockedRequesterName ? (
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>Nama peminta</label>
+                  <div className="input" style={{ display: "flex", alignItems: "center", opacity: 0.7 }}>{lockedRequesterName}</div>
+                  <input type="hidden" name="requesterName" value={requesterName} />
                 </div>
-                {requesterMode === "pilih" ? (
-                  <EmployeeCombobox employees={employees} name="_requesterEmployee" id="mbp-req-requester" value={requesterEmployeeId} onChange={setRequesterEmployeeId} />
-                ) : (
-                  <input className="input" id="mbp-req-requester" value={requesterManualName} onChange={(e) => setRequesterManualName(e.target.value)} placeholder="Nama pemohon" />
-                )}
-                <input type="hidden" name="requesterName" value={requesterName} />
-              </div>
+              ) : (
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <label htmlFor="mbp-req-requester" style={{ marginBottom: 0 }}>Nama peminta</label>
+                    {employees.length > 0 && (
+                      <div className="seg" role="radiogroup">
+                        <label className="seg-opt"><input type="radio" checked={requesterMode === "pilih"} onChange={() => setRequesterMode("pilih")} /> Pilih karyawan</label>
+                        <label className="seg-opt"><input type="radio" checked={requesterMode === "manual"} onChange={() => setRequesterMode("manual")} /> Isi manual</label>
+                      </div>
+                    )}
+                  </div>
+                  {requesterMode === "pilih" ? (
+                    <EmployeeCombobox employees={employees} name="_requesterEmployee" id="mbp-req-requester" value={requesterEmployeeId} onChange={setRequesterEmployeeId} />
+                  ) : (
+                    <input className="input" id="mbp-req-requester" value={requesterManualName} onChange={(e) => setRequesterManualName(e.target.value)} placeholder="Nama pemohon" />
+                  )}
+                  <input type="hidden" name="requesterName" value={requesterName} />
+                </div>
+              )}
 
               <div className="field" style={{ marginBottom: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>

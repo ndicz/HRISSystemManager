@@ -22,7 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/penggajian", label: "Penggajian", roles: ["ADMIN", "HR", "FINANCE"], group: "Keuangan" },
   { href: "/kas", label: "Pengeluaran & Kas", roles: ["ADMIN", "FINANCE"], group: "Keuangan" },
   { href: "/gudang", label: "Gudang", roles: ["ADMIN", "HR", "FINANCE"], group: "Keuangan" },
-  { href: "/mbp", label: "MBP", roles: ["ADMIN", "FINANCE"], group: "Keuangan" },
+  { href: "/mbp", label: "MBP", roles: ["ADMIN", "FINANCE", "EMPLOYEE"], group: "Keuangan" },
   { href: "/klien", label: "Klien & Tagihan", roles: ["ADMIN", "FINANCE"], group: "Keuangan" },
   { href: "/pajak", label: "Laporan Pajak", roles: ["ADMIN", "HR", "FINANCE"], group: "Kepatuhan" },
   { href: "/kemenaker", label: "Laporan Kemenaker", roles: ["ADMIN", "HR"], group: "Kepatuhan" },

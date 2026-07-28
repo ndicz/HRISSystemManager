@@ -453,6 +453,9 @@ model InventoryItem {
   active      Boolean            @default(true) // nonaktifkan barang tanpa menghapusnya — tetap muncul di riwayat, tidak lagi bisa diambil
   // false = barang "beli sesuai permintaan" — tidak dibatasi/dikurangi stok saat diambil, dan tidak dihitung ke Total Nilai Stok (mis. jasa/pembelian khusus per pengambilan). true = stok fisik seperti biasa (qty dikurangi tiap diambil).
   trackStock  Boolean            @default(true)
+  // "stock" = barang stok internal, muncul di pengambilan barang Gudang biasa.
+  // "mbp" = barang khusus untuk penawaran ke klien, muncul di permintaan MBP.
+  purpose     String             @default("stock")
   requests    InventoryRequest[]
   mbpRequests MbpRequest[]
   createdAt   DateTime           @default(now())

@@ -5,11 +5,12 @@ import { updateInventoryItem, deleteInventoryItem, restockItem } from "@/app/(ap
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatRp } from "@/lib/payroll";
 
-type ItemRow = { id: string; name: string; unit: string; qty: number; price: number; category: string | null; trackStock: boolean };
+type ItemRow = { id: string; name: string; unit: string; qty: number; price: number; category: string | null; trackStock: boolean; purpose: string };
 
 export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
   const [open, setOpen] = useState(false);
   const [trackStock, setTrackStock] = useState(item.trackStock);
+  const [purpose, setPurpose] = useState<"stock" | "mbp">(item.purpose === "mbp" ? "mbp" : "stock");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [delError, setDelError] = useState("");
@@ -96,6 +97,17 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
                     Stok saat ini ({item.qty} {item.unit}) akan direset ke 0 kalau disimpan sebagai &ldquo;Beli sesuai permintaan&rdquo;.
                   </p>
                 )}
+              </div>
+              <div className="field">
+                <label>Untuk keperluan</label>
+                <div className="seg" role="radiogroup">
+                  <label className="seg-opt">
+                    <input type="radio" name="purpose" value="stock" checked={purpose === "stock"} onChange={() => setPurpose("stock")} /> Stok internal
+                  </label>
+                  <label className="seg-opt">
+                    <input type="radio" name="purpose" value="mbp" checked={purpose === "mbp"} onChange={() => setPurpose("mbp")} /> Barang MBP
+                  </label>
+                </div>
               </div>
               <div className="field">
                 <label htmlFor="edit-inv-category">Kategori</label>

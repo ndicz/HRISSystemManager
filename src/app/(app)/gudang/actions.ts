@@ -14,9 +14,10 @@ export async function addInventoryItem(formData: FormData) {
   const qty = trackStock ? Math.max(0, parseInt(String(formData.get("qty") ?? "0"), 10) || 0) : 0;
   const price = Math.max(0, parseInt(String(formData.get("price") ?? "0"), 10) || 0);
   const category = String(formData.get("category") ?? "").trim() || null;
+  const purpose = formData.get("purpose") === "mbp" ? "mbp" : "stock";
   if (!name) throw new Error("Nama barang wajib diisi.");
 
-  const item = await db.inventoryItem.create({ data: { name, unit, qty, price, category, trackStock } });
+  const item = await db.inventoryItem.create({ data: { name, unit, qty, price, category, trackStock, purpose } });
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "inventoryItem.create", entity: "InventoryItem", entityId: item.id, detail: name },
@@ -34,6 +35,7 @@ export async function updateInventoryItem(id: string, formData: FormData) {
   const trackStock = formData.get("trackStock") !== "off";
   const price = Math.max(0, parseInt(String(formData.get("price") ?? "0"), 10) || 0);
   const category = String(formData.get("category") ?? "").trim() || null;
+  const purpose = formData.get("purpose") === "mbp" ? "mbp" : "stock";
   if (!name) throw new Error("Nama barang wajib diisi.");
 
   // Switching a physically-tracked item to "beli sesuai permintaan" resets
@@ -42,7 +44,7 @@ export async function updateInventoryItem(id: string, formData: FormData) {
   // just be confusing on the item list.
   await db.inventoryItem.update({
     where: { id },
-    data: { name, unit, price, category, trackStock, ...(trackStock ? {} : { qty: 0 }) },
+    data: { name, unit, price, category, trackStock, purpose, ...(trackStock ? {} : { qty: 0 }) },
   });
 
   await db.auditLog.create({
