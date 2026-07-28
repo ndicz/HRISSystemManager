@@ -23,7 +23,12 @@ function markupLabel(cost: number, price: number): string {
   return (pct >= 0 ? "+" : "") + pct + "%";
 }
 
-export function CreateMbpDialog({ clients, pendingRequests }: { clients: ClientOption[]; pendingRequests: PendingRequest[] }) {
+export function CreateMbpDialog({
+  clients, pendingRequests, onSuccess,
+}: {
+  clients: ClientOption[]; pendingRequests: PendingRequest[];
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -73,6 +78,7 @@ export function CreateMbpDialog({ clients, pendingRequests }: { clients: ClientO
       resetForm();
       setFormKey((k) => k + 1);
       router.refresh();
+      onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

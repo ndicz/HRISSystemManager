@@ -289,3 +289,34 @@ export async function convertMbpToInvoice(id: string) {
   revalidatePath("/mbp");
   revalidatePath("/klien");
 }
+
+// Fetch-and-setState refresh, same pattern as fetchSalaryComponents in
+// karyawan/actions.ts — called directly from client components right after
+// a mutation instead of relying on revalidatePath + the implicit page
+// refresh that follows a Server Action, which doesn't reliably reach an
+// already-mounted client tree here. Scoped the same way the page itself is:
+// an EMPLOYEE only ever gets their own requests back.
+export async function fetchMbpRequests() {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const where = session.user.role === "EMPLOYEE" ? { createdById: session.user.id } : {};
+  return db.mbpRequest.findMany({ where, orderBy: { createdAt: "desc" } });
+}
+
+export async function fetchMbps() {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const mbpsRaw = await db.mbp.findMany({ include: { items: true, client: true }, orderBy: { createdAt: "desc" } });
+  return mbpsRaw.map((m) => ({
+    id: m.id,
+    mbpNo: m.mbpNo,
+    clientName: m.client?.name ?? m.clientNameManual ?? "-",
+    date: m.date,
+    jobTitle: m.jobTitle,
+    status: m.status,
+    invoiceBjId: m.invoiceBjId,
+    items: m.items,
+  }));
+}

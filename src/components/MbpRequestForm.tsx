@@ -10,13 +10,17 @@ import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeComb
 type ItemOption = { id: string; name: string; unit: string; price: number };
 
 export function MbpRequestForm({
-  items, employees, siteNames, lockedRequesterName,
+  items, employees, siteNames, lockedRequesterName, onSuccess,
 }: {
   items: ItemOption[]; employees: EmployeeOption[]; siteNames: string[];
   // Set when the submitting user is a logged-in field employee (role
   // EMPLOYEE) — the requester picker is hidden entirely and every request
   // they submit is attributed to their own name, not something they type.
   lockedRequesterName?: string;
+  // Called after a successful submit so the parent can refetch its list —
+  // more reliable here than the implicit page refresh a Server Action
+  // normally triggers, which doesn't reach this already-mounted tree.
+  onSuccess?: () => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -67,6 +71,7 @@ export function MbpRequestForm({
       resetFields();
       setFormKey((k) => k + 1);
       router.refresh();
+      onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

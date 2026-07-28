@@ -23,7 +23,7 @@ type RequestRow = {
 const STATUS_TAG: Record<string, string> = { menunggu: "tag tag-outline", disetujui: "tag tag-accent", ditolak: "tag tag-danger" };
 const STATUS_LABEL: Record<string, string> = { menunggu: "Menunggu", disetujui: "Disetujui", ditolak: "Ditolak" };
 
-function DecisionButtons({ id }: { id: string }) {
+function DecisionButtons({ id, onChanged }: { id: string; onChanged?: () => void }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -40,6 +40,7 @@ function DecisionButtons({ id }: { id: string }) {
         setDrafting(null);
         setReason("");
         router.refresh();
+        onChanged?.();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -80,7 +81,11 @@ function DecisionButtons({ id }: { id: string }) {
   );
 }
 
-export function MbpRequestTable({ requests, showDecisions = true }: { requests: RequestRow[]; showDecisions?: boolean }) {
+export function MbpRequestTable({
+  requests, showDecisions = true, onChanged,
+}: {
+  requests: RequestRow[]; showDecisions?: boolean; onChanged?: () => void;
+}) {
   if (requests.length === 0) {
     return <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada permintaan barang.</p>;
   }
@@ -110,11 +115,13 @@ export function MbpRequestTable({ requests, showDecisions = true }: { requests: 
               <td>{r.requesterName}</td>
               <td className="text-muted">{r.siteName || "-"}</td>
               <td>
-                <span className={STATUS_TAG[r.status]}>{STATUS_LABEL[r.status]}</span>
-                {r.mbpId && <span className="tag tag-outline" style={{ marginLeft: 6 }}>Sudah di MBP</span>}
-                {r.decisionNote && <div style={{ fontSize: 11, opacity: 0.6, marginTop: 3 }}>&ldquo;{r.decisionNote}&rdquo;</div>}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <span className={STATUS_TAG[r.status]}>{STATUS_LABEL[r.status]}</span>
+                  {r.mbpId && <span className="tag tag-outline">Sudah di MBP</span>}
+                  {r.decisionNote && <span style={{ fontSize: 11, opacity: 0.6 }}>&ldquo;{r.decisionNote}&rdquo;</span>}
+                </span>
               </td>
-              <td>{showDecisions && r.status === "menunggu" && <DecisionButtons id={r.id} />}</td>
+              <td>{showDecisions && r.status === "menunggu" && <DecisionButtons id={r.id} onChanged={onChanged} />}</td>
             </tr>
           ))}
         </tbody>

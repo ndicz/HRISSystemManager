@@ -33,7 +33,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 const ADVANCE_LABEL: Record<string, string> = { draft: "Kirim ke klien", terkirim: "Tandai disetujui klien" };
 
-function RowActions({ mbp }: { mbp: MbpRow }) {
+function RowActions({ mbp, onChanged }: { mbp: MbpRow; onChanged?: () => void }) {
   const router = useRouter();
   const [advPending, startAdv] = useTransition();
   const [rejPending, startRej] = useTransition();
@@ -53,6 +53,7 @@ function RowActions({ mbp }: { mbp: MbpRow }) {
       try {
         await action();
         router.refresh();
+        onChanged?.();
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -88,7 +89,7 @@ function RowActions({ mbp }: { mbp: MbpRow }) {
   );
 }
 
-export function MbpTable({ mbps }: { mbps: MbpRow[] }) {
+export function MbpTable({ mbps, onChanged }: { mbps: MbpRow[]; onChanged?: () => void }) {
   if (mbps.length === 0) {
     return <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada MBP.</p>;
   }
@@ -116,7 +117,7 @@ export function MbpTable({ mbps }: { mbps: MbpRow[] }) {
               <td className="text-muted">{m.jobTitle || "-"}</td>
               <td style={{ fontWeight: 600 }}>{formatRp(invoiceBjSubtotal(m.items))}</td>
               <td><span className={STATUS_TAG[m.status]}>{STATUS_LABEL[m.status]}</span></td>
-              <td><RowActions mbp={m} /></td>
+              <td><RowActions mbp={m} onChanged={onChanged} /></td>
             </tr>
           ))}
         </tbody>
