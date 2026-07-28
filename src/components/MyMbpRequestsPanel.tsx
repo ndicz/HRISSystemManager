@@ -34,7 +34,7 @@ export function MyMbpRequestsPanel({
         <div className="card-kicker">Permintaan Saya</div>
         <MbpRequestForm items={items} employees={[]} siteNames={siteNames} lockedRequesterName={myName} onSuccess={refresh} />
       </div>
-      <MbpRequestTable requests={requests} showDecisions={false} />
+      <MbpRequestTable requests={requests} showDecisions={false} hideCost />
     </div>
   );
 }

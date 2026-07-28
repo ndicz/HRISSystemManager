@@ -1,7 +1,15 @@
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
 import { DashboardTabs } from "@/components/DashboardTabs";
 
 export default async function DashboardPage() {
+  const session = await auth();
+  // Proxy already redirects EMPLOYEE away from "/" — this is the same rule
+  // enforced again at the page itself, in case that path is ever reached
+  // some other way (e.g. client-side navigation instead of a fresh request).
+  if (session?.user?.role === "EMPLOYEE") redirect("/mbp");
+
   const [employees, sites, cashAccounts, transactions] = await Promise.all([
     db.employee.findMany({
       where: { status: "aktif" },

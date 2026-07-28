@@ -82,9 +82,9 @@ function DecisionButtons({ id, onChanged }: { id: string; onChanged?: () => void
 }
 
 export function MbpRequestTable({
-  requests, showDecisions = true, onChanged,
+  requests, showDecisions = true, hideCost = false, onChanged,
 }: {
-  requests: RequestRow[]; showDecisions?: boolean; onChanged?: () => void;
+  requests: RequestRow[]; showDecisions?: boolean; hideCost?: boolean; onChanged?: () => void;
 }) {
   if (requests.length === 0) {
     return <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada permintaan barang.</p>;
@@ -98,7 +98,7 @@ export function MbpRequestTable({
             <th>Tanggal</th>
             <th>Barang</th>
             <th>Jumlah</th>
-            <th>Cost</th>
+            {!hideCost && <th>Cost</th>}
             <th>Peminta</th>
             <th>Tempat kerja</th>
             <th>Status</th>
@@ -111,7 +111,7 @@ export function MbpRequestTable({
               <td className="text-muted">{r.createdAt.toLocaleDateString("id-ID")}</td>
               <td>{r.itemName}</td>
               <td>{r.qty} {r.unit}</td>
-              <td>{formatRp(r.cost * r.qty)}</td>
+              {!hideCost && <td>{formatRp(r.cost * r.qty)}</td>}
               <td>{r.requesterName}</td>
               <td className="text-muted">{r.siteName || "-"}</td>
               <td>

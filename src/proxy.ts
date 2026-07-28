@@ -22,6 +22,12 @@ export default auth((req) => {
 
   if (req.auth?.user && !isPublic && !isAuthRoute) {
     const role = req.auth.user.role;
+    // EMPLOYEE has no Dashboard — send it straight to its actual page
+    // instead of an access-denied screen (this also covers the post-login
+    // default redirect, which lands on "/" when no callbackUrl is set).
+    if (role === "EMPLOYEE" && req.nextUrl.pathname === "/") {
+      return NextResponse.redirect(new URL("/mbp", req.nextUrl.origin));
+    }
     if (!canAccess(role, req.nextUrl.pathname, req.auth.user.pageAccess) && req.nextUrl.pathname !== "/akses-ditolak") {
       return NextResponse.redirect(new URL("/akses-ditolak", req.nextUrl.origin));
     }

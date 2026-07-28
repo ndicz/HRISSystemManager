@@ -54,6 +54,9 @@ export function MbpRequestForm({
   const cost = itemMode === "gudang" ? (selected?.price ?? 0) : manualCost;
   const total = cost * qty;
   const canSubmit = itemMode === "gudang" ? !!itemId : !!manualName.trim();
+  // A field requester submits what they need, not what it costs — cost/
+  // markup is office business, decided later at ACC/MBP-building time.
+  const hidePrice = !!lockedRequesterName;
 
   function resetFields() {
     setItemId(""); setManualName(""); setManualUnit(""); setManualCost(0); setQty(1);
@@ -99,7 +102,7 @@ export function MbpRequestForm({
                   <select className="input" name="itemId" required value={itemId} onChange={(e) => { setItemId(e.target.value); setError(""); }}>
                     <option value="">Pilih barang…</option>
                     {items.map((i) => (
-                      <option key={i.id} value={i.id}>{i.name} — {formatRp(i.price)}/{i.unit}</option>
+                      <option key={i.id} value={i.id}>{hidePrice ? `${i.name} (${i.unit})` : `${i.name} — ${formatRp(i.price)}/${i.unit}`}</option>
                     ))}
                   </select>
                 ) : (
@@ -110,22 +113,31 @@ export function MbpRequestForm({
                 )}
               </div>
 
-              <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
+              {hidePrice ? (
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="mbp-req-qty">Jumlah</label>
                   <input className="input" id="mbp-req-qty" name="qty" type="number" min={1} value={qty} onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))} />
                 </div>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>Harga asli (cost)</label>
-                  {itemMode === "gudang" ? (
-                    <div className="input" style={{ display: "flex", alignItems: "center", opacity: 0.7 }}>{selected ? formatRp(selected.price) : "-"}</div>
-                  ) : (
-                    <RupiahInput name="cost" defaultValue={0} onValueChange={setManualCost} placeholder="0" />
+              ) : (
+                <>
+                  <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
+                    <div className="field" style={{ marginBottom: 0 }}>
+                      <label htmlFor="mbp-req-qty">Jumlah</label>
+                      <input className="input" id="mbp-req-qty" name="qty" type="number" min={1} value={qty} onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))} />
+                    </div>
+                    <div className="field" style={{ marginBottom: 0 }}>
+                      <label>Harga asli (cost)</label>
+                      {itemMode === "gudang" ? (
+                        <div className="input" style={{ display: "flex", alignItems: "center", opacity: 0.7 }}>{selected ? formatRp(selected.price) : "-"}</div>
+                      ) : (
+                        <RupiahInput name="cost" defaultValue={0} onValueChange={setManualCost} placeholder="0" />
+                      )}
+                    </div>
+                  </div>
+                  {(selected || (itemMode === "luar" && manualName)) && (
+                    <p style={{ fontSize: 13, margin: 0 }}>Total nilai (cost): <strong>{formatRp(total)}</strong> — harga jual ke klien ditentukan nanti saat dibuat MBP.</p>
                   )}
-                </div>
-              </div>
-              {(selected || (itemMode === "luar" && manualName)) && (
-                <p style={{ fontSize: 13, margin: 0 }}>Total nilai (cost): <strong>{formatRp(total)}</strong> — harga jual ke klien ditentukan nanti saat dibuat MBP.</p>
+                </>
               )}
 
               {lockedRequesterName ? (

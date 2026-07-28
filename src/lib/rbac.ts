@@ -31,13 +31,20 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 // Nav items an admin can hand-pick as a custom per-user allowlist. Dashboard
-// is always reachable once logged in, and user management stays admin-only
-// no matter what — neither belongs in the picklist.
+// is always reachable once logged in (except EMPLOYEE — see below), and user
+// management stays admin-only no matter what — neither belongs in the picklist.
 export const ASSIGNABLE_NAV_ITEMS = NAV_ITEMS.filter((i) => i.href !== "/" && i.href !== "/pengguna");
 
 // Routes that don't map to a single nav item but should still be reachable
 // by anyone who can already see the page that links to them.
 const OPEN_AUTHENTICATED_PREFIXES = ["/print/", "/akses-ditolak"];
+
+// EMPLOYEE is a field-request-only self-service login (see /mbp's
+// restricted view) — it deliberately does not get the company-wide
+// Dashboard (headcount, cash position, etc.), unlike every other role.
+function dashboardAllowed(role: string): boolean {
+  return role !== "EMPLOYEE";
+}
 
 export function canAccess(role: string, pathname: string, pageAccess?: string[]): boolean {
   if (role === "ADMIN") return true;
@@ -45,7 +52,7 @@ export function canAccess(role: string, pathname: string, pageAccess?: string[])
   // any per-user override.
   if (pathname.startsWith("/pengguna")) return false;
   if (OPEN_AUTHENTICATED_PREFIXES.some((p) => pathname.startsWith(p))) return true;
-  if (pathname === "/") return true;
+  if (pathname === "/") return dashboardAllowed(role);
 
   const item = NAV_ITEMS
     .filter((i) => (i.href === "/" ? pathname === "/" : pathname.startsWith(i.href)))
@@ -58,9 +65,9 @@ export function canAccess(role: string, pathname: string, pageAccess?: string[])
 
 export function navForRole(role: string, pageAccess?: string[]): NavItem[] {
   if (role === "ADMIN") return NAV_ITEMS;
-  const base = NAV_ITEMS.filter((i) => i.href !== "/pengguna");
+  const base = NAV_ITEMS.filter((i) => i.href !== "/pengguna" && (i.href !== "/" || dashboardAllowed(role)));
   if (pageAccess && pageAccess.length > 0) {
-    return base.filter((i) => i.href === "/" || pageAccess.includes(i.href));
+    return base.filter((i) => (i.href === "/" && dashboardAllowed(role)) || pageAccess.includes(i.href));
   }
   return base.filter((i) => i.roles.includes(role as Role));
 }

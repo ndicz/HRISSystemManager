@@ -295,13 +295,17 @@ export async function convertMbpToInvoice(id: string) {
 // a mutation instead of relying on revalidatePath + the implicit page
 // refresh that follows a Server Action, which doesn't reliably reach an
 // already-mounted client tree here. Scoped the same way the page itself is:
-// an EMPLOYEE only ever gets their own requests back.
+// an EMPLOYEE only ever gets their own requests back, with cost zeroed out
+// so it's not just hidden in the UI but never actually reaches their
+// browser — pricing/markup is office business, not the requester's.
 export async function fetchMbpRequests() {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
 
-  const where = session.user.role === "EMPLOYEE" ? { createdById: session.user.id } : {};
-  return db.mbpRequest.findMany({ where, orderBy: { createdAt: "desc" } });
+  const isEmployee = session.user.role === "EMPLOYEE";
+  const where = isEmployee ? { createdById: session.user.id } : {};
+  const rows = await db.mbpRequest.findMany({ where, orderBy: { createdAt: "desc" } });
+  return isEmployee ? rows.map((r) => ({ ...r, cost: 0 })) : rows;
 }
 
 export async function fetchMbps() {

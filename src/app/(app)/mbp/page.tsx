@@ -8,13 +8,18 @@ export default async function MbpPage() {
   const isEmployeeRole = session?.user?.role === "EMPLOYEE";
 
   if (isEmployeeRole) {
-    const [me, requests, items, sites] = await Promise.all([
+    const [me, requestsRaw, itemsRaw, sites] = await Promise.all([
       session?.user?.id ? db.user.findUnique({ where: { id: session.user.id }, select: { employee: { select: { name: true } } } }) : null,
       session?.user?.id ? db.mbpRequest.findMany({ where: { createdById: session.user.id }, orderBy: { createdAt: "desc" } }) : [],
       db.inventoryItem.findMany({ where: { active: true, purpose: "mbp" }, select: { id: true, name: true, unit: true, price: true }, orderBy: { name: "asc" } }),
       db.site.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
     ]);
     const siteNames = sites.map((s) => s.name);
+    // Price/cost never reaches an EMPLOYEE session, not even zeroed-out in
+    // devtools-inspectable payload form — it's office business, decided at
+    // ACC/MBP-building time, not something the requester needs to see.
+    const requests = requestsRaw.map((r) => ({ ...r, cost: 0 }));
+    const items = itemsRaw.map((i) => ({ ...i, price: 0 }));
 
     return (
       <div>
