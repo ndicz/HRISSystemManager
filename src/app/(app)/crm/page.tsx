@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { CrmTables } from "@/components/CrmTables";
+import { PageHeader } from "@/components/PageHeader";
+import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function CrmPage() {
   const leads = await db.lead.findMany({
@@ -9,10 +11,7 @@ export default async function CrmPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
-        <h1 style={{ margin: 0 }}>CRM</h1>
-        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Pipeline prospek, follow-up, dan konversi jadi klien</p>
-      </div>
+      <PageHeader icon={NAV_ICONS["/crm"]} title="CRM" subtitle="Pipeline prospek, follow-up, dan konversi jadi klien" />
 
       <CrmTables leads={leads} />
     </div>
