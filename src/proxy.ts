@@ -10,6 +10,15 @@ const { auth } = NextAuth(authConfig);
 
 const PUBLIC_PATHS = ["/login"];
 
+// Single-module roles with no Dashboard — sent straight to their actual
+// page instead of an access-denied screen when they hit "/" (this also
+// covers the post-login default redirect, which lands on "/" when no
+// callbackUrl is set).
+const HOME_REDIRECT: Record<string, string> = {
+  EMPLOYEE: "/mbp",
+  MARKETING: "/crm",
+};
+
 export default auth((req) => {
   const isPublic = PUBLIC_PATHS.some((p) => req.nextUrl.pathname.startsWith(p));
   const isAuthRoute = req.nextUrl.pathname.startsWith("/api/auth");
@@ -22,11 +31,9 @@ export default auth((req) => {
 
   if (req.auth?.user && !isPublic && !isAuthRoute) {
     const role = req.auth.user.role;
-    // EMPLOYEE has no Dashboard — send it straight to its actual page
-    // instead of an access-denied screen (this also covers the post-login
-    // default redirect, which lands on "/" when no callbackUrl is set).
-    if (role === "EMPLOYEE" && req.nextUrl.pathname === "/") {
-      return NextResponse.redirect(new URL("/mbp", req.nextUrl.origin));
+    const home = HOME_REDIRECT[role];
+    if (home && req.nextUrl.pathname === "/") {
+      return NextResponse.redirect(new URL(home, req.nextUrl.origin));
     }
     if (!canAccess(role, req.nextUrl.pathname, req.auth.user.pageAccess) && req.nextUrl.pathname !== "/akses-ditolak") {
       return NextResponse.redirect(new URL("/akses-ditolak", req.nextUrl.origin));

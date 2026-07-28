@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { ASSIGNABLE_NAV_ITEMS, type Role } from "@/lib/rbac";
 
-const ROLES: Role[] = ["ADMIN", "HR", "FINANCE", "SUPERVISOR", "EMPLOYEE"];
+const ROLES: Role[] = ["ADMIN", "HR", "FINANCE", "SUPERVISOR", "EMPLOYEE", "MARKETING"];
 const ASSIGNABLE_HREFS = new Set(ASSIGNABLE_NAV_ITEMS.map((i) => i.href));
 
 async function requireAdmin() {

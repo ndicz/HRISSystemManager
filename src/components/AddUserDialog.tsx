@@ -10,6 +10,7 @@ const ROLE_LABEL: Record<string, string> = {
   FINANCE: "Finance",
   SUPERVISOR: "Supervisor",
   EMPLOYEE: "Karyawan",
+  MARKETING: "Marketing",
 };
 
 export function AddUserDialog({

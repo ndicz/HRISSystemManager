@@ -1,6 +1,6 @@
-export type Role = "ADMIN" | "HR" | "FINANCE" | "SUPERVISOR" | "EMPLOYEE";
+export type Role = "ADMIN" | "HR" | "FINANCE" | "SUPERVISOR" | "EMPLOYEE" | "MARKETING";
 
-export type NavGroup = "SDM" | "Keuangan" | "Kepatuhan" | "Sistem";
+export type NavGroup = "SDM" | "Keuangan" | "Marketing" | "Kepatuhan" | "Sistem";
 
 export type NavItem = {
   href: string;
@@ -9,7 +9,7 @@ export type NavItem = {
   group?: NavGroup; // omitted for standalone top-level items (e.g. Dashboard)
 };
 
-export const NAV_GROUP_ORDER: NavGroup[] = ["SDM", "Keuangan", "Kepatuhan", "Sistem"];
+export const NAV_GROUP_ORDER: NavGroup[] = ["SDM", "Keuangan", "Marketing", "Kepatuhan", "Sistem"];
 
 // Access map — adjust per role as the organization's actual structure requires.
 export const NAV_ITEMS: NavItem[] = [
@@ -24,6 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/gudang", label: "Gudang", roles: ["ADMIN", "HR", "FINANCE"], group: "Keuangan" },
   { href: "/mbp", label: "MBP", roles: ["ADMIN", "FINANCE", "EMPLOYEE"], group: "Keuangan" },
   { href: "/klien", label: "Klien & Tagihan", roles: ["ADMIN", "FINANCE"], group: "Keuangan" },
+  { href: "/crm", label: "CRM", roles: ["ADMIN", "MARKETING"], group: "Marketing" },
   { href: "/pajak", label: "Laporan Pajak", roles: ["ADMIN", "HR", "FINANCE"], group: "Kepatuhan" },
   { href: "/kemenaker", label: "Laporan Kemenaker", roles: ["ADMIN", "HR"], group: "Kepatuhan" },
   { href: "/audit", label: "Audit Log", roles: ["ADMIN"], group: "Sistem" },
@@ -39,11 +40,12 @@ export const ASSIGNABLE_NAV_ITEMS = NAV_ITEMS.filter((i) => i.href !== "/" && i.
 // by anyone who can already see the page that links to them.
 const OPEN_AUTHENTICATED_PREFIXES = ["/print/", "/akses-ditolak"];
 
-// EMPLOYEE is a field-request-only self-service login (see /mbp's
-// restricted view) — it deliberately does not get the company-wide
-// Dashboard (headcount, cash position, etc.), unlike every other role.
+// EMPLOYEE (field-request-only, see /mbp's restricted view) and MARKETING
+// (CRM-only) are single-module logins — they deliberately don't get the
+// company-wide Dashboard (headcount, cash position, etc.), unlike every
+// other role.
 function dashboardAllowed(role: string): boolean {
-  return role !== "EMPLOYEE";
+  return role !== "EMPLOYEE" && role !== "MARKETING";
 }
 
 export function canAccess(role: string, pathname: string, pageAccess?: string[]): boolean {

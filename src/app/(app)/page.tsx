@@ -5,10 +5,12 @@ import { DashboardTabs } from "@/components/DashboardTabs";
 
 export default async function DashboardPage() {
   const session = await auth();
-  // Proxy already redirects EMPLOYEE away from "/" — this is the same rule
-  // enforced again at the page itself, in case that path is ever reached
-  // some other way (e.g. client-side navigation instead of a fresh request).
+  // Proxy already redirects single-module roles away from "/" — this is the
+  // same rule enforced again at the page itself, in case that path is ever
+  // reached some other way (e.g. client-side navigation instead of a fresh
+  // request).
   if (session?.user?.role === "EMPLOYEE") redirect("/mbp");
+  if (session?.user?.role === "MARKETING") redirect("/crm");
 
   const [employees, sites, cashAccounts, transactions] = await Promise.all([
     db.employee.findMany({

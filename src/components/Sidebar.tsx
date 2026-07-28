@@ -9,6 +9,7 @@ import { navForRole, NAV_GROUP_ORDER, type NavGroup, type NavItem } from "@/lib/
 const GROUP_LABEL: Record<NavGroup, string> = {
   SDM: "SDM",
   Keuangan: "Keuangan",
+  Marketing: "Marketing",
   Kepatuhan: "Kepatuhan",
   Sistem: "Sistem",
 };
@@ -119,6 +120,11 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
       <rect x="5" y="3" width="14" height="18" rx="1.5" />
       <path d="M9 3v3h6V3" />
       <polyline points="8.5 13 10.5 15 15.5 10" />
+    </Icon>
+  ),
+  "/crm": (
+    <Icon>
+      <path d="M3 4h18l-7 8v6l-4 2v-8z" />
     </Icon>
   ),
   "/pajak": (

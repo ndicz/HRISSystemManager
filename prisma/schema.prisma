@@ -87,6 +87,7 @@ model Client {
   invoicesBj    InvoiceBj[]
   invoices      Invoice[]
   mbps          Mbp[]
+  lead          Lead?
   createdAt     DateTime    @default(now())
 }
 
@@ -559,4 +560,38 @@ model MbpItem {
   qty   Int
   cost  Int // internal, tidak pernah dicetak di dokumen ke klien
   price Int // harga jual bermarkup — yang dicetak, dan yang jadi InvoiceBjItem.price saat konversi
+}
+
+// ── CRM (marketing pipeline) ────────────────────────────────────────────
+
+model Lead {
+  id             String         @id @default(cuid())
+  companyName    String
+  picName        String?
+  picPhone       String?
+  picEmail       String?
+  address        String?
+  estimatedValue Int            @default(0) // Rp, potensi nilai deal — dipakai untuk kartu ringkasan pipeline
+  stage          String         @default("kontak_awal") // "kontak_awal" | "penawaran" | "negosiasi" | "deal" | "batal"
+  lostReason     String? // diisi lewat aksi "Tandai Batal", bukan lewat pindah stage biasa
+  clientId       String?        @unique
+  client         Client?        @relation(fields: [clientId], references: [id])
+  convertedAt    DateTime?
+  activities     LeadActivity[]
+  createdById    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([stage])
+}
+
+model LeadActivity {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  note        String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
 }
