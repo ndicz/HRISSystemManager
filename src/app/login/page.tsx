@@ -3,7 +3,7 @@ import { LoginForm } from "./LoginForm";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted px-4">
       <Suspense fallback={null}>
         <LoginForm />
       </Suspense>

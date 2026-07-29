@@ -380,7 +380,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
                     </span>
                   </div>
                   <div style={{ height: 12, background: "var(--color-surface)", borderRadius: 6, overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 6, background: pct >= 100 ? "var(--color-neutral-800)" : "var(--color-accent)", width: Math.min(100, pct) + "%" }} />
+                    <div style={{ height: "100%", borderRadius: 6, background: pct >= 100 ? "var(--color-neutral-800)" : "var(--color-brand)", width: Math.min(100, pct) + "%" }} />
                   </div>
                 </div>
               );

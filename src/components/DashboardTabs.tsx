@@ -97,7 +97,7 @@ export function DashboardTabs({
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>Dana masuk</span><span className="text-muted">{formatRp(sumMasuk)}</span></div>
               <div style={{ height: 12, background: "var(--color-surface)", borderRadius: 6, overflow: "hidden" }}>
-                <div style={{ height: "100%", borderRadius: 6, background: "var(--color-accent)", width: Math.max(2, Math.round((sumMasuk / maxArus) * 100)) + "%" }} />
+                <div style={{ height: "100%", borderRadius: 6, background: "var(--color-brand)", width: Math.max(2, Math.round((sumMasuk / maxArus) * 100)) + "%" }} />
               </div>
             </div>
             <div>
@@ -118,7 +118,7 @@ export function DashboardTabs({
                 <div key={row.site.id}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>{row.site.name}</span><span className="text-muted">{row.hadir}/{row.total} hadir</span></div>
                   <div style={{ height: 10, background: "var(--color-surface)", borderRadius: 5, overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 5, background: "var(--color-accent)", width: row.pct + "%" }} />
+                    <div style={{ height: "100%", borderRadius: 5, background: "var(--color-brand)", width: row.pct + "%" }} />
                   </div>
                 </div>
               ))

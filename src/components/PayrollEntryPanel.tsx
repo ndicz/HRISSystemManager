@@ -170,7 +170,7 @@ export function PayrollEntryPanel({
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "var(--space-2)" }}>
-          {saved && !pending && <span style={{ fontSize: 12, color: "var(--color-accent)" }}>Tersimpan.</span>}
+          {saved && !pending && <span style={{ fontSize: 12, color: "var(--color-brand)" }}>Tersimpan.</span>}
           <button type="submit" className="btn btn-primary" disabled={pending}>
             {pending ? "Menyimpan…" : "Simpan"}
           </button>

@@ -228,7 +228,7 @@ export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; 
                   alignItems: "center",
                   flexWrap: "wrap",
                   gap: "var(--space-2)",
-                  background: "color-mix(in srgb, var(--color-accent) 8%, transparent)",
+                  background: "color-mix(in srgb, var(--color-brand) 8%, transparent)",
                 }}
               >
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{selectedIds.size} karyawan dipilih</span>
@@ -408,7 +408,7 @@ export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; 
                     <td style={{ fontWeight: 700 }}>{formatRp(totals.lembur)}</td>
                     <td style={{ fontWeight: 700 }}>-{formatRp(totals.potongan)}</td>
                     <td style={{ fontWeight: 700 }}>{formatRp(totals.penugasanTambahan)}</td>
-                    <td style={{ fontWeight: 700, background: "color-mix(in srgb, var(--color-accent) 12%, transparent)" }}>{formatRp(totals.total)}</td>
+                    <td style={{ fontWeight: 700, background: "color-mix(in srgb, var(--color-brand) 12%, transparent)" }}>{formatRp(totals.total)}</td>
                     <td></td><td></td><td></td>
                   </tr>
                 </tbody>

@@ -3,12 +3,20 @@
    the app's look; retune tokens here. */
 @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap');
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
   --color-bg: #f3f1ee;
   --color-surface: #e8e4de;
   --color-text: #1d1f20;
-  --color-accent: oklch(58% 0.17 48);
+  /* Named --color-brand (not --color-accent) because shadcn/ui reserves
+     --color-accent as its own neutral hover/highlight token (see the
+     shadcn @theme block below) — the 100-900 shade scale below keeps the
+     --color-accent-* prefix since those names don't collide. */
+  --color-brand: oklch(58% 0.17 48);
   --color-accent-2: oklch(60% 0.16 54);
   --color-divider: color-mix(in srgb, #1d1f20 16%, transparent);
 
@@ -71,7 +79,7 @@
   --radius-pill: 999px;
 
   /* Second gradient hue for stat-card highlights — deliberately NOT the
-     brand orange (--color-accent), since a page's 1-2 headline KPI cards
+     brand orange (--color-brand), since a page's 1-2 headline KPI cards
      read as more "designed" when they're not just another shade of the
      same button/tag/link color already used everywhere else on the page. */
   --color-cool: oklch(58% 0.14 200);
@@ -80,6 +88,38 @@
   --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 8%, transparent), 0 1px 1px color-mix(in srgb, #2b2b2d 6%, transparent);
   --shadow-md: 0 6px 16px color-mix(in srgb, #2b2b2d 12%, transparent), 0 2px 6px color-mix(in srgb, #2b2b2d 8%, transparent);
   --shadow-lg: 0 16px 40px color-mix(in srgb, #2b2b2d 20%, transparent), 0 4px 12px color-mix(in srgb, #2b2b2d 10%, transparent);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 body {
@@ -87,7 +127,7 @@ body {
      enough not to read as "colored," just enough to stop every page
      looking like the exact same solid slab. */
   background:
-    radial-gradient(1100px 520px at 100% -8%, color-mix(in srgb, var(--color-accent) 6%, transparent), transparent 60%),
+    radial-gradient(1100px 520px at 100% -8%, color-mix(in srgb, var(--color-brand) 6%, transparent), transparent 60%),
     radial-gradient(900px 460px at -6% 100%, color-mix(in srgb, var(--color-accent-2) 5%, transparent), transparent 55%),
     var(--color-bg);
   background-attachment: fixed;
@@ -109,7 +149,7 @@ h4 { font-size: 20px; }
 h5 { font-size: 16px; }
 h6 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
 p { margin: 0 0 var(--space-3); }
-a { color: var(--color-accent); text-underline-offset: 3px; }
+a { color: var(--color-brand); text-underline-offset: 3px; }
 img { display: block; max-width: 100%; }
 .text-muted { color: color-mix(in srgb, var(--color-text) 55%, transparent); }
 .text-accent { color: var(--color-accent-700); }
@@ -117,8 +157,8 @@ img { display: block; max-width: 100%; }
 .nav-item:hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
 .nav-item.active { border-color: var(--color-accent-300); background: var(--color-accent-100); color: var(--color-accent-800); font-weight: 600; }
 .nav-badge { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--color-danger); color: #fff; font-size: 11px; font-weight: 700; line-height: 1; }
-:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+::selection { background: color-mix(in srgb, var(--color-brand) 30%, transparent); }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -132,23 +172,23 @@ img { display: block; max-width: 100%; }
 }
 .btn svg { display: block; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn-primary { background: var(--color-accent); color: #fff; box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 35%, transparent); }
-.btn-primary:hover { background: var(--color-accent-600); box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 45%, transparent); transform: translateY(-1px); }
+.btn-primary { background: var(--color-brand); color: #fff; box-shadow: 0 2px 8px color-mix(in srgb, var(--color-brand) 35%, transparent); }
+.btn-primary:hover { background: var(--color-accent-600); box-shadow: 0 4px 14px color-mix(in srgb, var(--color-brand) 45%, transparent); transform: translateY(-1px); }
 .btn-secondary { background: #fff; color: var(--color-text); border-color: var(--color-divider); }
 .btn-secondary:hover { background: var(--color-neutral-100); border-color: color-mix(in srgb, var(--color-text) 24%, transparent); }
 .btn-ghost { color: var(--color-accent-700); padding-inline: var(--space-1); background: transparent; }
-.btn-ghost:hover { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+.btn-ghost:hover { background: color-mix(in srgb, var(--color-brand) 12%, transparent); }
 .btn-icon { width: 36px; height: 36px; padding: 0; }
 
 .field > label { display: block; font-size: 12px; margin-bottom: 5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
 .input {
   width: 100%; min-height: 36px; padding: 6px 10px; font: inherit;
-  font-size: 14px; color: var(--color-text); caret-color: var(--color-accent);
+  font-size: 14px; color: var(--color-text); caret-color: var(--color-brand);
   background: #fff; border: 1px solid var(--color-divider); border-radius: var(--radius-md);
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
 .input:hover { border-color: color-mix(in srgb, var(--color-text) 26%, transparent); }
-.input:focus-visible { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent); outline: none; }
+.input:focus-visible { border-color: var(--color-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 22%, transparent); outline: none; }
 /* Pill-shaped search/filter fields — the one input style that goes full
    pill (matching the reference's topbar search), left as a distinct class
    rather than changing .input everywhere: a whole form of pill-shaped
@@ -158,7 +198,7 @@ img { display: block; max-width: 100%; }
 .seg { display: inline-flex; overflow: hidden; border: 1px solid var(--color-divider); background: #fff; border-radius: var(--radius-md); }
 .seg-opt { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; cursor: pointer; transition: background-color 0.14s ease, color 0.14s ease; }
 .seg-opt + .seg-opt { border-left: 1px solid var(--color-divider); }
-.seg-opt:has(input:checked) { background: var(--color-accent); color: #fff; }
+.seg-opt:has(input:checked) { background: var(--color-brand); color: #fff; }
 .seg-opt input { position: absolute; opacity: 0; width: 0; height: 0; }
 
 .card {
@@ -200,7 +240,7 @@ img { display: block; max-width: 100%; }
 .tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; padding: 3px 10px; border-radius: var(--radius-pill); }
 .tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); }
 .tag-neutral { background: var(--color-neutral-100); color: var(--color-neutral-800); }
-.tag-outline { border: 1px solid var(--color-accent); color: var(--color-accent-700); }
+.tag-outline { border: 1px solid var(--color-brand); color: var(--color-accent-700); }
 .tag-danger { background: var(--color-danger-100); color: var(--color-danger-800); }
 .tag-warning { background: var(--color-warning-100); color: var(--color-warning-800); }
 
@@ -406,4 +446,95 @@ img { display: block; max-width: 100%; }
   h2 { font-size: 22px; }
   h3 { font-size: 19px; }
   .dialog { width: 100%; }
+}
+
+@theme inline {
+  /* --font-heading and --radius-sm/md/lg deliberately NOT mapped here —
+     this app already defines those names for its own Barlow-Condensed
+     heading font and 8/14/20px radius scale; mapping shadcn's Geist font
+     and tighter radius scale onto the same names would silently override
+     them app-wide. shadcn components fall back to Tailwind's own default
+     font-sans/radius scale instead, which is a fine trade for now. */
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
