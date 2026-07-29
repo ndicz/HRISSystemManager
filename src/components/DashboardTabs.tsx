@@ -1,9 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { Account, CashAccount, Employee, Position, SalaryComponent, Site, Transaction } from "@prisma/client";
 import { computePayroll, expiringContracts, formatRp } from "@/lib/payroll";
 import { monthKey, saldoKasSampai } from "@/lib/finance";
+import { Card } from "@/components/ui/card";
+import { Users, Clock3, Wallet, Landmark, ArrowUpRight, ArrowDownRight } from "lucide-react";
+
+// Grouped stat row (icon badge + label + big number + hint), one shared
+// card with dividers between cells instead of separate gapped cards —
+// modeled on Tailwind Plus's "Stats" blocks (tailwindcss.com/plus).
+function StatCell({ icon, label, value, hint, tone }: { icon: ReactNode; label: string; value: string; hint: string; tone: "brand" | "cool" }) {
+  return (
+    <div className="flex flex-col gap-2 p-4">
+      <div
+        className="flex size-9 items-center justify-center rounded-lg"
+        style={{
+          background: tone === "brand" ? "var(--color-accent-100)" : "color-mix(in srgb, var(--color-cool) 15%, transparent)",
+          color: tone === "brand" ? "var(--color-accent-700)" : "var(--color-cool)",
+        }}
+      >
+        {icon}
+      </div>
+      <div className="text-sm text-muted-foreground">{label}</div>
+      <div className="text-xl font-semibold">{value}</div>
+      <div className="text-xs text-muted-foreground">{hint}</div>
+    </div>
+  );
+}
 
 type Emp = Employee & { site: Site; position: Position; salaryComponents: SalaryComponent[] };
 type Tx = Transaction & { account: Account };
@@ -67,28 +91,38 @@ export function DashboardTabs({
         </div>
       </div>
 
-      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
-        <div className="card stat-gradient stat-gradient-a">
-          <div className="card-kicker">Total karyawan</div>
-          <div className="card-title">{totalKaryawan}</div>
-          <p className="card-body">Aktif di {totalSites} tempat kerja</p>
+      <Card className="mb-6 gap-0 overflow-hidden p-0">
+        <div className="grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-4 sm:divide-y-0">
+          <StatCell
+            tone="brand"
+            icon={<Users size={18} />}
+            label="Total karyawan"
+            value={String(totalKaryawan)}
+            hint={`Aktif di ${totalSites} tempat kerja`}
+          />
+          <StatCell
+            tone="cool"
+            icon={<Clock3 size={18} />}
+            label="Kehadiran hari ini"
+            value={`${kehadiranPct}%`}
+            hint={`${hadirCount} hadir dari ${totalKaryawan}`}
+          />
+          <StatCell
+            tone="brand"
+            icon={<Wallet size={18} />}
+            label="Total gaji bulan ini"
+            value={formatRp(totalGajiBulanIni)}
+            hint="Setelah potongan BPJS & kasbon"
+          />
+          <StatCell
+            tone="cool"
+            icon={<Landmark size={18} />}
+            label="Saldo kas (s.d. akhir periode)"
+            value={formatRp(saldoAkhir)}
+            hint={`${periodTx.length} transaksi periode ini`}
+          />
         </div>
-        <div className="card">
-          <div className="card-kicker">Kehadiran hari ini</div>
-          <div className="card-title">{kehadiranPct}%</div>
-          <p className="card-body">{hadirCount} hadir dari {totalKaryawan}</p>
-        </div>
-        <div className="card">
-          <div className="card-kicker">Total gaji bulan ini</div>
-          <div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalGajiBulanIni)}</div>
-          <p className="card-body">Setelah potongan BPJS &amp; kasbon</p>
-        </div>
-        <div className="card stat-gradient stat-gradient-b">
-          <div className="card-kicker">Saldo kas (s.d. akhir periode)</div>
-          <div className="card-title" style={{ fontSize: 22 }}>{formatRp(saldoAkhir)}</div>
-          <p className="card-body">{periodTx.length} transaksi periode ini</p>
-        </div>
-      </div>
+      </Card>
 
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card">
@@ -129,7 +163,7 @@ export function DashboardTabs({
 
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "var(--space-4)" }}>
         <div className="card">
-          <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Kehadiran per tempat kerja</div>
+          <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Rincian kehadiran per tempat kerja</div>
           <table className="table">
             <thead><tr><th>Tempat kerja</th><th>Karyawan</th><th>Hadir</th><th>Izin</th><th>Alpha</th></tr></thead>
             <tbody>
@@ -152,13 +186,24 @@ export function DashboardTabs({
           ) : (
             <div style={{ display: "grid", gap: "var(--space-3)" }}>
               {recentTx.map((t) => (
-                <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-2)", borderBottom: "1px solid var(--color-divider)", paddingBottom: "var(--space-2)" }}>
-                  <div>
-                    <div style={{ fontSize: 14 }}>{t.desc}</div>
-                    <div style={{ fontSize: 12, opacity: 0.55 }}>{t.date.toLocaleDateString("id-ID")} &middot; {t.account.name}</div>
+                <div key={t.id} className="flex items-center gap-3" style={{ borderBottom: "1px solid var(--color-divider)", paddingBottom: "var(--space-2)" }}>
+                  <div
+                    className="flex size-8 shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      background: t.type === "masuk" ? "var(--color-accent-100)" : "var(--color-neutral-100)",
+                      color: t.type === "masuk" ? "var(--color-accent-700)" : "var(--color-neutral-700)",
+                    }}
+                  >
+                    {t.type === "masuk" ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
                   </div>
-                  <div style={{ fontSize: 14, whiteSpace: "nowrap" }} className={t.type === "masuk" ? "text-accent" : ""}>
-                    {t.type === "masuk" ? "+" : "-"}{formatRp(t.amount)}
+                  <div className="flex flex-1 items-center justify-between gap-2">
+                    <div>
+                      <div style={{ fontSize: 14 }}>{t.desc}</div>
+                      <div style={{ fontSize: 12, opacity: 0.55 }}>{t.date.toLocaleDateString("id-ID")} &middot; {t.account.name}</div>
+                    </div>
+                    <div style={{ fontSize: 14, whiteSpace: "nowrap" }} className={t.type === "masuk" ? "text-accent" : ""}>
+                      {t.type === "masuk" ? "+" : "-"}{formatRp(t.amount)}
+                    </div>
                   </div>
                 </div>
               ))}
