@@ -323,7 +323,37 @@ img { display: block; max-width: 100%; }
 
 /* App shell */
 .app-shell { display: flex; min-height: 100vh; background: var(--color-bg); }
+.app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .app-content { flex: 1; min-width: 0; padding: var(--space-6) var(--space-8) var(--space-8); }
+
+/* Desktop topbar — persistent search/notification chrome above the page
+   content, sibling of .mobile-topbar (that one only shows <900px, this one
+   only shows >=900px, see the media query below). The search box is
+   deliberately NOT wired to real search logic yet — restyled to match the
+   reference only, same as the login/dashboard passes before it; a real
+   cross-entity search is a separate, much bigger feature. */
+.desktop-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-8);
+  border-bottom: 1px solid var(--color-divider);
+  background: color-mix(in srgb, #fff 90%, transparent);
+  backdrop-filter: blur(6px);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.desktop-topbar-kbd {
+  font-size: 11px;
+  font-family: var(--font-heading);
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--color-divider);
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  background: #fff;
+}
 
 .sidebar {
   width: 224px;
@@ -350,6 +380,8 @@ img { display: block; max-width: 100%; }
 
 .nav-item-icon { display: inline-flex; flex-shrink: 0; opacity: 0.65; }
 .nav-item.active .nav-item-icon { opacity: 1; color: var(--color-accent-700); }
+.nav-item-icon-badge { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 8px; background: var(--color-brand); flex-shrink: 0; }
+.nav-item.active .nav-item-icon-badge .nav-item-icon { opacity: 1; color: #fff; }
 
 /* Responsive: collapse fixed multi-column grids first on tablet, then phone */
 @media (max-width: 860px) {
@@ -363,6 +395,7 @@ img { display: block; max-width: 100%; }
 @media (max-width: 900px) {
   .app-shell { display: block; }
   .app-content { padding: calc(65px + env(safe-area-inset-top) + var(--space-4)) var(--space-4) var(--space-4); }
+  .desktop-topbar { display: none; }
 
   /* `position: fixed` rather than `sticky`, composited independently of
      the page instead of participating in its scroll — app-content's

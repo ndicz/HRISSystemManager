@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Sidebar } from "@/components/Sidebar";
+import { Topbar } from "@/components/Topbar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -27,7 +28,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         pageAccess={session.user.pageAccess}
         badgeCounts={mbpPending > 0 ? { "/mbp": mbpPending } : undefined}
       />
-      <div className="app-content">{children}</div>
+      <div className="app-main">
+        <Topbar />
+        <div className="app-content">{children}</div>
+      </div>
     </div>
   );
 }

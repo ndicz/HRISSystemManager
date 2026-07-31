@@ -6,25 +6,24 @@ import { computePayroll, expiringContracts, formatRp } from "@/lib/payroll";
 import { monthKey, saldoKasSampai } from "@/lib/finance";
 import { Card } from "@/components/ui/card";
 import { Users, Clock3, Wallet, Landmark, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 
-// Grouped stat row (icon badge + label + big number + hint), one shared
-// card with dividers between cells instead of separate gapped cards —
-// modeled on Tailwind Plus's "Stats" blocks (tailwindcss.com/plus).
-function StatCell({ icon, label, value, hint, tone }: { icon: ReactNode; label: string; value: string; hint: string; tone: "brand" | "cool" }) {
+// Full-bleed gradient hero card (icon badge + label + big number) — every
+// headline KPI gets one, not just 1-2, mirroring the reference's block of
+// bold color cards. Alternates the app's existing orange/cool gradient
+// tones (a/b) rather than the reference's own blue/purple/green.
+function GradientStat({ icon, label, value, hint, tone }: { icon: ReactNode; label: string; value: string; hint: string; tone: "a" | "b" }) {
   return (
-    <div className="flex flex-col gap-2 p-4">
+    <div className={`card stat-gradient stat-gradient-${tone}`} style={{ position: "relative", gap: 6 }}>
       <div
-        className="flex size-9 items-center justify-center rounded-lg"
-        style={{
-          background: tone === "brand" ? "var(--color-accent-100)" : "color-mix(in srgb, var(--color-cool) 15%, transparent)",
-          color: tone === "brand" ? "var(--color-accent-700)" : "var(--color-cool)",
-        }}
+        className="flex size-8 items-center justify-center rounded-lg"
+        style={{ background: "rgba(255,255,255,0.18)" }}
       >
         {icon}
       </div>
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="text-xl font-semibold">{value}</div>
-      <div className="text-xs text-muted-foreground">{hint}</div>
+      <div className="card-kicker">{label}</div>
+      <div className="card-title" style={{ fontSize: 22 }}>{value}</div>
+      <p className="card-body" style={{ opacity: 0.85 }}>{hint}</p>
     </div>
   );
 }
@@ -79,6 +78,10 @@ export function DashboardTabs({
 
   const recentTx = transactions.slice(0, 5);
   const expiring = useMemo(() => expiringContracts(employees, 30), [employees]);
+  const recentEmployees = useMemo(
+    () => [...employees].sort((a, b) => new Date(b.hireDate).getTime() - new Date(a.hireDate).getTime()).slice(0, 5),
+    [employees],
+  );
 
   return (
     <div>
@@ -91,38 +94,36 @@ export function DashboardTabs({
         </div>
       </div>
 
-      <Card className="mb-6 gap-0 overflow-hidden p-0">
-        <div className="grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-4 sm:divide-y-0">
-          <StatCell
-            tone="brand"
-            icon={<Users size={18} />}
-            label="Total karyawan"
-            value={String(totalKaryawan)}
-            hint={`Aktif di ${totalSites} tempat kerja`}
-          />
-          <StatCell
-            tone="cool"
-            icon={<Clock3 size={18} />}
-            label="Kehadiran hari ini"
-            value={`${kehadiranPct}%`}
-            hint={`${hadirCount} hadir dari ${totalKaryawan}`}
-          />
-          <StatCell
-            tone="brand"
-            icon={<Wallet size={18} />}
-            label="Total gaji bulan ini"
-            value={formatRp(totalGajiBulanIni)}
-            hint="Setelah potongan BPJS & kasbon"
-          />
-          <StatCell
-            tone="cool"
-            icon={<Landmark size={18} />}
-            label="Saldo kas (s.d. akhir periode)"
-            value={formatRp(saldoAkhir)}
-            hint={`${periodTx.length} transaksi periode ini`}
-          />
-        </div>
-      </Card>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
+        <GradientStat
+          tone="a"
+          icon={<Users size={16} />}
+          label="Total karyawan"
+          value={String(totalKaryawan)}
+          hint={`Aktif di ${totalSites} tempat kerja`}
+        />
+        <GradientStat
+          tone="b"
+          icon={<Clock3 size={16} />}
+          label="Kehadiran hari ini"
+          value={`${kehadiranPct}%`}
+          hint={`${hadirCount} hadir dari ${totalKaryawan}`}
+        />
+        <GradientStat
+          tone="a"
+          icon={<Wallet size={16} />}
+          label="Total gaji bulan ini"
+          value={formatRp(totalGajiBulanIni)}
+          hint="Setelah potongan BPJS & kasbon"
+        />
+        <GradientStat
+          tone="b"
+          icon={<Landmark size={16} />}
+          label="Saldo kas (s.d. akhir periode)"
+          value={formatRp(saldoAkhir)}
+          hint={`${periodTx.length} transaksi periode ini`}
+        />
+      </div>
 
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card">
@@ -212,25 +213,49 @@ export function DashboardTabs({
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: "var(--space-4)" }}>
-        <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Kontrak akan berakhir (30 hari)</div>
-        {expiring.length === 0 ? (
-          <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada kontrak yang akan berakhir dalam 30 hari.</p>
-        ) : (
-          <div style={{ display: "grid", gap: "var(--space-3)" }}>
-            {expiring.map((e) => (
-              <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-2)", borderBottom: "1px solid var(--color-divider)", paddingBottom: "var(--space-2)" }}>
-                <div>
-                  <div style={{ fontSize: 14 }}>{e.name}</div>
-                  <div style={{ fontSize: 12, opacity: 0.55 }}>{e.siteName} &middot; berakhir {e.contractEnd.toLocaleDateString("id-ID")}</div>
+      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginTop: "var(--space-4)" }}>
+        <div className="card">
+          <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Kontrak akan berakhir (30 hari)</div>
+          {expiring.length === 0 ? (
+            <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada kontrak yang akan berakhir dalam 30 hari.</p>
+          ) : (
+            <div style={{ display: "grid", gap: "var(--space-3)" }}>
+              {expiring.map((e) => (
+                <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-2)", borderBottom: "1px solid var(--color-divider)", paddingBottom: "var(--space-2)" }}>
+                  <div>
+                    <div style={{ fontSize: 14 }}>{e.name}</div>
+                    <div style={{ fontSize: 12, opacity: 0.55 }}>{e.siteName} &middot; berakhir {e.contractEnd.toLocaleDateString("id-ID")}</div>
+                  </div>
+                  <span className={e.daysRemaining <= 7 ? "tag tag-accent" : "tag tag-outline"}>
+                    {e.daysRemaining < 0 ? `Lewat ${Math.abs(e.daysRemaining)} hari` : e.daysRemaining === 0 ? "Hari ini" : `${e.daysRemaining} hari lagi`}
+                  </span>
                 </div>
-                <span className={e.daysRemaining <= 7 ? "tag tag-accent" : "tag tag-outline"}>
-                  {e.daysRemaining < 0 ? `Lewat ${Math.abs(e.daysRemaining)} hari` : e.daysRemaining === 0 ? "Hari ini" : `${e.daysRemaining} hari lagi`}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Card className="p-4">
+          <div className="card-kicker mb-3">Karyawan terbaru</div>
+          {recentEmployees.length === 0 ? (
+            <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada karyawan aktif.</p>
+          ) : (
+            <div className="flex flex-col divide-y divide-border">
+              {recentEmployees.map((e) => (
+                <div key={e.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={e.name} size={30} />
+                    <div>
+                      <div style={{ fontSize: 14 }}>{e.name}</div>
+                      <div style={{ fontSize: 12, opacity: 0.55 }}>{e.position.name}</div>
+                    </div>
+                  </div>
+                  <span className="tag tag-blue">{e.site.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );
