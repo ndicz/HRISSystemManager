@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatRp } from "@/lib/payroll";
-import { invoiceBjSubtotal } from "@/lib/finance";
+import { mbpTotal } from "@/lib/finance";
 import { fetchMbpRequests, fetchMbps } from "@/app/(app)/mbp/actions";
 import { MbpRequestForm } from "@/components/MbpRequestForm";
 import { MbpRequestTable } from "@/components/MbpRequestTable";
@@ -17,8 +17,9 @@ type RequestRow = {
   status: string; decisionNote: string | null; mbpId: string | null; createdAt: Date;
 };
 type MbpRow = {
-  id: string; mbpNo: string; clientName: string; date: Date; jobTitle: string | null;
-  status: string; invoiceBjId: string | null; items: { qty: number; price: number }[];
+  id: string; mbpNo: string; clientId: string | null; clientNameManual: string | null; clientName: string;
+  date: Date; jobTitle: string | null; signerName: string | null; withPpn: boolean; ppnPercent: number;
+  status: string; invoiceBjId: string | null; items: { desc: string; qty: number; cost: number; price: number }[];
 };
 type ItemOption = { id: string; name: string; unit: string; price: number };
 
@@ -53,7 +54,7 @@ export function MbpPageTabs({
   const approvedUnconsumed = requests.filter((r) => r.status === "disetujui" && !r.mbpId);
   const totalPenawaranAktif = mbps
     .filter((m) => m.status === "draft" || m.status === "terkirim" || m.status === "disetujui_klien")
-    .reduce((s, m) => s + invoiceBjSubtotal(m.items), 0);
+    .reduce((s, m) => s + mbpTotal(m.items, m.withPpn, m.ppnPercent), 0);
   const totalDikonversi = mbps.filter((m) => m.invoiceBjId).length;
 
   return (
@@ -89,7 +90,7 @@ export function MbpPageTabs({
             <div className="card-kicker">MBP / Penawaran</div>
             <CreateMbpDialog clients={clients} pendingRequests={approvedUnconsumed} onSuccess={refreshAll} />
           </div>
-          <MbpTable mbps={mbps} onChanged={refreshAll} />
+          <MbpTable mbps={mbps} clients={clients} onChanged={refreshAll} />
         </div>
       )}
     </div>

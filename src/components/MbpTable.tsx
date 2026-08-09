@@ -4,18 +4,25 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { advanceMbpStatus, rejectMbpByClient, cancelMbp, convertMbpToInvoice } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
-import { invoiceBjSubtotal } from "@/lib/finance";
+import { mbpTotal } from "@/lib/finance";
 import { BASE_PATH } from "@/lib/basePath";
+import { EditMbpDialog } from "@/components/EditMbpDialog";
+import type { ClientOption } from "@/components/ClientCombobox";
 
 type MbpRow = {
   id: string;
   mbpNo: string;
+  clientId: string | null;
+  clientNameManual: string | null;
   clientName: string;
   date: Date;
   jobTitle: string | null;
+  signerName: string | null;
+  withPpn: boolean;
+  ppnPercent: number;
   status: string;
   invoiceBjId: string | null;
-  items: { qty: number; price: number }[];
+  items: { desc: string; qty: number; cost: number; price: number }[];
 };
 
 const STATUS_TAG: Record<string, string> = {
@@ -34,7 +41,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 const ADVANCE_LABEL: Record<string, string> = { draft: "Kirim ke klien", terkirim: "Tandai disetujui klien" };
 
-function RowActions({ mbp, onChanged }: { mbp: MbpRow; onChanged?: () => void }) {
+function RowActions({ mbp, clients, onChanged }: { mbp: MbpRow; clients: ClientOption[]; onChanged?: () => void }) {
   const router = useRouter();
   const [advPending, startAdv] = useTransition();
   const [rejPending, startRej] = useTransition();
@@ -46,6 +53,9 @@ function RowActions({ mbp, onChanged }: { mbp: MbpRow; onChanged?: () => void })
   const canReject = mbp.status === "terkirim";
   const canCancel = !mbp.invoiceBjId && (mbp.status === "draft" || mbp.status === "terkirim" || mbp.status === "disetujui_klien");
   const canConvert = mbp.status === "disetujui_klien" && !mbp.invoiceBjId;
+  // Matches updateMbp's own guard server-side — once cancelled or already
+  // converted to an invoice, the figures are locked.
+  const canEdit = mbp.status !== "dibatalkan" && !mbp.invoiceBjId;
 
   function run(action: () => Promise<void>, start: typeof startAdv, confirmMsg?: string) {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
@@ -63,6 +73,13 @@ function RowActions({ mbp, onChanged }: { mbp: MbpRow; onChanged?: () => void })
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+      {canEdit ? (
+        <EditMbpDialog mbp={mbp} clients={clients} onSuccess={onChanged} />
+      ) : (
+        <button type="button" className="btn btn-ghost" disabled title={mbp.invoiceBjId ? "Sudah dikonversi jadi invoice, tidak bisa diubah lagi." : "MBP yang dibatalkan tidak bisa diubah."}>
+          Edit
+        </button>
+      )}
       {canAdvance && (
         <button type="button" className="btn btn-ghost" disabled={advPending} onClick={() => run(() => advanceMbpStatus(mbp.id), startAdv)}>
           {ADVANCE_LABEL[mbp.status]}
@@ -90,7 +107,7 @@ function RowActions({ mbp, onChanged }: { mbp: MbpRow; onChanged?: () => void })
   );
 }
 
-export function MbpTable({ mbps, onChanged }: { mbps: MbpRow[]; onChanged?: () => void }) {
+export function MbpTable({ mbps, clients, onChanged }: { mbps: MbpRow[]; clients: ClientOption[]; onChanged?: () => void }) {
   if (mbps.length === 0) {
     return <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada MBP.</p>;
   }
@@ -116,9 +133,9 @@ export function MbpTable({ mbps, onChanged }: { mbps: MbpRow[]; onChanged?: () =
               <td>{m.clientName}</td>
               <td className="text-muted">{m.date.toLocaleDateString("id-ID")}</td>
               <td className="text-muted">{m.jobTitle || "-"}</td>
-              <td style={{ fontWeight: 600 }}>{formatRp(invoiceBjSubtotal(m.items))}</td>
+              <td style={{ fontWeight: 600 }}>{formatRp(mbpTotal(m.items, m.withPpn, m.ppnPercent))}</td>
               <td><span className={STATUS_TAG[m.status]}>{STATUS_LABEL[m.status]}</span></td>
-              <td><RowActions mbp={m} onChanged={onChanged} /></td>
+              <td><RowActions mbp={m} clients={clients} onChanged={onChanged} /></td>
             </tr>
           ))}
         </tbody>

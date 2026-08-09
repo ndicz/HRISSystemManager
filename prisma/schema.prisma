@@ -540,6 +540,8 @@ model Mbp {
   date             DateTime     @default(now())
   jobTitle         String?
   signerName       String?
+  withPpn          Boolean      @default(true)
+  ppnPercent       Int          @default(11) // manual tax rate, only applied when withPpn
   status           String       @default("draft") // "draft" | "terkirim" | "disetujui_klien" | "ditolak_klien" | "dibatalkan"
   items            MbpItem[]
   requests         MbpRequest[]
