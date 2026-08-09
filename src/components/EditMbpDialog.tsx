@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { updateMbp } from "@/app/(app)/mbp/actions";
+import { findOrCreateClientByName } from "@/app/(app)/klien/actions";
 import { formatRp } from "@/lib/payroll";
 import { mbpPpnValue } from "@/lib/finance";
 import { RupiahInput } from "@/components/RupiahInput";
-import type { ClientOption } from "@/components/ClientCombobox";
+import { ClientCombobox, type ClientOption } from "@/components/ClientCombobox";
 
 // priceRev only increments when price is set programmatically (typing a
 // markup %) — bumping it forces the RupiahInput below to remount and pick
@@ -36,24 +37,35 @@ export type EditableMbp = {
   items: { desc: string; qty: number; cost: number; price: number }[];
 };
 
-export function EditMbpDialog({ mbp, clients, onSuccess }: { mbp: EditableMbp; clients: ClientOption[]; onSuccess?: () => void }) {
+export function EditMbpDialog({ mbp, clients, siteNames, onSuccess }: { mbp: EditableMbp; clients: ClientOption[]; siteNames: string[]; onSuccess?: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
-  // Reflects what this MBP actually has, not the current client list —
-  // an MBP created via clientNameManual stays in manual mode even if
-  // Client records exist now, since it genuinely has no clientId to preselect.
-  const [clientMode, setClientMode] = useState<"pilih" | "manual">(mbp.clientId ? "pilih" : "manual");
   const [clientId, setClientId] = useState(mbp.clientId ?? "");
-  const [clientNameManual, setClientNameManual] = useState(mbp.clientNameManual ?? "");
+  const [clientOptions, setClientOptions] = useState(clients);
+
+  // Older MBPs may only have a typed clientNameManual (no real Client row
+  // yet, from before the client picker always resolved to one). Resolve it
+  // into a real client the first time this MBP is opened for editing, so
+  // the combobox has something to preselect instead of showing blank.
+  useEffect(() => {
+    if (mbp.clientId || !mbp.clientNameManual) return;
+    findOrCreateClientByName(mbp.clientNameManual).then((res) => {
+      setClientId(res.id);
+      setClientOptions((prev) => (prev.some((c) => c.id === res.id) ? prev : [...prev, res]));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [rows, setRows] = useState<ItemRow[]>(
     mbp.items.length > 0
       ? mbp.items.map((it) => ({ rowId: nextRowId++, desc: it.desc, qty: it.qty, cost: it.cost, price: it.price, priceRev: 0 }))
       : [emptyRow()],
   );
+
+  const [showMargin, setShowMargin] = useState(() => mbp.items.some((it) => it.cost > 0));
 
   const [withPpn, setWithPpn] = useState(mbp.withPpn);
   const [ppnPercent, setPpnPercent] = useState(mbp.ppnPercent);
@@ -95,24 +107,9 @@ export function EditMbpDialog({ mbp, clients, onSuccess }: { mbp: EditableMbp; c
           <div className="dialog" style={{ width: "min(640px, 100%)" }} onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit MBP &mdash; {mbp.mbpNo}</div>
             <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
-              <div className="field" style={{ marginBottom: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <label style={{ marginBottom: 0 }}>Klien</label>
-                  {clients.length > 0 && (
-                    <div className="seg" role="radiogroup">
-                      <label className="seg-opt"><input type="radio" checked={clientMode === "pilih"} onChange={() => setClientMode("pilih")} /> Pilih klien</label>
-                      <label className="seg-opt"><input type="radio" checked={clientMode === "manual"} onChange={() => setClientMode("manual")} /> Isi manual</label>
-                    </div>
-                  )}
-                </div>
-                {clientMode === "pilih" ? (
-                  <select className="input" name="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-                    <option value="">Pilih klien…</option>
-                    {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                ) : (
-                  <input className="input" name="clientNameManual" value={clientNameManual} onChange={(e) => setClientNameManual(e.target.value)} placeholder="Nama klien (belum tercatat sebagai Client)" />
-                )}
+              <div className="field">
+                <label htmlFor={`edit-mbp-clientId-${mbp.id}`}>Klien</label>
+                <ClientCombobox clients={clientOptions} siteNames={siteNames} name="clientId" id={`edit-mbp-clientId-${mbp.id}`} value={clientId} onChange={(id) => setClientId(id)} />
               </div>
 
               <div className="field">
@@ -120,7 +117,12 @@ export function EditMbpDialog({ mbp, clients, onSuccess }: { mbp: EditableMbp; c
                 <input className="input" id={`edit-mbp-jobTitle-${mbp.id}`} name="jobTitle" defaultValue={mbp.jobTitle ?? ""} placeholder="mis. Pengadaan AC ruang rawat inap" />
               </div>
 
-              <div className="field" style={{ marginBottom: 0 }}><label>Item</label></div>
+              <div className="field" style={{ marginBottom: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <label style={{ marginBottom: 0 }}>Item</label>
+                <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowMargin((v) => !v)}>
+                  {showMargin ? "Sembunyikan cost & margin" : "Atur cost & margin"}
+                </button>
+              </div>
               {rows.map((row, idx) => {
                 const i = idx + 1;
                 return (
@@ -138,58 +140,69 @@ export function EditMbpDialog({ mbp, clients, onSuccess }: { mbp: EditableMbp; c
                       />
                       <button type="button" className="btn btn-ghost" onClick={() => removeRow(row.rowId)} disabled={rows.length <= 1} title="Hapus item">&times;</button>
                     </div>
-                    <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: "var(--space-2)", alignItems: "center" }}>
-                      <RupiahInput name={`cost${i}`} defaultValue={row.cost} placeholder="Harga asli (cost)" onValueChange={(v) => updateRow(row.rowId, { cost: v })} />
+                    {showMargin ? (
+                      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: "var(--space-2)", alignItems: "center" }}>
+                        <RupiahInput name={`cost${i}`} defaultValue={row.cost} placeholder="Harga asli (cost)" onValueChange={(v) => updateRow(row.rowId, { cost: v })} />
+                        <RupiahInput
+                          key={`price-${row.rowId}-${row.priceRev}`}
+                          name={`price${i}`}
+                          defaultValue={row.price}
+                          placeholder="Harga jual"
+                          onValueChange={(v) => updateRow(row.rowId, { price: v })}
+                        />
+                        <input
+                          className="input"
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="Markup"
+                          title="Markup %"
+                          disabled={row.cost <= 0}
+                          value={markupPercentOf(row.cost, row.price)}
+                          onChange={(e) => {
+                            const pct = parseInt(e.target.value, 10) || 0;
+                            const newPrice = Math.round(row.cost * (1 + pct / 100));
+                            updateRow(row.rowId, { price: newPrice, priceRev: row.priceRev + 1 });
+                          }}
+                          style={{ textAlign: "right" }}
+                        />
+                      </div>
+                    ) : (
                       <RupiahInput
-                        key={`price-${row.rowId}-${row.priceRev}`}
+                        key={`price-simple-${row.rowId}-${row.priceRev}`}
                         name={`price${i}`}
                         defaultValue={row.price}
-                        placeholder="Harga jual"
+                        placeholder="Harga"
                         onValueChange={(v) => updateRow(row.rowId, { price: v })}
                       />
-                      <input
-                        className="input"
-                        type="number"
-                        inputMode="numeric"
-                        placeholder="Markup"
-                        title="Markup %"
-                        disabled={row.cost <= 0}
-                        value={markupPercentOf(row.cost, row.price)}
-                        onChange={(e) => {
-                          const pct = parseInt(e.target.value, 10) || 0;
-                          const newPrice = Math.round(row.cost * (1 + pct / 100));
-                          updateRow(row.rowId, { price: newPrice, priceRev: row.priceRev + 1 });
-                        }}
-                        style={{ textAlign: "right" }}
-                      />
-                    </div>
-                    {row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
+                    )}
+                    {showMargin && row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
+                    {!showMargin && <input type="hidden" name={`cost${i}`} value={row.cost} />}
                   </div>
                 );
               })}
               <button type="button" className="btn btn-secondary" onClick={addRow} style={{ width: "fit-content" }}>+ Tambah item</button>
 
-              <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
-                <label className="field" style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row", marginBottom: 0 }}>
-                  <input type="checkbox" name="withPpn" checked={withPpn} onChange={(e) => setWithPpn(e.target.checked)} style={{ width: "auto" }} />
-                  <span>Kena pajak (PPN)</span>
-                </label>
-                <div className="field" style={{ marginBottom: 0 }}>
+              <label className="field" style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row", marginBottom: 0 }}>
+                <input type="checkbox" name="withPpn" checked={withPpn} onChange={(e) => setWithPpn(e.target.checked)} style={{ width: "auto" }} />
+                <span>Kena pajak (PPN {ppnPercent}%)</span>
+              </label>
+              {withPpn && (
+                <div className="field" style={{ marginBottom: 0, maxWidth: 140 }}>
+                  <label htmlFor={`edit-mbp-ppnPercent-${mbp.id}`} style={{ fontSize: 12 }}>Ubah persen pajak</label>
                   <input
                     className="input"
+                    id={`edit-mbp-ppnPercent-${mbp.id}`}
                     name="ppnPercent"
                     type="number"
                     min={0}
-                    disabled={!withPpn}
                     value={ppnPercent}
                     onChange={(e) => setPpnPercent(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    placeholder="Persen PPN"
                   />
                 </div>
-              </div>
+              )}
 
               <div style={{ fontSize: 13, display: "grid", gap: 4, padding: "var(--space-3)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)", borderRadius: "var(--radius-md)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="text-muted">Subtotal (harga jual)</span><span>{formatRp(subtotal)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="text-muted">Subtotal</span><span>{formatRp(subtotal)}</span></div>
                 {withPpn && <div style={{ display: "flex", justifyContent: "space-between" }}><span className="text-muted">PPN {ppnPercent}%</span><span>{formatRp(ppnValue)}</span></div>}
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}><span>Total</span><span>{formatRp(total)}</span></div>
               </div>
