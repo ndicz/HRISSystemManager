@@ -117,6 +117,8 @@ export async function createMbp(formData: FormData) {
 
   const jobTitle = String(formData.get("jobTitle") ?? "").trim() || null;
   const signerName = String(formData.get("signerName") ?? "").trim() || null;
+  const withPpn = formData.get("withPpn") === "on";
+  const ppnPercent = Math.max(0, parseInt(String(formData.get("ppnPercent") ?? "11"), 10) || 0);
   const mbpNo = await nextMbpNo();
 
   const mbp = await db.mbp.create({
@@ -126,6 +128,8 @@ export async function createMbp(formData: FormData) {
       clientNameManual: clientId ? null : clientNameManual,
       jobTitle,
       signerName,
+      withPpn,
+      ppnPercent,
       items: { create: items.map(({ desc, qty, cost, price }) => ({ desc, qty, cost, price })) },
     },
   });
@@ -161,6 +165,8 @@ export async function updateMbp(id: string, formData: FormData) {
 
   const jobTitle = String(formData.get("jobTitle") ?? "").trim() || null;
   const signerName = String(formData.get("signerName") ?? "").trim() || null;
+  const withPpn = formData.get("withPpn") === "on";
+  const ppnPercent = Math.max(0, parseInt(String(formData.get("ppnPercent") ?? "11"), 10) || 0);
 
   await db.mbp.update({
     where: { id },
@@ -169,6 +175,8 @@ export async function updateMbp(id: string, formData: FormData) {
       clientNameManual: clientId ? null : clientNameManual,
       jobTitle,
       signerName,
+      withPpn,
+      ppnPercent,
       items: { deleteMany: {}, create: items.map(({ desc, qty, cost, price }) => ({ desc, qty, cost, price })) },
     },
   });
@@ -273,7 +281,7 @@ export async function convertMbpToInvoice(id: string) {
       clientId,
       date: new Date(),
       dueDate,
-      withPpn: true,
+      withPpn: mbp.withPpn,
       jobTitle: mbp.jobTitle,
       signerName: mbp.signerName,
       items: { create: mbp.items.map((i) => ({ desc: i.desc, qty: i.qty, price: i.price })) },
@@ -316,9 +324,14 @@ export async function fetchMbps() {
   return mbpsRaw.map((m) => ({
     id: m.id,
     mbpNo: m.mbpNo,
+    clientId: m.clientId,
+    clientNameManual: m.clientNameManual,
     clientName: m.client?.name ?? m.clientNameManual ?? "-",
     date: m.date,
     jobTitle: m.jobTitle,
+    signerName: m.signerName,
+    withPpn: m.withPpn,
+    ppnPercent: m.ppnPercent,
     status: m.status,
     invoiceBjId: m.invoiceBjId,
     items: m.items,

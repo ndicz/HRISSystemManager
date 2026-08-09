@@ -19,6 +19,16 @@ export function invoiceBjTotal(items: { qty: number; price: number }[], discount
   return withPpn ? Math.round(afterDiscount * 1.11) : afterDiscount;
 }
 
+// ── MBP (Material Budget Plan / penawaran) totals ───────────────────────
+
+export function mbpPpnValue(items: { qty: number; price: number }[], withPpn: boolean, ppnPercent: number): number {
+  return withPpn ? Math.round(invoiceBjSubtotal(items) * (ppnPercent / 100)) : 0;
+}
+
+export function mbpTotal(items: { qty: number; price: number }[], withPpn: boolean, ppnPercent: number): number {
+  return invoiceBjSubtotal(items) + mbpPpnValue(items, withPpn, ppnPercent);
+}
+
 // ── Aging piutang, shared by /klien (full breakdown) and /kas (total card) ─
 
 type InvoiceBjAging = InvoiceBj & { client: Client; items: InvoiceBjItem[] };

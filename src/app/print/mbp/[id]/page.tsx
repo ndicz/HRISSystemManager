@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatRp } from "@/lib/payroll";
-import { terbilang, invoiceBjSubtotal } from "@/lib/finance";
+import { terbilang, invoiceBjSubtotal, mbpPpnValue, mbpTotal } from "@/lib/finance";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
 export default async function MbpPrintPage({ params }: { params: Promise<{ id: string }> }) {
@@ -13,7 +13,9 @@ export default async function MbpPrintPage({ params }: { params: Promise<{ id: s
   const clientAddress = mbp.client?.address ?? "-";
   // Cost is deliberately never read here — this is the client-facing
   // document, only qty/price/total (the marked-up sell price) are shown.
-  const total = invoiceBjSubtotal(mbp.items);
+  const subtotal = invoiceBjSubtotal(mbp.items);
+  const ppn = mbpPpnValue(mbp.items, mbp.withPpn, mbp.ppnPercent);
+  const total = mbpTotal(mbp.items, mbp.withPpn, mbp.ppnPercent);
 
   return (
     <PrintDocument
@@ -53,6 +55,16 @@ export default async function MbpPrintPage({ params }: { params: Promise<{ id: s
               <td>{formatRp(it.qty * it.price)}</td>
             </tr>
           ))}
+          <tr>
+            <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif", borderBottom: "none" }}>Subtotal</td>
+            <td>{formatRp(subtotal)}</td>
+          </tr>
+          {mbp.withPpn && (
+            <tr>
+              <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif", borderBottom: "none" }}>PPN {mbp.ppnPercent}%</td>
+              <td>{formatRp(ppn)}</td>
+            </tr>
+          )}
           <tr className="total">
             <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif" }}>Total Penawaran</td>
             <td>{formatRp(total)}</td>

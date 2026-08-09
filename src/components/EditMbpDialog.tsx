@@ -1,26 +1,22 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createMbp } from "@/app/(app)/mbp/actions";
+import { updateMbp } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
 import { mbpPpnValue } from "@/lib/finance";
 import { RupiahInput } from "@/components/RupiahInput";
 import type { ClientOption } from "@/components/ClientCombobox";
 
-type PendingRequest = { id: string; itemName: string; unit: string; qty: number; cost: number; requesterName: string };
-
 // priceRev only increments when price is set programmatically (typing a
 // markup %) — bumping it forces the RupiahInput below to remount and pick
-// up the new defaultValue. Normal typing directly into the price field
-// never touches priceRev, so it never remounts (which would otherwise
-// reset the cursor to the end on every keystroke).
-type ItemRow = { rowId: number; desc: string; qty: number; cost: number; price: number; priceRev: number; sourceRequestId: string | null };
+// up the new defaultValue. See CreateMbpDialog for the same pattern.
+type ItemRow = { rowId: number; desc: string; qty: number; cost: number; price: number; priceRev: number };
 
 let nextRowId = 1;
 
 function emptyRow(): ItemRow {
-  return { rowId: nextRowId++, desc: "", qty: 1, cost: 0, price: 0, priceRev: 0, sourceRequestId: null };
+  return { rowId: nextRowId++, desc: "", qty: 1, cost: 0, price: 0, priceRev: 0 };
 }
 
 function markupPercentOf(cost: number, price: number): number {
@@ -28,28 +24,39 @@ function markupPercentOf(cost: number, price: number): number {
   return Math.round(((price - cost) / cost) * 100);
 }
 
-export function CreateMbpDialog({
-  clients, pendingRequests, onSuccess,
-}: {
-  clients: ClientOption[]; pendingRequests: PendingRequest[];
-  onSuccess?: () => void;
-}) {
+export type EditableMbp = {
+  id: string;
+  mbpNo: string;
+  clientId: string | null;
+  clientNameManual: string | null;
+  jobTitle: string | null;
+  signerName: string | null;
+  withPpn: boolean;
+  ppnPercent: number;
+  items: { desc: string; qty: number; cost: number; price: number }[];
+};
+
+export function EditMbpDialog({ mbp, clients, onSuccess }: { mbp: EditableMbp; clients: ClientOption[]; onSuccess?: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
-  const [formKey, setFormKey] = useState(0);
-  const formRef = useRef<HTMLFormElement>(null);
 
-  const [clientMode, setClientMode] = useState<"pilih" | "manual">(clients.length > 0 ? "pilih" : "manual");
-  const [clientId, setClientId] = useState("");
-  const [clientNameManual, setClientNameManual] = useState("");
+  // Reflects what this MBP actually has, not the current client list —
+  // an MBP created via clientNameManual stays in manual mode even if
+  // Client records exist now, since it genuinely has no clientId to preselect.
+  const [clientMode, setClientMode] = useState<"pilih" | "manual">(mbp.clientId ? "pilih" : "manual");
+  const [clientId, setClientId] = useState(mbp.clientId ?? "");
+  const [clientNameManual, setClientNameManual] = useState(mbp.clientNameManual ?? "");
 
-  const [rows, setRows] = useState<ItemRow[]>([emptyRow()]);
-  const checkedRequestIds = new Set(rows.map((r) => r.sourceRequestId).filter(Boolean));
+  const [rows, setRows] = useState<ItemRow[]>(
+    mbp.items.length > 0
+      ? mbp.items.map((it) => ({ rowId: nextRowId++, desc: it.desc, qty: it.qty, cost: it.cost, price: it.price, priceRev: 0 }))
+      : [emptyRow()],
+  );
 
-  const [withPpn, setWithPpn] = useState(true);
-  const [ppnPercent, setPpnPercent] = useState(11);
+  const [withPpn, setWithPpn] = useState(mbp.withPpn);
+  const [ppnPercent, setPpnPercent] = useState(mbp.ppnPercent);
 
   function updateRow(rowId: number, patch: Partial<ItemRow>) {
     setRows((prev) => prev.map((r) => (r.rowId === rowId ? { ...r, ...patch } : r)));
@@ -60,32 +67,13 @@ export function CreateMbpDialog({
   function removeRow(rowId: number) {
     setRows((prev) => prev.filter((r) => r.rowId !== rowId));
   }
-  function toggleRequest(req: PendingRequest, checked: boolean) {
-    if (checked) {
-      setRows((prev) => [
-        ...prev,
-        { rowId: nextRowId++, desc: `${req.itemName} (${req.unit})`, qty: req.qty, cost: req.cost, price: req.cost, priceRev: 0, sourceRequestId: req.id },
-      ]);
-    } else {
-      setRows((prev) => prev.filter((r) => r.sourceRequestId !== req.id));
-    }
-  }
-
-  function resetForm() {
-    setRows([emptyRow()]);
-    setClientId(""); setClientNameManual("");
-    setWithPpn(true); setPpnPercent(11);
-  }
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
     setError("");
     try {
-      await createMbp(formData);
+      await updateMbp(mbp.id, formData);
       setOpen(false);
-      formRef.current?.reset();
-      resetForm();
-      setFormKey((k) => k + 1);
       router.refresh();
       onSuccess?.();
     } catch (err) {
@@ -101,12 +89,12 @@ export function CreateMbpDialog({
 
   return (
     <>
-      <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>+ Buat MBP</button>
+      <button type="button" className="btn btn-ghost" onClick={() => setOpen(true)}>Edit</button>
       {open && (
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" style={{ width: "min(640px, 100%)" }} onClick={(e) => e.stopPropagation()}>
-            <div className="dialog-title">Buat MBP (Material Budget Plan)</div>
-            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <div className="dialog-title">Edit MBP &mdash; {mbp.mbpNo}</div>
+            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field" style={{ marginBottom: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <label style={{ marginBottom: 0 }}>Klien</label>
@@ -128,28 +116,9 @@ export function CreateMbpDialog({
               </div>
 
               <div className="field">
-                <label htmlFor="mbp-jobTitle">Nama pekerjaan (opsional)</label>
-                <input className="input" id="mbp-jobTitle" name="jobTitle" placeholder="mis. Pengadaan AC ruang rawat inap" />
+                <label htmlFor={`edit-mbp-jobTitle-${mbp.id}`}>Nama pekerjaan (opsional)</label>
+                <input className="input" id={`edit-mbp-jobTitle-${mbp.id}`} name="jobTitle" defaultValue={mbp.jobTitle ?? ""} placeholder="mis. Pengadaan AC ruang rawat inap" />
               </div>
-
-              {pendingRequests.length > 0 && (
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>Tarik dari permintaan yang sudah disetujui</label>
-                  <div style={{ display: "grid", gap: 4, maxHeight: 160, overflowY: "auto", padding: "var(--space-2)", border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)" }}>
-                    {pendingRequests.map((req) => (
-                      <label key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                        <input
-                          type="checkbox"
-                          style={{ width: "auto" }}
-                          checked={checkedRequestIds.has(req.id)}
-                          onChange={(e) => toggleRequest(req, e.target.checked)}
-                        />
-                        {req.itemName} — {req.qty} {req.unit} ({formatRp(req.cost)}) &middot; {req.requesterName}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <div className="field" style={{ marginBottom: 0 }}><label>Item</label></div>
               {rows.map((row, idx) => {
@@ -195,7 +164,6 @@ export function CreateMbpDialog({
                       />
                     </div>
                     {row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
-                    {row.sourceRequestId && <input type="hidden" name={`sourceRequestId${i}`} value={row.sourceRequestId} />}
                   </div>
                 );
               })}
@@ -227,14 +195,14 @@ export function CreateMbpDialog({
               </div>
 
               <div className="field">
-                <label htmlFor="mbp-signerName">Nama penandatangan (opsional)</label>
-                <input className="input" id="mbp-signerName" name="signerName" placeholder="mis. Budi Santoso, Direktur" />
+                <label htmlFor={`edit-mbp-signerName-${mbp.id}`}>Nama penandatangan (opsional)</label>
+                <input className="input" id={`edit-mbp-signerName-${mbp.id}`} name="signerName" defaultValue={mbp.signerName ?? ""} placeholder="mis. Budi Santoso, Direktur" />
               </div>
 
               {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Menyimpan…" : "Buat MBP"}</button>
+                <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Menyimpan…" : "Simpan"}</button>
               </div>
             </form>
           </div>
