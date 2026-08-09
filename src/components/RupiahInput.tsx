@@ -30,7 +30,11 @@ export function RupiahInput({
   onValueChange?: (raw: number) => void;
 }) {
   const [display, setDisplay] = useState(() => {
-    const raw = defaultValue !== undefined && defaultValue !== null && defaultValue !== ""
+    // 0 is treated the same as unset — an amount that's genuinely "not
+    // filled in yet" (a blank new row, an unpriced pulled-in request) is
+    // far more common than a deliberate Rp0, and showing a bare "0" reads
+    // as broken rather than empty, especially stacked several fields deep.
+    const raw = defaultValue !== undefined && defaultValue !== null && defaultValue !== "" && defaultValue !== 0
       ? String(defaultValue).replace(/\D/g, "")
       : "";
     return formatThousands(raw);
