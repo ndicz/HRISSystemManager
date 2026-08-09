@@ -41,7 +41,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 const ADVANCE_LABEL: Record<string, string> = { draft: "Kirim ke klien", terkirim: "Tandai disetujui klien" };
 
-function RowActions({ mbp, clients, onChanged }: { mbp: MbpRow; clients: ClientOption[]; onChanged?: () => void }) {
+function RowActions({ mbp, clients, siteNames, onChanged }: { mbp: MbpRow; clients: ClientOption[]; siteNames: string[]; onChanged?: () => void }) {
   const router = useRouter();
   const [advPending, startAdv] = useTransition();
   const [rejPending, startRej] = useTransition();
@@ -74,7 +74,7 @@ function RowActions({ mbp, clients, onChanged }: { mbp: MbpRow; clients: ClientO
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
       {canEdit ? (
-        <EditMbpDialog mbp={mbp} clients={clients} onSuccess={onChanged} />
+        <EditMbpDialog mbp={mbp} clients={clients} siteNames={siteNames} onSuccess={onChanged} />
       ) : (
         <button type="button" className="btn btn-ghost" disabled title={mbp.invoiceBjId ? "Sudah dikonversi jadi invoice, tidak bisa diubah lagi." : "MBP yang dibatalkan tidak bisa diubah."}>
           Edit
@@ -107,7 +107,7 @@ function RowActions({ mbp, clients, onChanged }: { mbp: MbpRow; clients: ClientO
   );
 }
 
-export function MbpTable({ mbps, clients, onChanged }: { mbps: MbpRow[]; clients: ClientOption[]; onChanged?: () => void }) {
+export function MbpTable({ mbps, clients, siteNames, onChanged }: { mbps: MbpRow[]; clients: ClientOption[]; siteNames: string[]; onChanged?: () => void }) {
   if (mbps.length === 0) {
     return <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada MBP.</p>;
   }
@@ -135,7 +135,7 @@ export function MbpTable({ mbps, clients, onChanged }: { mbps: MbpRow[]; clients
               <td className="text-muted">{m.jobTitle || "-"}</td>
               <td style={{ fontWeight: 600 }}>{formatRp(mbpTotal(m.items, m.withPpn, m.ppnPercent))}</td>
               <td><span className={STATUS_TAG[m.status]}>{STATUS_LABEL[m.status]}</span></td>
-              <td><RowActions mbp={m} clients={clients} onChanged={onChanged} /></td>
+              <td><RowActions mbp={m} clients={clients} siteNames={siteNames} onChanged={onChanged} /></td>
             </tr>
           ))}
         </tbody>

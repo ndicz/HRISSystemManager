@@ -88,9 +88,9 @@ export function MbpPageTabs({
         <div className="card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
             <div className="card-kicker">MBP / Penawaran</div>
-            <CreateMbpDialog clients={clients} pendingRequests={approvedUnconsumed} onSuccess={refreshAll} />
+            <CreateMbpDialog clients={clients} siteNames={siteNames} pendingRequests={approvedUnconsumed} onSuccess={refreshAll} />
           </div>
-          <MbpTable mbps={mbps} clients={clients} onChanged={refreshAll} />
+          <MbpTable mbps={mbps} clients={clients} siteNames={siteNames} onChanged={refreshAll} />
         </div>
       )}
     </div>

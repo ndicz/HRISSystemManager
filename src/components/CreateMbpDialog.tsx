@@ -6,7 +6,7 @@ import { createMbp } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
 import { mbpPpnValue } from "@/lib/finance";
 import { RupiahInput } from "@/components/RupiahInput";
-import type { ClientOption } from "@/components/ClientCombobox";
+import { ClientCombobox, type ClientOption } from "@/components/ClientCombobox";
 
 type PendingRequest = { id: string; itemName: string; unit: string; qty: number; cost: number; requesterName: string };
 
@@ -29,9 +29,9 @@ function markupPercentOf(cost: number, price: number): number {
 }
 
 export function CreateMbpDialog({
-  clients, pendingRequests, onSuccess,
+  clients, siteNames, pendingRequests, onSuccess,
 }: {
-  clients: ClientOption[]; pendingRequests: PendingRequest[];
+  clients: ClientOption[]; siteNames: string[]; pendingRequests: PendingRequest[];
   onSuccess?: () => void;
 }) {
   const router = useRouter();
@@ -41,12 +41,15 @@ export function CreateMbpDialog({
   const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const [clientMode, setClientMode] = useState<"pilih" | "manual">(clients.length > 0 ? "pilih" : "manual");
   const [clientId, setClientId] = useState("");
-  const [clientNameManual, setClientNameManual] = useState("");
 
   const [rows, setRows] = useState<ItemRow[]>([emptyRow()]);
   const checkedRequestIds = new Set(rows.map((r) => r.sourceRequestId).filter(Boolean));
+
+  // Cost/markup is office margin bookkeeping most quotes don't need to
+  // fuss with — collapsed by default so the common case is just "item,
+  // qty, harga". Revealing it doesn't lose anything already typed.
+  const [showMargin, setShowMargin] = useState(false);
 
   const [withPpn, setWithPpn] = useState(true);
   const [ppnPercent, setPpnPercent] = useState(11);
@@ -73,7 +76,8 @@ export function CreateMbpDialog({
 
   function resetForm() {
     setRows([emptyRow()]);
-    setClientId(""); setClientNameManual("");
+    setClientId("");
+    setShowMargin(false);
     setWithPpn(true); setPpnPercent(11);
   }
 
@@ -107,24 +111,9 @@ export function CreateMbpDialog({
           <div className="dialog" style={{ width: "min(640px, 100%)" }} onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Buat MBP (Material Budget Plan)</div>
             <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
-              <div className="field" style={{ marginBottom: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <label style={{ marginBottom: 0 }}>Klien</label>
-                  {clients.length > 0 && (
-                    <div className="seg" role="radiogroup">
-                      <label className="seg-opt"><input type="radio" checked={clientMode === "pilih"} onChange={() => setClientMode("pilih")} /> Pilih klien</label>
-                      <label className="seg-opt"><input type="radio" checked={clientMode === "manual"} onChange={() => setClientMode("manual")} /> Isi manual</label>
-                    </div>
-                  )}
-                </div>
-                {clientMode === "pilih" ? (
-                  <select className="input" name="clientId" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-                    <option value="">Pilih klien…</option>
-                    {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                ) : (
-                  <input className="input" name="clientNameManual" value={clientNameManual} onChange={(e) => setClientNameManual(e.target.value)} placeholder="Nama klien (belum tercatat sebagai Client)" />
-                )}
+              <div className="field">
+                <label htmlFor="mbp-clientId">Klien</label>
+                <ClientCombobox clients={clients} siteNames={siteNames} name="clientId" id="mbp-clientId" value={clientId} onChange={(id) => setClientId(id)} />
               </div>
 
               <div className="field">
@@ -151,7 +140,12 @@ export function CreateMbpDialog({
                 </div>
               )}
 
-              <div className="field" style={{ marginBottom: 0 }}><label>Item</label></div>
+              <div className="field" style={{ marginBottom: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <label style={{ marginBottom: 0 }}>Item</label>
+                <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowMargin((v) => !v)}>
+                  {showMargin ? "Sembunyikan cost & margin" : "Atur cost & margin"}
+                </button>
+              </div>
               {rows.map((row, idx) => {
                 const i = idx + 1;
                 return (
@@ -169,59 +163,70 @@ export function CreateMbpDialog({
                       />
                       <button type="button" className="btn btn-ghost" onClick={() => removeRow(row.rowId)} disabled={rows.length <= 1} title="Hapus item">&times;</button>
                     </div>
-                    <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: "var(--space-2)", alignItems: "center" }}>
-                      <RupiahInput name={`cost${i}`} defaultValue={row.cost} placeholder="Harga asli (cost)" onValueChange={(v) => updateRow(row.rowId, { cost: v })} />
+                    {showMargin ? (
+                      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: "var(--space-2)", alignItems: "center" }}>
+                        <RupiahInput name={`cost${i}`} defaultValue={row.cost} placeholder="Harga asli (cost)" onValueChange={(v) => updateRow(row.rowId, { cost: v })} />
+                        <RupiahInput
+                          key={`price-${row.rowId}-${row.priceRev}`}
+                          name={`price${i}`}
+                          defaultValue={row.price}
+                          placeholder="Harga jual"
+                          onValueChange={(v) => updateRow(row.rowId, { price: v })}
+                        />
+                        <input
+                          className="input"
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="Markup"
+                          title="Markup %"
+                          disabled={row.cost <= 0}
+                          value={markupPercentOf(row.cost, row.price)}
+                          onChange={(e) => {
+                            const pct = parseInt(e.target.value, 10) || 0;
+                            const newPrice = Math.round(row.cost * (1 + pct / 100));
+                            updateRow(row.rowId, { price: newPrice, priceRev: row.priceRev + 1 });
+                          }}
+                          style={{ textAlign: "right" }}
+                        />
+                      </div>
+                    ) : (
                       <RupiahInput
-                        key={`price-${row.rowId}-${row.priceRev}`}
+                        key={`price-simple-${row.rowId}-${row.priceRev}`}
                         name={`price${i}`}
                         defaultValue={row.price}
-                        placeholder="Harga jual"
+                        placeholder="Harga"
                         onValueChange={(v) => updateRow(row.rowId, { price: v })}
                       />
-                      <input
-                        className="input"
-                        type="number"
-                        inputMode="numeric"
-                        placeholder="Markup"
-                        title="Markup %"
-                        disabled={row.cost <= 0}
-                        value={markupPercentOf(row.cost, row.price)}
-                        onChange={(e) => {
-                          const pct = parseInt(e.target.value, 10) || 0;
-                          const newPrice = Math.round(row.cost * (1 + pct / 100));
-                          updateRow(row.rowId, { price: newPrice, priceRev: row.priceRev + 1 });
-                        }}
-                        style={{ textAlign: "right" }}
-                      />
-                    </div>
-                    {row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
+                    )}
+                    {showMargin && row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
                     {row.sourceRequestId && <input type="hidden" name={`sourceRequestId${i}`} value={row.sourceRequestId} />}
+                    {!showMargin && <input type="hidden" name={`cost${i}`} value={row.cost} />}
                   </div>
                 );
               })}
               <button type="button" className="btn btn-secondary" onClick={addRow} style={{ width: "fit-content" }}>+ Tambah item</button>
 
-              <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
-                <label className="field" style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row", marginBottom: 0 }}>
-                  <input type="checkbox" name="withPpn" checked={withPpn} onChange={(e) => setWithPpn(e.target.checked)} style={{ width: "auto" }} />
-                  <span>Kena pajak (PPN)</span>
-                </label>
-                <div className="field" style={{ marginBottom: 0 }}>
+              <label className="field" style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row", marginBottom: 0 }}>
+                <input type="checkbox" name="withPpn" checked={withPpn} onChange={(e) => setWithPpn(e.target.checked)} style={{ width: "auto" }} />
+                <span>Kena pajak (PPN {ppnPercent}%)</span>
+              </label>
+              {withPpn && (
+                <div className="field" style={{ marginBottom: 0, maxWidth: 140 }}>
+                  <label htmlFor="mbp-ppnPercent" style={{ fontSize: 12 }}>Ubah persen pajak</label>
                   <input
                     className="input"
+                    id="mbp-ppnPercent"
                     name="ppnPercent"
                     type="number"
                     min={0}
-                    disabled={!withPpn}
                     value={ppnPercent}
                     onChange={(e) => setPpnPercent(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    placeholder="Persen PPN"
                   />
                 </div>
-              </div>
+              )}
 
               <div style={{ fontSize: 13, display: "grid", gap: 4, padding: "var(--space-3)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)", borderRadius: "var(--radius-md)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="text-muted">Subtotal (harga jual)</span><span>{formatRp(subtotal)}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span className="text-muted">Subtotal</span><span>{formatRp(subtotal)}</span></div>
                 {withPpn && <div style={{ display: "flex", justifyContent: "space-between" }}><span className="text-muted">PPN {ppnPercent}%</span><span>{formatRp(ppnValue)}</span></div>}
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}><span>Total</span><span>{formatRp(total)}</span></div>
               </div>
