@@ -9,6 +9,8 @@ import { BASE_PATH } from "@/lib/basePath";
 import { EditMbpDialog } from "@/components/EditMbpDialog";
 import type { ClientOption } from "@/components/ClientCombobox";
 
+type PendingRequest = { id: string; itemName: string; unit: string; qty: number; cost: number; requesterName: string };
+
 type MbpRow = {
   id: string;
   mbpNo: string;
@@ -41,7 +43,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 const ADVANCE_LABEL: Record<string, string> = { draft: "Kirim ke klien", terkirim: "Tandai disetujui klien" };
 
-function RowActions({ mbp, clients, siteNames, onChanged }: { mbp: MbpRow; clients: ClientOption[]; siteNames: string[]; onChanged?: () => void }) {
+function RowActions({ mbp, clients, siteNames, pendingRequests, onChanged }: { mbp: MbpRow; clients: ClientOption[]; siteNames: string[]; pendingRequests: PendingRequest[]; onChanged?: () => void }) {
   const router = useRouter();
   const [advPending, startAdv] = useTransition();
   const [rejPending, startRej] = useTransition();
@@ -74,7 +76,7 @@ function RowActions({ mbp, clients, siteNames, onChanged }: { mbp: MbpRow; clien
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
       {canEdit ? (
-        <EditMbpDialog mbp={mbp} clients={clients} siteNames={siteNames} onSuccess={onChanged} />
+        <EditMbpDialog mbp={mbp} clients={clients} siteNames={siteNames} pendingRequests={pendingRequests} onSuccess={onChanged} />
       ) : (
         <button type="button" className="btn btn-ghost" disabled title={mbp.invoiceBjId ? "Sudah dikonversi jadi invoice, tidak bisa diubah lagi." : "MBP yang dibatalkan tidak bisa diubah."}>
           Edit
@@ -107,7 +109,7 @@ function RowActions({ mbp, clients, siteNames, onChanged }: { mbp: MbpRow; clien
   );
 }
 
-export function MbpTable({ mbps, clients, siteNames, onChanged }: { mbps: MbpRow[]; clients: ClientOption[]; siteNames: string[]; onChanged?: () => void }) {
+export function MbpTable({ mbps, clients, siteNames, pendingRequests, onChanged }: { mbps: MbpRow[]; clients: ClientOption[]; siteNames: string[]; pendingRequests: PendingRequest[]; onChanged?: () => void }) {
   if (mbps.length === 0) {
     return <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada MBP.</p>;
   }
@@ -135,7 +137,7 @@ export function MbpTable({ mbps, clients, siteNames, onChanged }: { mbps: MbpRow
               <td className="text-muted">{m.jobTitle || "-"}</td>
               <td style={{ fontWeight: 600 }}>{formatRp(mbpTotal(m.items, m.withPpn, m.ppnPercent))}</td>
               <td><span className={STATUS_TAG[m.status]}>{STATUS_LABEL[m.status]}</span></td>
-              <td><RowActions mbp={m} clients={clients} siteNames={siteNames} onChanged={onChanged} /></td>
+              <td><RowActions mbp={m} clients={clients} siteNames={siteNames} pendingRequests={pendingRequests} onChanged={onChanged} /></td>
             </tr>
           ))}
         </tbody>

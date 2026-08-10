@@ -9,15 +9,17 @@ import { mbpPpnValue } from "@/lib/finance";
 import { RupiahInput } from "@/components/RupiahInput";
 import { ClientCombobox, type ClientOption } from "@/components/ClientCombobox";
 
+type PendingRequest = { id: string; itemName: string; unit: string; qty: number; cost: number; requesterName: string };
+
 // priceRev only increments when price is set programmatically (typing a
 // markup %) — bumping it forces the RupiahInput below to remount and pick
 // up the new defaultValue. See CreateMbpDialog for the same pattern.
-type ItemRow = { rowId: number; desc: string; qty: number; cost: number; price: number; priceRev: number };
+type ItemRow = { rowId: number; desc: string; qty: number; cost: number; price: number; priceRev: number; sourceRequestId: string | null };
 
 let nextRowId = 1;
 
 function emptyRow(): ItemRow {
-  return { rowId: nextRowId++, desc: "", qty: 1, cost: 0, price: 0, priceRev: 0 };
+  return { rowId: nextRowId++, desc: "", qty: 1, cost: 0, price: 0, priceRev: 0, sourceRequestId: null };
 }
 
 function markupPercentOf(cost: number, price: number): number {
@@ -37,7 +39,7 @@ export type EditableMbp = {
   items: { desc: string; qty: number; cost: number; price: number }[];
 };
 
-export function EditMbpDialog({ mbp, clients, siteNames, onSuccess }: { mbp: EditableMbp; clients: ClientOption[]; siteNames: string[]; onSuccess?: () => void }) {
+export function EditMbpDialog({ mbp, clients, siteNames, pendingRequests, onSuccess }: { mbp: EditableMbp; clients: ClientOption[]; siteNames: string[]; pendingRequests: PendingRequest[]; onSuccess?: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -61,9 +63,10 @@ export function EditMbpDialog({ mbp, clients, siteNames, onSuccess }: { mbp: Edi
 
   const [rows, setRows] = useState<ItemRow[]>(
     mbp.items.length > 0
-      ? mbp.items.map((it) => ({ rowId: nextRowId++, desc: it.desc, qty: it.qty, cost: it.cost, price: it.price, priceRev: 0 }))
+      ? mbp.items.map((it) => ({ rowId: nextRowId++, desc: it.desc, qty: it.qty, cost: it.cost, price: it.price, priceRev: 0, sourceRequestId: null }))
       : [emptyRow()],
   );
+  const checkedRequestIds = new Set(rows.map((r) => r.sourceRequestId).filter(Boolean));
 
   const [showMargin, setShowMargin] = useState(() => mbp.items.some((it) => it.cost > 0));
 
@@ -78,6 +81,16 @@ export function EditMbpDialog({ mbp, clients, siteNames, onSuccess }: { mbp: Edi
   }
   function removeRow(rowId: number) {
     setRows((prev) => prev.filter((r) => r.rowId !== rowId));
+  }
+  function toggleRequest(req: PendingRequest, checked: boolean) {
+    if (checked) {
+      setRows((prev) => [
+        ...prev,
+        { rowId: nextRowId++, desc: `${req.itemName} (${req.unit})`, qty: req.qty, cost: req.cost, price: req.cost, priceRev: 0, sourceRequestId: req.id },
+      ]);
+    } else {
+      setRows((prev) => prev.filter((r) => r.sourceRequestId !== req.id));
+    }
   }
 
   async function handleSubmit(formData: FormData) {
@@ -116,6 +129,25 @@ export function EditMbpDialog({ mbp, clients, siteNames, onSuccess }: { mbp: Edi
                 <label htmlFor={`edit-mbp-jobTitle-${mbp.id}`}>Nama pekerjaan (opsional)</label>
                 <input className="input" id={`edit-mbp-jobTitle-${mbp.id}`} name="jobTitle" defaultValue={mbp.jobTitle ?? ""} placeholder="mis. Pengadaan AC ruang rawat inap" />
               </div>
+
+              {pendingRequests.length > 0 && (
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>Tarik dari permintaan yang sudah disetujui</label>
+                  <div style={{ display: "grid", gap: 4, maxHeight: 160, overflowY: "auto", padding: "var(--space-2)", border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)" }}>
+                    {pendingRequests.map((req) => (
+                      <label key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                        <input
+                          type="checkbox"
+                          style={{ width: "auto" }}
+                          checked={checkedRequestIds.has(req.id)}
+                          onChange={(e) => toggleRequest(req, e.target.checked)}
+                        />
+                        {req.itemName} — {req.qty} {req.unit} ({formatRp(req.cost)}) &middot; {req.requesterName}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="field" style={{ marginBottom: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <label style={{ marginBottom: 0 }}>Item</label>
@@ -177,6 +209,7 @@ export function EditMbpDialog({ mbp, clients, siteNames, onSuccess }: { mbp: Edi
                     )}
                     {showMargin && row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
                     {!showMargin && <input type="hidden" name={`cost${i}`} value={row.cost} />}
+                    {row.sourceRequestId && <input type="hidden" name={`sourceRequestId${i}`} value={row.sourceRequestId} />}
                   </div>
                 );
               })}
