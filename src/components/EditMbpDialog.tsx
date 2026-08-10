@@ -68,8 +68,6 @@ export function EditMbpDialog({ mbp, clients, siteNames, pendingRequests, onSucc
   );
   const checkedRequestIds = new Set(rows.map((r) => r.sourceRequestId).filter(Boolean));
 
-  const [showMargin, setShowMargin] = useState(() => mbp.items.some((it) => it.cost > 0));
-
   const [withPpn, setWithPpn] = useState(mbp.withPpn);
   const [ppnPercent, setPpnPercent] = useState(mbp.ppnPercent);
 
@@ -149,12 +147,7 @@ export function EditMbpDialog({ mbp, clients, siteNames, pendingRequests, onSucc
                 </div>
               )}
 
-              <div className="field" style={{ marginBottom: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <label style={{ marginBottom: 0 }}>Item</label>
-                <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowMargin((v) => !v)}>
-                  {showMargin ? "Sembunyikan cost & margin" : "Atur cost & margin"}
-                </button>
-              </div>
+              <div className="field" style={{ marginBottom: 0 }}><label>Item</label></div>
               {rows.map((row, idx) => {
                 const i = idx + 1;
                 return (
@@ -172,43 +165,32 @@ export function EditMbpDialog({ mbp, clients, siteNames, pendingRequests, onSucc
                       />
                       <button type="button" className="btn btn-ghost" onClick={() => removeRow(row.rowId)} disabled={rows.length <= 1} title="Hapus item">&times;</button>
                     </div>
-                    {showMargin ? (
-                      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: "var(--space-2)", alignItems: "center" }}>
-                        <RupiahInput name={`cost${i}`} defaultValue={row.cost} placeholder="Harga asli (cost)" onValueChange={(v) => updateRow(row.rowId, { cost: v })} />
-                        <RupiahInput
-                          key={`price-${row.rowId}-${row.priceRev}`}
-                          name={`price${i}`}
-                          defaultValue={row.price}
-                          placeholder="Harga jual"
-                          onValueChange={(v) => updateRow(row.rowId, { price: v })}
-                        />
-                        <input
-                          className="input"
-                          type="number"
-                          inputMode="numeric"
-                          placeholder="Markup"
-                          title="Markup %"
-                          disabled={row.cost <= 0}
-                          value={markupPercentOf(row.cost, row.price)}
-                          onChange={(e) => {
-                            const pct = parseInt(e.target.value, 10) || 0;
-                            const newPrice = Math.round(row.cost * (1 + pct / 100));
-                            updateRow(row.rowId, { price: newPrice, priceRev: row.priceRev + 1 });
-                          }}
-                          style={{ textAlign: "right" }}
-                        />
-                      </div>
-                    ) : (
+                    <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: "var(--space-2)", alignItems: "center" }}>
+                      <RupiahInput name={`cost${i}`} defaultValue={row.cost} placeholder="Harga asli (cost)" onValueChange={(v) => updateRow(row.rowId, { cost: v })} />
                       <RupiahInput
-                        key={`price-simple-${row.rowId}-${row.priceRev}`}
+                        key={`price-${row.rowId}-${row.priceRev}`}
                         name={`price${i}`}
                         defaultValue={row.price}
-                        placeholder="Harga"
+                        placeholder="Harga jual"
                         onValueChange={(v) => updateRow(row.rowId, { price: v })}
                       />
-                    )}
-                    {showMargin && row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
-                    {!showMargin && <input type="hidden" name={`cost${i}`} value={row.cost} />}
+                      <input
+                        className="input"
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="Markup"
+                        title="Markup %"
+                        disabled={row.cost <= 0}
+                        value={markupPercentOf(row.cost, row.price)}
+                        onChange={(e) => {
+                          const pct = parseInt(e.target.value, 10) || 0;
+                          const newPrice = Math.round(row.cost * (1 + pct / 100));
+                          updateRow(row.rowId, { price: newPrice, priceRev: row.priceRev + 1 });
+                        }}
+                        style={{ textAlign: "right" }}
+                      />
+                    </div>
+                    {row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
                     {row.sourceRequestId && <input type="hidden" name={`sourceRequestId${i}`} value={row.sourceRequestId} />}
                   </div>
                 );
