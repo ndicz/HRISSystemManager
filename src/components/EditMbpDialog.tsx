@@ -130,7 +130,7 @@ export function EditMbpDialog({ mbp, clients, siteNames, pendingRequests, onSucc
 
               {pendingRequests.length > 0 && (
                 <div className="field" style={{ marginBottom: 0 }}>
-                  <label>Tarik dari permintaan yang sudah disetujui</label>
+                  <label>Tarik dari permintaan barang</label>
                   <div style={{ display: "grid", gap: 4, maxHeight: 160, overflowY: "auto", padding: "var(--space-2)", border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)" }}>
                     {pendingRequests.map((req) => (
                       <label key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>

@@ -121,7 +121,7 @@ export function CreateMbpDialog({
 
               {pendingRequests.length > 0 && (
                 <div className="field" style={{ marginBottom: 0 }}>
-                  <label>Tarik dari permintaan yang sudah disetujui</label>
+                  <label>Tarik dari permintaan barang</label>
                   <div style={{ display: "grid", gap: 4, maxHeight: 200, overflowY: "auto", padding: "var(--space-2)", border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)" }}>
                     {pendingRequests.map((req) => (
                       <label key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
@@ -135,7 +135,7 @@ export function CreateMbpDialog({
                       </label>
                     ))}
                   </div>
-                  <p style={{ fontSize: 11, opacity: 0.55, margin: "var(--space-1) 0 0" }}>Bisa centang lebih dari satu — tiap yang dicentang langsung jadi item sendiri di bawah.</p>
+                  <p style={{ fontSize: 11, opacity: 0.55, margin: "var(--space-1) 0 0" }}>Bisa centang lebih dari satu — tiap yang dicentang otomatis di-ACC dan langsung jadi item sendiri di bawah.</p>
                 </div>
               )}
 
