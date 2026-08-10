@@ -51,10 +51,11 @@ export function MbpPageTabs({
   }
 
   const pendingCount = requests.filter((r) => r.status === "menunggu").length;
-  // Anything not yet pulled into an MBP and not rejected — checking one of
-  // these in CreateMbpDialog/EditMbpDialog both ACCs it and consumes it in
-  // the same step, so there's no separate "disetujui" pool to track anymore.
-  const availableForMbp = requests.filter((r) => !r.mbpId && r.status !== "ditolak");
+  // Only "menunggu" is pickable — the moment a request is checked in
+  // Create/EditMbpDialog it becomes "disetujui" (ACC'd + consumed) in one
+  // step, so it must disappear from the picker right away: one request is
+  // exactly one transaction, never reusable once decided either way.
+  const availableForMbp = requests.filter((r) => r.status === "menunggu");
   const totalPenawaranAktif = mbps
     .filter((m) => m.status === "draft" || m.status === "terkirim" || m.status === "disetujui_klien")
     .reduce((s, m) => s + mbpTotal(m.items, m.withPpn, m.ppnPercent), 0);
