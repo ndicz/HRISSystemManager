@@ -44,14 +44,7 @@ export function CreateMbpDialog({
   const [clientId, setClientId] = useState("");
 
   const [rows, setRows] = useState<ItemRow[]>([emptyRow()]);
-  // Derived, not separate state, so it can never drift from what the rows
-  // actually contain (e.g. after manually removing the auto-filled row).
-  const selectedRequestId = rows.find((r) => r.sourceRequestId)?.sourceRequestId ?? null;
-
-  // Cost/markup is office margin bookkeeping most quotes don't need to
-  // fuss with — collapsed by default so the common case is just "item,
-  // qty, harga". Revealing it doesn't lose anything already typed.
-  const [showMargin, setShowMargin] = useState(false);
+  const checkedRequestIds = new Set(rows.map((r) => r.sourceRequestId).filter(Boolean));
 
   const [withPpn, setWithPpn] = useState(true);
   const [ppnPercent, setPpnPercent] = useState(11);
@@ -65,23 +58,24 @@ export function CreateMbpDialog({
   function removeRow(rowId: number) {
     setRows((prev) => prev.filter((r) => r.rowId !== rowId));
   }
-  // 1 request → 1 MBP: picking a request replaces the item list with just
-  // that request's data instead of appending it alongside a separate blank
-  // row, so it's a single action to go from "pilih permintaan" to a
-  // ready-to-send quote — no re-typing the name/qty that's already known.
-  // "+ Tambah item" further down still lets extra items be added on top.
-  function selectRequest(req: PendingRequest | null) {
-    setRows(
-      req
-        ? [{ rowId: nextRowId++, desc: `${req.itemName} (${req.unit})`, qty: req.qty, cost: req.cost, price: req.cost, priceRev: 0, sourceRequestId: req.id }]
-        : [emptyRow()],
-    );
+  // One MBP can cover several requests at once (e.g. one client asked for
+  // multiple things) — checking a request adds its own item row, already
+  // filled with name/qty/cost, on top of whatever else is there.
+  // Unchecking removes just that row again.
+  function toggleRequest(req: PendingRequest, checked: boolean) {
+    if (checked) {
+      setRows((prev) => [
+        ...prev,
+        { rowId: nextRowId++, desc: `${req.itemName} (${req.unit})`, qty: req.qty, cost: req.cost, price: req.cost, priceRev: 0, sourceRequestId: req.id },
+      ]);
+    } else {
+      setRows((prev) => prev.filter((r) => r.sourceRequestId !== req.id));
+    }
   }
 
   function resetForm() {
     setRows([emptyRow()]);
     setClientId("");
-    setShowMargin(false);
     setWithPpn(true); setPpnPercent(11);
   }
 
@@ -127,35 +121,25 @@ export function CreateMbpDialog({
 
               {pendingRequests.length > 0 && (
                 <div className="field" style={{ marginBottom: 0 }}>
-                  <label>Untuk permintaan yang mana?</label>
+                  <label>Tarik dari permintaan yang sudah disetujui</label>
                   <div style={{ display: "grid", gap: 4, maxHeight: 200, overflowY: "auto", padding: "var(--space-2)", border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                      <input type="radio" name="_reqPick" style={{ width: "auto" }} checked={selectedRequestId === null} onChange={() => selectRequest(null)} />
-                      Isi manual (tanpa permintaan)
-                    </label>
                     {pendingRequests.map((req) => (
                       <label key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                         <input
-                          type="radio"
-                          name="_reqPick"
+                          type="checkbox"
                           style={{ width: "auto" }}
-                          checked={selectedRequestId === req.id}
-                          onChange={() => selectRequest(req)}
+                          checked={checkedRequestIds.has(req.id)}
+                          onChange={(e) => toggleRequest(req, e.target.checked)}
                         />
                         {req.itemName} — {req.qty} {req.unit} ({formatRp(req.cost)}) &middot; {req.requesterName}
                       </label>
                     ))}
                   </div>
-                  <p style={{ fontSize: 11, opacity: 0.55, margin: "var(--space-1) 0 0" }}>Pilih satu untuk langsung isi nama, qty, dan cost-nya — masih bisa diubah setelahnya.</p>
+                  <p style={{ fontSize: 11, opacity: 0.55, margin: "var(--space-1) 0 0" }}>Bisa centang lebih dari satu — tiap yang dicentang langsung jadi item sendiri di bawah.</p>
                 </div>
               )}
 
-              <div className="field" style={{ marginBottom: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <label style={{ marginBottom: 0 }}>Item</label>
-                <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowMargin((v) => !v)}>
-                  {showMargin ? "Sembunyikan cost & margin" : "Atur cost & margin"}
-                </button>
-              </div>
+              <div className="field" style={{ marginBottom: 0 }}><label>Item</label></div>
               {rows.map((row, idx) => {
                 const i = idx + 1;
                 return (
@@ -173,44 +157,33 @@ export function CreateMbpDialog({
                       />
                       <button type="button" className="btn btn-ghost" onClick={() => removeRow(row.rowId)} disabled={rows.length <= 1} title="Hapus item">&times;</button>
                     </div>
-                    {showMargin ? (
-                      <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: "var(--space-2)", alignItems: "center" }}>
-                        <RupiahInput name={`cost${i}`} defaultValue={row.cost} placeholder="Harga asli (cost)" onValueChange={(v) => updateRow(row.rowId, { cost: v })} />
-                        <RupiahInput
-                          key={`price-${row.rowId}-${row.priceRev}`}
-                          name={`price${i}`}
-                          defaultValue={row.price}
-                          placeholder="Harga jual"
-                          onValueChange={(v) => updateRow(row.rowId, { price: v })}
-                        />
-                        <input
-                          className="input"
-                          type="number"
-                          inputMode="numeric"
-                          placeholder="Markup"
-                          title="Markup %"
-                          disabled={row.cost <= 0}
-                          value={markupPercentOf(row.cost, row.price)}
-                          onChange={(e) => {
-                            const pct = parseInt(e.target.value, 10) || 0;
-                            const newPrice = Math.round(row.cost * (1 + pct / 100));
-                            updateRow(row.rowId, { price: newPrice, priceRev: row.priceRev + 1 });
-                          }}
-                          style={{ textAlign: "right" }}
-                        />
-                      </div>
-                    ) : (
+                    <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: "var(--space-2)", alignItems: "center" }}>
+                      <RupiahInput name={`cost${i}`} defaultValue={row.cost} placeholder="Harga asli (cost)" onValueChange={(v) => updateRow(row.rowId, { cost: v })} />
                       <RupiahInput
-                        key={`price-simple-${row.rowId}-${row.priceRev}`}
+                        key={`price-${row.rowId}-${row.priceRev}`}
                         name={`price${i}`}
                         defaultValue={row.price}
-                        placeholder="Harga"
+                        placeholder="Harga jual"
                         onValueChange={(v) => updateRow(row.rowId, { price: v })}
                       />
-                    )}
-                    {showMargin && row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
+                      <input
+                        className="input"
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="Markup"
+                        title="Markup %"
+                        disabled={row.cost <= 0}
+                        value={markupPercentOf(row.cost, row.price)}
+                        onChange={(e) => {
+                          const pct = parseInt(e.target.value, 10) || 0;
+                          const newPrice = Math.round(row.cost * (1 + pct / 100));
+                          updateRow(row.rowId, { price: newPrice, priceRev: row.priceRev + 1 });
+                        }}
+                        style={{ textAlign: "right" }}
+                      />
+                    </div>
+                    {row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
                     {row.sourceRequestId && <input type="hidden" name={`sourceRequestId${i}`} value={row.sourceRequestId} />}
-                    {!showMargin && <input type="hidden" name={`cost${i}`} value={row.cost} />}
                   </div>
                 );
               })}
