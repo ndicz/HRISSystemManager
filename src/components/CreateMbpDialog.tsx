@@ -144,20 +144,22 @@ export function CreateMbpDialog({
                 const i = idx + 1;
                 return (
                   <div key={row.rowId} style={{ display: "grid", gap: 4, padding: "var(--space-2)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)", borderRadius: "var(--radius-md)" }}>
-                    <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "2fr 1fr auto", gap: "var(--space-2)", alignItems: "center" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
                       <input
                         className="input" name={`desc${i}`} value={row.desc}
                         onChange={(e) => updateRow(row.rowId, { desc: e.target.value })}
                         placeholder={i === 1 ? "Nama item" : `Item ke-${i} (opsional)`}
+                        style={{ flex: "3 1 200px" }}
                       />
                       <input
                         className="input" name={`qty${i}`} type="number" min={1} value={row.qty}
                         onChange={(e) => updateRow(row.rowId, { qty: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                         placeholder="Qty"
+                        style={{ flex: "0 1 70px" }}
                       />
-                      <button type="button" className="btn btn-ghost" onClick={() => removeRow(row.rowId)} disabled={rows.length <= 1} title="Hapus item">&times;</button>
+                      <button type="button" className="btn btn-ghost" onClick={() => removeRow(row.rowId)} disabled={rows.length <= 1} title="Hapus item" style={{ flexShrink: 0 }}>&times;</button>
                     </div>
-                    <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: "var(--space-2)", alignItems: "center" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
                       <RupiahInput name={`cost${i}`} defaultValue={row.cost} placeholder="Harga asli (cost)" onValueChange={(v) => updateRow(row.rowId, { cost: v })} />
                       <RupiahInput
                         key={`price-${row.rowId}-${row.priceRev}`}
@@ -166,12 +168,15 @@ export function CreateMbpDialog({
                         placeholder="Harga jual"
                         onValueChange={(v) => updateRow(row.rowId, { price: v })}
                       />
+                    </div>
+                    <div style={{ maxWidth: 140 }}>
+                      <label htmlFor={`markup-${row.rowId}`} style={{ display: "block", fontSize: 12, marginBottom: 3, color: "color-mix(in srgb, var(--color-text) 70%, transparent)" }}>Markup %</label>
                       <input
                         className="input"
+                        id={`markup-${row.rowId}`}
                         type="number"
                         inputMode="numeric"
-                        placeholder="Markup"
-                        title="Markup %"
+                        placeholder="0"
                         disabled={row.cost <= 0}
                         value={markupPercentOf(row.cost, row.price)}
                         onChange={(e) => {
@@ -179,7 +184,6 @@ export function CreateMbpDialog({
                           const newPrice = Math.round(row.cost * (1 + pct / 100));
                           updateRow(row.rowId, { price: newPrice, priceRev: row.priceRev + 1 });
                         }}
-                        style={{ textAlign: "right" }}
                       />
                     </div>
                     {row.cost <= 0 && <p style={{ fontSize: 11, opacity: 0.55, margin: 0 }}>Isi cost dulu untuk hitung markup % otomatis.</p>}
