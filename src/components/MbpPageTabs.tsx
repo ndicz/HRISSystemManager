@@ -51,7 +51,10 @@ export function MbpPageTabs({
   }
 
   const pendingCount = requests.filter((r) => r.status === "menunggu").length;
-  const approvedUnconsumed = requests.filter((r) => r.status === "disetujui" && !r.mbpId);
+  // Anything not yet pulled into an MBP and not rejected — checking one of
+  // these in CreateMbpDialog/EditMbpDialog both ACCs it and consumes it in
+  // the same step, so there's no separate "disetujui" pool to track anymore.
+  const availableForMbp = requests.filter((r) => !r.mbpId && r.status !== "ditolak");
   const totalPenawaranAktif = mbps
     .filter((m) => m.status === "draft" || m.status === "terkirim" || m.status === "disetujui_klien")
     .reduce((s, m) => s + mbpTotal(m.items, m.withPpn, m.ppnPercent), 0);
@@ -60,7 +63,7 @@ export function MbpPageTabs({
   return (
     <div>
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-        <div className="card"><div className="card-kicker">Permintaan menunggu ACC</div><div className="card-title" style={{ fontSize: 22 }}>{pendingCount}</div></div>
+        <div className="card"><div className="card-kicker">Permintaan belum dipakai di MBP</div><div className="card-title" style={{ fontSize: 22 }}>{pendingCount}</div></div>
         <div className="card"><div className="card-kicker">Nilai jual MBP aktif</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalPenawaranAktif)}</div></div>
         <div className="card"><div className="card-kicker">Sudah jadi invoice</div><div className="card-title" style={{ fontSize: 22 }}>{totalDikonversi}</div></div>
       </div>
@@ -88,9 +91,9 @@ export function MbpPageTabs({
         <div className="card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
             <div className="card-kicker">MBP / Penawaran</div>
-            <CreateMbpDialog clients={clients} siteNames={siteNames} pendingRequests={approvedUnconsumed} onSuccess={refreshAll} />
+            <CreateMbpDialog clients={clients} siteNames={siteNames} pendingRequests={availableForMbp} onSuccess={refreshAll} />
           </div>
-          <MbpTable mbps={mbps} clients={clients} siteNames={siteNames} pendingRequests={approvedUnconsumed} onChanged={refreshAll} />
+          <MbpTable mbps={mbps} clients={clients} siteNames={siteNames} pendingRequests={availableForMbp} onChanged={refreshAll} />
         </div>
       )}
     </div>

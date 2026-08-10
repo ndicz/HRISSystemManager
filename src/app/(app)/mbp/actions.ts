@@ -134,9 +134,16 @@ export async function createMbp(formData: FormData) {
     },
   });
 
+  // Pulling a pending request into an Mbp *is* the ACC now — there's no
+  // separate approve step in the Permintaan tab anymore. A request that
+  // was already approved-but-unconsumed under the old flow is accepted
+  // here too (status left as-is), so nothing legacy gets stranded.
   const sourceIds = items.map((i) => i.sourceRequestId).filter((v): v is string => !!v);
   if (sourceIds.length > 0) {
-    await db.mbpRequest.updateMany({ where: { id: { in: sourceIds }, status: "disetujui", mbpId: null }, data: { mbpId: mbp.id } });
+    await db.mbpRequest.updateMany({
+      where: { id: { in: sourceIds }, mbpId: null },
+      data: { mbpId: mbp.id, status: "disetujui", decidedAt: new Date() },
+    });
   }
 
   await db.auditLog.create({
@@ -169,10 +176,14 @@ export async function updateMbp(id: string, formData: FormData) {
   const ppnPercent = Math.max(0, parseInt(String(formData.get("ppnPercent") ?? "11"), 10) || 0);
 
   // Same consumption rule as createMbp — a request pulled in during an
-  // edit is locked to this MBP too, so it can't also end up in another one.
+  // edit is locked to this MBP too (and ACC'd in the same step), so it
+  // can't also end up in another one.
   const sourceIds = items.map((i) => i.sourceRequestId).filter((v): v is string => !!v);
   if (sourceIds.length > 0) {
-    await db.mbpRequest.updateMany({ where: { id: { in: sourceIds }, status: "disetujui", mbpId: null }, data: { mbpId: id } });
+    await db.mbpRequest.updateMany({
+      where: { id: { in: sourceIds }, mbpId: null },
+      data: { mbpId: id, status: "disetujui", decidedAt: new Date() },
+    });
   }
 
   await db.mbp.update({
@@ -230,9 +241,12 @@ export async function rejectMbpByClient(id: string) {
   // back to the pending pool so they're available for a fresh MBP
   // attempt (different pricing, different client, etc.), instead of
   // being permanently stuck pointing at an MBP that never became real.
+  // Since pulling a request into an MBP is also what ACCs it now, undoing
+  // that has to undo the ACC too — back to "menunggu", not left "disetujui"
+  // with nothing attached.
   await db.$transaction([
     db.mbp.update({ where: { id }, data: { status: "ditolak_klien" } }),
-    db.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null } }),
+    db.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null, status: "menunggu", decidedAt: null, decisionNote: null } }),
   ]);
 
   await db.auditLog.create({
@@ -252,10 +266,11 @@ export async function cancelMbp(id: string) {
   if (mbp.invoiceBjId) throw new Error("MBP ini sudah dikonversi jadi invoice — tidak bisa dibatalkan dari sini.");
 
   // Same reasoning as rejectMbpByClient — cancelling shouldn't permanently
-  // lock the requests this MBP had pulled in.
+  // lock the requests this MBP had pulled in, and undoing the pull undoes
+  // the ACC too.
   await db.$transaction([
     db.mbp.update({ where: { id }, data: { status: "dibatalkan" } }),
-    db.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null } }),
+    db.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null, status: "menunggu", decidedAt: null, decisionNote: null } }),
   ]);
 
   await db.auditLog.create({
