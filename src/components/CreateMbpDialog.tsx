@@ -44,7 +44,9 @@ export function CreateMbpDialog({
   const [clientId, setClientId] = useState("");
 
   const [rows, setRows] = useState<ItemRow[]>([emptyRow()]);
-  const checkedRequestIds = new Set(rows.map((r) => r.sourceRequestId).filter(Boolean));
+  // Derived, not separate state, so it can never drift from what the rows
+  // actually contain (e.g. after manually removing the auto-filled row).
+  const selectedRequestId = rows.find((r) => r.sourceRequestId)?.sourceRequestId ?? null;
 
   // Cost/markup is office margin bookkeeping most quotes don't need to
   // fuss with — collapsed by default so the common case is just "item,
@@ -63,15 +65,17 @@ export function CreateMbpDialog({
   function removeRow(rowId: number) {
     setRows((prev) => prev.filter((r) => r.rowId !== rowId));
   }
-  function toggleRequest(req: PendingRequest, checked: boolean) {
-    if (checked) {
-      setRows((prev) => [
-        ...prev,
-        { rowId: nextRowId++, desc: `${req.itemName} (${req.unit})`, qty: req.qty, cost: req.cost, price: req.cost, priceRev: 0, sourceRequestId: req.id },
-      ]);
-    } else {
-      setRows((prev) => prev.filter((r) => r.sourceRequestId !== req.id));
-    }
+  // 1 request → 1 MBP: picking a request replaces the item list with just
+  // that request's data instead of appending it alongside a separate blank
+  // row, so it's a single action to go from "pilih permintaan" to a
+  // ready-to-send quote — no re-typing the name/qty that's already known.
+  // "+ Tambah item" further down still lets extra items be added on top.
+  function selectRequest(req: PendingRequest | null) {
+    setRows(
+      req
+        ? [{ rowId: nextRowId++, desc: `${req.itemName} (${req.unit})`, qty: req.qty, cost: req.cost, price: req.cost, priceRev: 0, sourceRequestId: req.id }]
+        : [emptyRow()],
+    );
   }
 
   function resetForm() {
@@ -123,20 +127,26 @@ export function CreateMbpDialog({
 
               {pendingRequests.length > 0 && (
                 <div className="field" style={{ marginBottom: 0 }}>
-                  <label>Tarik dari permintaan yang sudah disetujui</label>
-                  <div style={{ display: "grid", gap: 4, maxHeight: 160, overflowY: "auto", padding: "var(--space-2)", border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)" }}>
+                  <label>Untuk permintaan yang mana?</label>
+                  <div style={{ display: "grid", gap: 4, maxHeight: 200, overflowY: "auto", padding: "var(--space-2)", border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                      <input type="radio" name="_reqPick" style={{ width: "auto" }} checked={selectedRequestId === null} onChange={() => selectRequest(null)} />
+                      Isi manual (tanpa permintaan)
+                    </label>
                     {pendingRequests.map((req) => (
                       <label key={req.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                         <input
-                          type="checkbox"
+                          type="radio"
+                          name="_reqPick"
                           style={{ width: "auto" }}
-                          checked={checkedRequestIds.has(req.id)}
-                          onChange={(e) => toggleRequest(req, e.target.checked)}
+                          checked={selectedRequestId === req.id}
+                          onChange={() => selectRequest(req)}
                         />
                         {req.itemName} — {req.qty} {req.unit} ({formatRp(req.cost)}) &middot; {req.requesterName}
                       </label>
                     ))}
                   </div>
+                  <p style={{ fontSize: 11, opacity: 0.55, margin: "var(--space-1) 0 0" }}>Pilih satu untuk langsung isi nama, qty, dan cost-nya — masih bisa diubah setelahnya.</p>
                 </div>
               )}
 
