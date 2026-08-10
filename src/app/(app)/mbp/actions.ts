@@ -168,6 +168,13 @@ export async function updateMbp(id: string, formData: FormData) {
   const withPpn = formData.get("withPpn") === "on";
   const ppnPercent = Math.max(0, parseInt(String(formData.get("ppnPercent") ?? "11"), 10) || 0);
 
+  // Same consumption rule as createMbp — a request pulled in during an
+  // edit is locked to this MBP too, so it can't also end up in another one.
+  const sourceIds = items.map((i) => i.sourceRequestId).filter((v): v is string => !!v);
+  if (sourceIds.length > 0) {
+    await db.mbpRequest.updateMany({ where: { id: { in: sourceIds }, status: "disetujui", mbpId: null }, data: { mbpId: id } });
+  }
+
   await db.mbp.update({
     where: { id },
     data: {
@@ -219,7 +226,14 @@ export async function rejectMbpByClient(id: string) {
   if (!mbp) return;
   if (mbp.status !== "terkirim") throw new Error("Hanya MBP yang sudah terkirim yang bisa ditandai ditolak klien.");
 
-  await db.mbp.update({ where: { id }, data: { status: "ditolak_klien" } });
+  // A rejected MBP is a dead end — the requests it pulled in should go
+  // back to the pending pool so they're available for a fresh MBP
+  // attempt (different pricing, different client, etc.), instead of
+  // being permanently stuck pointing at an MBP that never became real.
+  await db.$transaction([
+    db.mbp.update({ where: { id }, data: { status: "ditolak_klien" } }),
+    db.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null } }),
+  ]);
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "mbp.rejectByClient", entity: "Mbp", entityId: id },
@@ -237,7 +251,12 @@ export async function cancelMbp(id: string) {
   if (mbp.status === "dibatalkan") throw new Error("MBP ini sudah dibatalkan sebelumnya.");
   if (mbp.invoiceBjId) throw new Error("MBP ini sudah dikonversi jadi invoice — tidak bisa dibatalkan dari sini.");
 
-  await db.mbp.update({ where: { id }, data: { status: "dibatalkan" } });
+  // Same reasoning as rejectMbpByClient — cancelling shouldn't permanently
+  // lock the requests this MBP had pulled in.
+  await db.$transaction([
+    db.mbp.update({ where: { id }, data: { status: "dibatalkan" } }),
+    db.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null } }),
+  ]);
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "mbp.cancel", entity: "Mbp", entityId: id, detail: mbp.mbpNo },
