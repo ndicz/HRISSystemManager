@@ -158,3 +158,22 @@ export async function resetUserPassword(formData: FormData) {
 
   revalidatePath("/pengguna");
 }
+
+// Admin override for a locked-out 2FA account — the self-service toggle in
+// TotpSetupCard only works once logged in, which is exactly what a lost/
+// misconfigured authenticator app makes impossible. This is the only way
+// back in for that case, so it deliberately skips re-verifying any code.
+export async function resetUserTotp(formData: FormData) {
+  const session = await requireAdmin();
+
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) throw new Error("Pengguna tidak ditemukan.");
+
+  await db.user.update({ where: { id: userId }, data: { totpEnabled: false, totpSecret: null } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "user.totpReset", entity: "User", entityId: userId },
+  });
+
+  revalidatePath("/pengguna");
+}

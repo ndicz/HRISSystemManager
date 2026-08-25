@@ -81,6 +81,7 @@ export default async function PenggunaPage() {
                         active: u.active,
                         employeeId: u.employeeId,
                         pageAccess: u.pageAccess,
+                        totpEnabled: u.totpEnabled,
                       }}
                       isSelf={isSelf}
                       assignableNavItems={ASSIGNABLE_NAV_ITEMS}
