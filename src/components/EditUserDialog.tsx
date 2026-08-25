@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateUser, resetUserPassword, deleteUser } from "@/app/(app)/pengguna/actions";
+import { updateUser, resetUserPassword, resetUserTotp, deleteUser } from "@/app/(app)/pengguna/actions";
 import type { NavItem } from "@/lib/rbac";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -22,6 +22,7 @@ type UserRow = {
   active: boolean;
   employeeId: string | null;
   pageAccess: string[];
+  totpEnabled: boolean;
 };
 
 export function EditUserDialog({
@@ -47,6 +48,26 @@ export function EditUserDialog({
 
   const [delError, setDelError] = useState("");
   const [delPending, setDelPending] = useState(false);
+
+  const [totpEnabled, setTotpEnabled] = useState(user.totpEnabled);
+  const [totpError, setTotpError] = useState("");
+  const [totpPending, setTotpPending] = useState(false);
+
+  async function handleResetTotp() {
+    if (!window.confirm(`Matikan 2FA untuk "${user.name}"? Setelah ini akun bisa login lagi cuma dengan password.`)) return;
+    setTotpPending(true);
+    setTotpError("");
+    try {
+      const formData = new FormData();
+      formData.set("userId", user.id);
+      await resetUserTotp(formData);
+      setTotpEnabled(false);
+    } catch (err) {
+      setTotpError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTotpPending(false);
+    }
+  }
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
@@ -176,6 +197,20 @@ export function EditUserDialog({
                 </div>
               </div>
             </form>
+
+            {!isSelf && totpEnabled && (
+              <div style={{ marginTop: "var(--space-4)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--color-neutral-200)" }}>
+                <p style={{ fontSize: 12, opacity: 0.6, margin: "0 0 var(--space-2)" }}>
+                  2FA aktif di akun ini. Kalau pengguna kehilangan akses ke aplikasi authenticator-nya, dia tidak bisa
+                  login sama sekali untuk mematikannya sendiri — matikan dari sini supaya bisa login lagi, lalu dia
+                  bisa aktifkan ulang 2FA-nya kalau mau.
+                </p>
+                {totpError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: "0 0 var(--space-2)" }}>{totpError}</p>}
+                <button type="button" className="btn btn-secondary" onClick={handleResetTotp} disabled={totpPending}>
+                  {totpPending ? "Memproses…" : "Matikan 2FA pengguna ini"}
+                </button>
+              </div>
+            )}
 
             {!isSelf && (
               <div style={{ marginTop: "var(--space-4)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--color-neutral-200)" }}>
