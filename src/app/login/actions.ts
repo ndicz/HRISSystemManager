@@ -5,6 +5,7 @@ import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
 import { findUserByIdentifier } from "@/lib/db";
 import { signLoginChallenge } from "@/lib/totp";
+import { BASE_PATH } from "@/lib/basePath";
 
 export type LoginState =
   | { step: "credentials"; error?: string }
@@ -20,7 +21,12 @@ export async function checkCredentials(
 ): Promise<LoginState> {
   const identifier = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const callbackUrl = (formData.get("callbackUrl") as string) || "/";
+  // callbackUrl travels through this app basePath-stripped (proxy.ts reads
+  // it off req.nextUrl.pathname, LoginForm defaults to "/") — signIn's
+  // redirectTo never gets the basePath re-applied automatically the way
+  // next/link or a cloned NextURL would, so it has to be added here or the
+  // post-login redirect 404s (same issue as signOutAction).
+  const callbackUrl = BASE_PATH + ((formData.get("callbackUrl") as string) || "/");
 
   const user = await findUserByIdentifier(identifier);
   if (!user || !user.active || !(await bcrypt.compare(password, user.passwordHash))) {
@@ -47,7 +53,7 @@ export async function completeLogin(
 ): Promise<LoginState> {
   const challenge = String(formData.get("challenge") ?? "");
   const code = String(formData.get("code") ?? "");
-  const callbackUrl = (formData.get("callbackUrl") as string) || "/";
+  const callbackUrl = BASE_PATH + ((formData.get("callbackUrl") as string) || "/");
 
   try {
     await signIn("credentials", { challenge, code, redirectTo: callbackUrl });
