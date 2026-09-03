@@ -11,6 +11,7 @@ import { EditAccountDialog } from "@/components/EditAccountDialog";
 import { AddPayableDialog } from "@/components/AddPayableDialog";
 import { PayableActions } from "@/components/PayableActions";
 import { TransferDialog } from "@/components/TransferDialog";
+import { AddCashAccountDialog } from "@/components/AddCashAccountDialog";
 import { BudgetEditButton } from "@/components/BudgetEditButton";
 import { DocHandoverDateInput } from "@/components/DocHandoverDateInput";
 import { closePeriod, reopenPeriod } from "@/app/(app)/kas/actions";
@@ -350,16 +351,23 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
 
       {tab === "rekening" && (
         <>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}><TransferDialog cashAccounts={cashAccounts} disabled={isTodayPeriodClosed} /></div>
-          <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)" }}>
-            {cashAccounts.map((c) => (
-              <div className="card" key={c.id}>
-                <div className="card-kicker">{c.name}</div>
-                <div className="card-title" style={{ fontSize: 20 }}>{formatRp(cashAccountBalance(c.id))}</div>
-                <p className="card-body">Saldo awal {formatRp(c.opening)}</p>
-              </div>
-            ))}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+            <AddCashAccountDialog />
+            <TransferDialog cashAccounts={cashAccounts} disabled={isTodayPeriodClosed} />
           </div>
+          {cashAccounts.length === 0 ? (
+            <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada rekening. Tambah rekening dulu supaya bisa dipakai transaksi &amp; transfer.</p>
+          ) : (
+            <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)" }}>
+              {cashAccounts.map((c) => (
+                <div className="card" key={c.id}>
+                  <div className="card-kicker">{c.name}</div>
+                  <div className="card-title" style={{ fontSize: 20 }}>{formatRp(cashAccountBalance(c.id))}</div>
+                  <p className="card-body">Saldo awal {formatRp(c.opening)}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
