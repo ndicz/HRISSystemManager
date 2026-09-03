@@ -134,6 +134,30 @@ export async function addAccount(formData: FormData) {
   revalidatePath("/kas");
 }
 
+// A CashAccount ("rekening") is the actual pocket of money — bank account
+// or petty cash — that Transaction and TransferDialog post against, kept
+// separate from Account (the COA category a transaction is charged to).
+// With none yet, both Transfer's dropdowns and the running balances on the
+// Rekening tab have nothing to show.
+export async function createCashAccount(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const kind = String(formData.get("kind") ?? "besar");
+  const opening = Math.max(0, parseInt(String(formData.get("opening") ?? "0"), 10) || 0);
+  if (!name) throw new Error("Nama rekening wajib diisi.");
+  if (kind !== "kecil" && kind !== "besar") throw new Error("Jenis rekening tidak valid.");
+
+  await db.cashAccount.create({ data: { name, kind, opening } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "cashAccount.create", entity: "CashAccount", detail: JSON.stringify({ name, kind, opening }) },
+  });
+
+  revalidatePath("/kas");
+}
+
 export async function setBudget(accountId: string, budget: number) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");

@@ -23,7 +23,15 @@ export function TransferDialog({ cashAccounts, disabled }: { cashAccounts: Optio
 
   return (
     <>
-      <button type="button" className="btn btn-secondary" onClick={() => setOpen(true)} disabled={disabled} title={disabled ? "Periode berjalan sudah ditutup" : undefined}>Transfer antar rekening</button>
+      <button
+        type="button"
+        className="btn btn-secondary"
+        onClick={() => setOpen(true)}
+        disabled={disabled || cashAccounts.length < 2}
+        title={disabled ? "Periode berjalan sudah ditutup" : cashAccounts.length < 2 ? "Butuh minimal 2 rekening untuk transfer" : undefined}
+      >
+        Transfer antar rekening
+      </button>
       {open && (
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
