@@ -42,7 +42,7 @@ export default async function KaryawanPage() {
         actions={<><ImportBpjsDialog /><AddEmployeeDialog sites={sites} positions={positions} clients={clients} /></>}
       />
 
-      <KaryawanTable employees={employees} sites={sites} />
+      <KaryawanTable employees={employees} sites={sites} positions={positions} />
 
       <div className="card" style={{ marginTop: "var(--space-6)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>

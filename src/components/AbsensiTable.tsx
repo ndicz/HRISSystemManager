@@ -14,6 +14,7 @@ import { Avatar } from "@/components/Avatar";
 
 type Emp = Employee & { site: Site; position: Position; attendance: Pick<AttendanceRecord, "date" | "status" | "lateMin">[] };
 type SiteOption = { id: string; name: string };
+type PositionOption = { id: string; name: string };
 
 function attendanceTag(presentDays: number, workDays: number) {
   if (workDays <= 0) return "tag tag-neutral";
@@ -28,7 +29,7 @@ function monthOptions() {
   return names.map((n, i) => ({ value: "2026-" + String(i + 1).padStart(2, "0"), label: n + " 2026" }));
 }
 
-export function AbsensiTable({ employees, sites }: { employees: Emp[]; sites: SiteOption[] }) {
+export function AbsensiTable({ employees, sites, positions }: { employees: Emp[]; sites: SiteOption[]; positions: PositionOption[] }) {
   const [q, setQ] = useState("");
   // Default to whichever month actually has attendance data, rather than
   // today's real calendar month (usually empty right after an import).
@@ -172,7 +173,7 @@ export function AbsensiTable({ employees, sites }: { employees: Emp[]; sites: Si
                   </td>
                   <td><RecapDialog employeeId={e.id} employeeName={e.name} /></td>
                   <td><SalaryComponentsDialog employeeId={e.id} employeeName={e.name} /></td>
-                  <td><EditEmployeeDialog employee={e} sites={sites} /></td>
+                  <td><EditEmployeeDialog employee={e} sites={sites} positions={positions} /></td>
                 </tr>
               ))}
             </tbody>

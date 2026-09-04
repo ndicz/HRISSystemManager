@@ -139,6 +139,7 @@ export async function updateEmployeeDetails(formData: FormData) {
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const siteId = String(formData.get("siteId") ?? "");
+  const positionId = String(formData.get("positionId") ?? "");
   const contractType = String(formData.get("contractType") ?? "PKWT");
   const contractEndRaw = String(formData.get("contractEnd") ?? "");
   const kasbon = Math.max(0, parseInt(String(formData.get("kasbon") ?? "0"), 10) || 0);
@@ -152,7 +153,7 @@ export async function updateEmployeeDetails(formData: FormData) {
   const bpjsKetenagakerjaanOverride = bpjsKetenagakerjaanRaw ? Math.max(0, parseInt(bpjsKetenagakerjaanRaw, 10) || 0) : null;
   if (!employeeId) throw new Error("Karyawan tidak ditemukan.");
 
-  const existing = await db.employee.findUnique({ where: { id: employeeId }, include: { site: true } });
+  const existing = await db.employee.findUnique({ where: { id: employeeId }, include: { site: true, position: true } });
   if (!existing) throw new Error("Karyawan tidak ditemukan.");
 
   let transferLog: string | null = null;
@@ -162,10 +163,18 @@ export async function updateEmployeeDetails(formData: FormData) {
     transferLog = JSON.stringify({ from: existing.site.name, to: newSite.name });
   }
 
+  let positionChangeLog: string | null = null;
+  if (positionId && positionId !== existing.positionId) {
+    const newPosition = await db.position.findUnique({ where: { id: positionId } });
+    if (!newPosition) throw new Error("Posisi tidak ditemukan.");
+    positionChangeLog = JSON.stringify({ from: existing.position.name, to: newPosition.name });
+  }
+
   await db.employee.update({
     where: { id: employeeId },
     data: {
       ...(siteId ? { siteId } : {}),
+      ...(positionId ? { positionId } : {}),
       contractType,
       contractEnd: contractType === "PKWT" && contractEndRaw ? new Date(contractEndRaw) : null,
       kasbon,
@@ -182,6 +191,11 @@ export async function updateEmployeeDetails(formData: FormData) {
   if (transferLog) {
     await db.auditLog.create({
       data: { userId: session.user.id, action: "employee.transfer", entity: "Employee", entityId: employeeId, detail: transferLog },
+    });
+  }
+  if (positionChangeLog) {
+    await db.auditLog.create({
+      data: { userId: session.user.id, action: "employee.positionChange", entity: "Employee", entityId: employeeId, detail: positionChangeLog },
     });
   }
 

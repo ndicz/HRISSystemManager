@@ -14,8 +14,9 @@ import { Avatar } from "@/components/Avatar";
 
 type Emp = Employee & { site: Site; position: Position; salaryComponents: SalaryComponent[] };
 type SiteOption = { id: string; name: string };
+type PositionOption = { id: string; name: string };
 
-export function KaryawanTable({ employees, sites }: { employees: Emp[]; sites: SiteOption[] }) {
+export function KaryawanTable({ employees, sites, positions }: { employees: Emp[]; sites: SiteOption[]; positions: PositionOption[] }) {
   const [q, setQ] = useState("");
   const [siteFilter, setSiteFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
@@ -123,7 +124,7 @@ export function KaryawanTable({ employees, sites }: { employees: Emp[]; sites: S
                 <td>{formatRp(baseSalary(e.salaryComponents))}</td>
                 <td className="text-muted">{e.bpjsKesehatanOverride !== null ? formatRp(e.bpjsKesehatanOverride) : "Otomatis"}</td>
                 <td className="text-muted">{e.bpjsKetenagakerjaanOverride !== null ? formatRp(e.bpjsKetenagakerjaanOverride) : "Otomatis"}</td>
-                <td><EditEmployeeDialog employee={e} sites={sites} /></td>
+                <td><EditEmployeeDialog employee={e} sites={sites} positions={positions} /></td>
                 <td><SalaryComponentsDialog employeeId={e.id} employeeName={e.name} /></td>
                 <td><EmployeeProfileDialog employee={e} /></td>
                 <td><ResignDialog employeeId={e.id} employeeName={e.name} /></td>

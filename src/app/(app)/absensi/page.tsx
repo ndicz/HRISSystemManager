@@ -13,7 +13,7 @@ function attendanceWindowStart() {
 }
 
 export default async function AbsensiPage() {
-  const [employees, sites] = await Promise.all([
+  const [employees, sites, positions] = await Promise.all([
     db.employee.findMany({
       where: { status: "aktif" },
       include: {
@@ -23,6 +23,7 @@ export default async function AbsensiPage() {
       orderBy: { name: "asc" },
     }),
     db.site.findMany({ select: { id: true, name: true } }),
+    db.position.findMany({ select: { id: true, name: true } }),
   ]);
 
   return (
@@ -34,7 +35,7 @@ export default async function AbsensiPage() {
         actions={<ImportAttendanceDialog sites={sites} />}
       />
 
-      <AbsensiTable employees={employees} sites={sites} />
+      <AbsensiTable employees={employees} sites={sites} positions={positions} />
     </div>
   );
 }

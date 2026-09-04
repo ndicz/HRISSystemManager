@@ -8,6 +8,7 @@ type Emp = {
   id: string;
   name: string;
   siteId: string;
+  positionId: string;
   contractType: string;
   contractEnd: Date | null;
   kasbon: number;
@@ -18,13 +19,14 @@ type Emp = {
 };
 
 type Site = { id: string; name: string };
+type Position = { id: string; name: string };
 
 function toDateInputValue(d: Date | null) {
   if (!d) return "";
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
-export function EditEmployeeDialog({ employee, sites }: { employee: Emp; sites: Site[] }) {
+export function EditEmployeeDialog({ employee, sites, positions }: { employee: Emp; sites: Site[]; positions: Position[] }) {
   const [open, setOpen] = useState(false);
   const [contractType, setContractType] = useState(employee.contractType);
   const [kasbon, setKasbon] = useState(employee.kasbon);
@@ -70,6 +72,14 @@ export function EditEmployeeDialog({ employee, sites }: { employee: Emp; sites: 
                 <select className="input" id="siteId" name="siteId" defaultValue={employee.siteId}>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="positionId">Posisi</label>
+                <select className="input" id="positionId" name="positionId" defaultValue={employee.positionId}>
+                  {positions.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </div>
