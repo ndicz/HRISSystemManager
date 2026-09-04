@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { signOutAction } from "@/app/(app)/actions";
 import { navForRole, NAV_GROUP_ORDER, type NavGroup, type NavItem } from "@/lib/rbac";
 import { NAV_ICONS } from "@/components/NavIcons";
-import { Avatar } from "@/components/Avatar";
 
 const GROUP_LABEL: Record<NavGroup, string> = {
   SDM: "SDM",
@@ -14,17 +13,6 @@ const GROUP_LABEL: Record<NavGroup, string> = {
   Marketing: "Marketing",
   Kepatuhan: "Kepatuhan",
   Sistem: "Sistem",
-};
-
-// Small colored bullet per nav group — same hues as the .tag-blue/green/
-// purple/pink/teal category tags used elsewhere, so "which section" reads
-// at a glance the same way it does in tables.
-const GROUP_DOT_COLOR: Record<NavGroup, string> = {
-  SDM: "oklch(58% 0.13 255)",
-  Keuangan: "oklch(58% 0.13 150)",
-  Marketing: "oklch(58% 0.14 300)",
-  Kepatuhan: "oklch(58% 0.16 340)",
-  Sistem: "oklch(58% 0.09 195)",
 };
 
 function isActive(pathname: string, href: string) {
@@ -53,7 +41,7 @@ function CloseIcon() {
 function NavLink({ item, active, badge, onNavigate }: { item: NavItem; active: boolean; badge?: number; onNavigate: () => void }) {
   return (
     <Link href={item.href} className={`nav-item${active ? " active" : ""}`} onClick={onNavigate}>
-      {active ? <span className="nav-item-icon-badge">{NAV_ICONS[item.href]}</span> : NAV_ICONS[item.href]}
+      {NAV_ICONS[item.href]}
       {item.label}
       {!!badge && <span className="nav-badge">{badge > 99 ? "99+" : badge}</span>}
     </Link>
@@ -106,10 +94,7 @@ function NavGroupSection({ group, items, pathname, badgeCounts, onNavigate }: { 
           opacity: 0.5,
         }}
       >
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: GROUP_DOT_COLOR[group], flexShrink: 0 }} />
-          {GROUP_LABEL[group]}
-        </span>
+        {GROUP_LABEL[group]}
         <span style={{ fontSize: 10, transform: expanded ? "rotate(90deg)" : "none", transition: "transform 0.1s" }}>▶</span>
       </button>
       {expanded && (
@@ -157,21 +142,8 @@ export function Sidebar({
   }, [open]);
 
   const brand = (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <div
-        className="flex items-center justify-center rounded-lg text-white"
-        style={{ width: 32, height: 32, flexShrink: 0, background: "linear-gradient(135deg, var(--color-brand), var(--color-accent-800))" }}
-      >
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="3" y="3" width="7" height="7" rx="1.5" />
-          <rect x="14" y="3" width="7" height="7" rx="1.5" />
-          <rect x="3" y="14" width="7" height="7" rx="1.5" />
-          <rect x="14" y="14" width="7" height="7" rx="1.5" />
-        </svg>
-      </div>
-      <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 18, letterSpacing: "-0.01em" }}>
-        Industri.HR
-      </div>
+    <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 22, letterSpacing: "-0.01em" }}>
+      Industri<span style={{ color: "var(--color-accent-700)" }}>.</span>HR
     </div>
   );
 
@@ -208,12 +180,8 @@ export function Sidebar({
           ))}
         </div>
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-            <Avatar name={userName} size={28} />
-            <div style={{ fontSize: 12, opacity: 0.7, overflow: "hidden" }}>
-              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName}</div>
-              <div className="text-muted">{userRole}</div>
-            </div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>
+            {userName} <span className="text-muted">· {userRole}</span>
           </div>
           <form action={signOutAction}>
             <button type="submit" className="btn btn-secondary" style={{ width: "100%" }}>

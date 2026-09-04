@@ -116,7 +116,7 @@ export function ClientCombobox({
             </>
           )}
           {needle && !exactMatch && (
-            <button type="button" onClick={() => selectByName(query.trim())} style={{ ...comboItemStyle(false), color: "var(--color-brand)" }}>
+            <button type="button" onClick={() => selectByName(query.trim())} style={{ ...comboItemStyle(false), color: "var(--color-accent)" }}>
               + Tambah klien baru: &ldquo;{query.trim()}&rdquo;
             </button>
           )}
