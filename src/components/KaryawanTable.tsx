@@ -10,7 +10,6 @@ import { downloadCsv } from "@/lib/csv";
 import { baseSalary, formatRp } from "@/lib/payroll";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
-import { Avatar } from "@/components/Avatar";
 
 type Emp = Employee & { site: Site; position: Position; salaryComponents: SalaryComponent[] };
 type SiteOption = { id: string; name: string };
@@ -112,7 +111,7 @@ export function KaryawanTable({ employees, sites, positions }: { employees: Emp[
             {paged.map((e) => (
               <tr key={e.id}>
                 <td className="text-muted">{e.empCode}</td>
-                <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={e.name} />{e.name}</span></td>
+                <td>{e.name}</td>
                 <td>{e.site.name}</td>
                 <td>{e.position.name}</td>
                 <td>

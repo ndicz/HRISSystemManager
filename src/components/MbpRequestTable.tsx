@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { decideMbpRequest } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
-import { Avatar } from "@/components/Avatar";
 
 type RequestRow = {
   id: string;
@@ -114,7 +113,7 @@ export function MbpRequestTable({
               <td>{r.itemName}</td>
               <td>{r.qty} {r.unit}</td>
               {!hideCost && <td>{formatRp(r.cost * r.qty)}</td>}
-              <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={r.requesterName} size={24} />{r.requesterName}</span></td>
+              <td>{r.requesterName}</td>
               <td className="text-muted">{r.siteName || "-"}</td>
               <td>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>

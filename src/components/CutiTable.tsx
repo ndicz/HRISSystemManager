@@ -6,7 +6,6 @@ import { LeaveActions } from "@/components/LeaveActions";
 import { EditLeaveRequestDialog } from "@/components/EditLeaveRequestDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
-import { Avatar } from "@/components/Avatar";
 
 function statusTag(status: string) {
   if (status === "disetujui") return "tag tag-accent";
@@ -17,13 +16,6 @@ function statusLabel(status: string) {
   if (status === "disetujui") return "Disetujui";
   if (status === "ditolak") return "Ditolak";
   return "Menunggu";
-}
-// Category-coded (not severity) — which kind of cuti, not how urgent.
-function typeTag(type: string) {
-  if (type === "Sakit") return "tag tag-pink";
-  if (type === "Melahirkan") return "tag tag-purple";
-  if (type === "Cuti Tahunan") return "tag tag-blue";
-  return "tag tag-teal";
 }
 
 type Req = LeaveRequest & { employee: Employee & { site: Site; position: Position } };
@@ -90,8 +82,8 @@ export function CutiTable({ requests }: { requests: Req[] }) {
           <tbody>
             {paged.map((r) => (
               <tr key={r.id}>
-                <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={r.employee.name} />{r.employee.name}</span></td>
-                <td><span className={typeTag(r.type)}>{r.type}</span></td>
+                <td>{r.employee.name}</td>
+                <td>{r.type}</td>
                 <td className="text-muted">
                   {r.startDate.toLocaleDateString("id-ID")} – {r.endDate.toLocaleDateString("id-ID")}
                 </td>

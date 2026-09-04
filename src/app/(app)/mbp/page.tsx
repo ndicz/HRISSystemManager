@@ -2,8 +2,6 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { MbpPageTabs } from "@/components/MbpPageTabs";
 import { MyMbpRequestsPanel } from "@/components/MyMbpRequestsPanel";
-import { PageHeader } from "@/components/PageHeader";
-import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function MbpPage() {
   const session = await auth();
@@ -25,7 +23,10 @@ export default async function MbpPage() {
 
     return (
       <div>
-        <PageHeader icon={NAV_ICONS["/mbp"]} title="Permintaan Barang" subtitle="Ajukan permintaan barang dan pantau status persetujuannya" />
+        <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
+          <h1 style={{ margin: 0 }}>Permintaan Barang</h1>
+          <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Ajukan permintaan barang dan pantau status persetujuannya</p>
+        </div>
         <MyMbpRequestsPanel requests={requests} items={items} siteNames={siteNames} myName={me?.employee?.name ?? session?.user?.name ?? ""} />
       </div>
     );
@@ -58,7 +59,10 @@ export default async function MbpPage() {
 
   return (
     <div>
-      <PageHeader icon={NAV_ICONS["/mbp"]} title="MBP" subtitle="Material Budget Plan — permintaan barang lapangan, persetujuan, dan penawaran ke klien" />
+      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
+        <h1 style={{ margin: 0 }}>MBP</h1>
+        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Material Budget Plan — permintaan barang lapangan, persetujuan, dan penawaran ke klien</p>
+      </div>
 
       <MbpPageTabs requests={requests} mbps={mbps} items={items} employees={employees} siteNames={siteNames} clients={clients} />
     </div>

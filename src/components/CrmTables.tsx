@@ -5,7 +5,6 @@ import { formatRp } from "@/lib/payroll";
 import { fetchLeads } from "@/app/(app)/crm/actions";
 import { AddLeadDialog } from "@/components/AddLeadDialog";
 import { LeadDetailDialog } from "@/components/LeadDetailDialog";
-import { Avatar } from "@/components/Avatar";
 
 export type LeadRow = {
   id: string;
@@ -23,13 +22,11 @@ export type LeadRow = {
   activities: { id: string; note: string; createdAt: Date }[];
 };
 
-// Category-coded (which stage, not how urgent) — matches the pastel
-// pipeline-stage tags in the Behance reference.
 export const STAGE_TAG: Record<string, string> = {
-  kontak_awal: "tag tag-blue",
-  penawaran: "tag tag-teal",
-  negosiasi: "tag tag-purple",
-  deal: "tag tag-green",
+  kontak_awal: "tag tag-outline",
+  penawaran: "tag tag-outline",
+  negosiasi: "tag tag-warning",
+  deal: "tag tag-accent",
   batal: "tag tag-danger",
 };
 export const STAGE_LABEL: Record<string, string> = {
@@ -70,7 +67,7 @@ export function CrmTables({ leads: initialLeads }: { leads: LeadRow[] }) {
     <div>
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
         <div className="card"><div className="card-kicker">Total prospek</div><div className="card-title" style={{ fontSize: 22 }}>{leads.length}</div></div>
-        <div className="card stat-gradient stat-gradient-a"><div className="card-kicker">Nilai pipeline aktif</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalPipelineValue)}</div></div>
+        <div className="card"><div className="card-kicker">Nilai pipeline aktif</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalPipelineValue)}</div></div>
         <div className="card"><div className="card-kicker">Deal menang</div><div className="card-title" style={{ fontSize: 22 }}>{dealsWon}</div></div>
       </div>
 
@@ -106,7 +103,7 @@ export function CrmTables({ leads: initialLeads }: { leads: LeadRow[] }) {
                 {filtered.map((l) => (
                   <tr key={l.id}>
                     <td>{l.companyName}</td>
-                    <td className="text-muted">{l.picName ? <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={l.picName} size={24} />{l.picName}</span> : "-"}</td>
+                    <td className="text-muted">{l.picName || "-"}</td>
                     <td style={{ fontWeight: 600 }}>{formatRp(l.estimatedValue)}</td>
                     <td>
                       <span className={STAGE_TAG[l.stage]}>{STAGE_LABEL[l.stage]}</span>

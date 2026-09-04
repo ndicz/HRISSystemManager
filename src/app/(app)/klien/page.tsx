@@ -3,8 +3,6 @@ import { formatRp } from "@/lib/payroll";
 import { computeAgingRows, AGING_BUCKET_ORDER } from "@/lib/finance";
 import { KlienTables } from "@/components/KlienTables";
 import { DocHandoverDateInput } from "@/components/DocHandoverDateInput";
-import { PageHeader } from "@/components/PageHeader";
-import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function KlienPage() {
   const [clients, invoicesBj, invoices, sites] = await Promise.all([
@@ -25,7 +23,10 @@ export default async function KlienPage() {
 
   return (
     <div>
-      <PageHeader icon={NAV_ICONS["/klien"]} title="Klien & Tagihan" subtitle="Data klien, skema fee jasa, dan invoice barang & jasa" />
+      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
+        <h1 style={{ margin: 0 }}>Klien &amp; Tagihan</h1>
+        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Data klien, skema fee jasa, dan invoice barang &amp; jasa</p>
+      </div>
 
       <KlienTables clients={clients} invoicesBj={invoicesBj} invoices={invoices} siteNames={siteNames} />
 

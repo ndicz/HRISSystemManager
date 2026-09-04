@@ -3,8 +3,6 @@ import { auth } from "@/auth";
 import { AuditLogTable } from "@/components/AuditLogTable";
 import { ResetDataButton } from "@/components/ResetDataButton";
 import { TotpSetupCard } from "@/components/TotpSetupCard";
-import { PageHeader } from "@/components/PageHeader";
-import { NAV_ICONS } from "@/components/NavIcons";
 
 export default async function AuditPage() {
   const session = await auth();
@@ -29,7 +27,10 @@ export default async function AuditPage() {
 
   return (
     <div>
-      <PageHeader icon={NAV_ICONS["/audit"]} title="Audit Log" subtitle="Riwayat aktivitas pengguna di sistem — 300 aktivitas terbaru" />
+      <div className="page-header" style={{ marginBottom: "var(--space-6)" }}>
+        <h1 style={{ margin: 0 }}>Audit Log</h1>
+        <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Riwayat aktivitas pengguna di sistem &mdash; 300 aktivitas terbaru</p>
+      </div>
 
       <AuditLogTable rows={rows} />
 

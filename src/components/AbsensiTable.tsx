@@ -10,7 +10,6 @@ import { monthKey } from "@/lib/finance";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
-import { Avatar } from "@/components/Avatar";
 
 type Emp = Employee & { site: Site; position: Position; attendance: Pick<AttendanceRecord, "date" | "status" | "lateMin">[] };
 type SiteOption = { id: string; name: string };
@@ -149,7 +148,7 @@ export function AbsensiTable({ employees, sites, positions }: { employees: Emp[]
               {paged.map(({ e, tally }) => (
                 <tr key={e.id}>
                   <td className="text-muted">{e.empCode}</td>
-                  <td><span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }}><Avatar name={e.name} />{e.name}</span></td>
+                  <td>{e.name}</td>
                   <td>{e.site.name}</td>
                   <td>{e.position.name}</td>
                   <td>
