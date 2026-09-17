@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Account, CashAccount, Employee, Position, SalaryComponent, Site, Transaction } from "@prisma/client";
-import { computePayroll, expiringContracts, formatRp } from "@/lib/payroll";
+import { expiringContracts, formatRp } from "@/lib/payroll";
 import { monthKey, saldoKasSampai } from "@/lib/finance";
 
 type Emp = Employee & { site: Site; position: Position; salaryComponents: SalaryComponent[] };
@@ -32,10 +32,13 @@ export function DashboardTabs({
   const hadirCount = employees.filter((e) => e.attStatus === "Hadir").length;
   const kehadiranPct = totalKaryawan > 0 ? ((hadirCount / totalKaryawan) * 100).toFixed(1) : "0.0";
 
-  const totalGajiBulanIni = useMemo(
-    () => employees.reduce((s, e) => s + computePayroll(e, e.salaryComponents).total, 0),
-    [employees],
+  // Transaksi Kas COA Gaji Karyawan (kode 5001) yang dicatat bayarGaji, deteksi
+  // periodenya dari prefix desc "Gaji <period> —" (lihat penggajian/actions.ts).
+  const gajiDibayarTx = useMemo(
+    () => transactions.filter((t) => t.account.code === "5001" && t.desc.startsWith(`Gaji ${period} —`)),
+    [transactions, period],
   );
+  const totalGajiDibayar = gajiDibayarTx.reduce((s, t) => s + t.amount, 0);
 
   const openingTotal = cashAccounts.reduce((s, c) => s + c.opening, 0);
   const saldoAkhir = saldoKasSampai(openingTotal, transactions, period);
@@ -79,9 +82,9 @@ export function DashboardTabs({
           <p className="card-body">{hadirCount} hadir dari {totalKaryawan}</p>
         </div>
         <div className="card">
-          <div className="card-kicker">Total gaji bulan ini</div>
-          <div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalGajiBulanIni)}</div>
-          <p className="card-body">Setelah potongan BPJS &amp; kasbon</p>
+          <div className="card-kicker">Total gaji sudah dibayar</div>
+          <div className="card-title" style={{ fontSize: 22 }}>{formatRp(totalGajiDibayar)}</div>
+          <p className="card-body">{gajiDibayarTx.length} karyawan dibayar periode ini</p>
         </div>
         <div className="card">
           <div className="card-kicker">Saldo kas (s.d. akhir periode)</div>
