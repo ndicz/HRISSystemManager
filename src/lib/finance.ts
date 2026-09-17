@@ -4,6 +4,23 @@ export function monthKey(d: Date): string {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
 }
 
+const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+// A calendar-month period picker's option list — rolling window relative
+// to today instead of a year hardcoded into the option values, so it keeps
+// offering the current month (and recent/upcoming ones) without a code
+// change every January.
+export function monthKeyOptions(monthsBack = 12, monthsForward = 3): { value: string; label: string }[] {
+  const now = new Date();
+  const options = [];
+  for (let i = -monthsBack; i <= monthsForward; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const value = monthKey(d);
+    options.push({ value, label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}` });
+  }
+  return options;
+}
+
 // ── Invoice Barang & Jasa totals ────────────────────────────────────────
 
 export function invoiceBjSubtotal(items: { qty: number; price: number }[]): number {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { fetchAttendanceRecap, upsertAttendanceDay } from "@/app/(app)/absensi/actions";
 import { bestAttendanceMonth, formatRp, monthlyAttendanceTally } from "@/lib/payroll";
-import { monthKey } from "@/lib/finance";
+import { monthKey, monthKeyOptions } from "@/lib/finance";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 
 type RecapRow = {
@@ -33,10 +33,7 @@ function toDateInputValue(d: Date) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
-function monthOptions() {
-  const names = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  return names.map((n, i) => ({ value: "2026-" + String(i + 1).padStart(2, "0"), label: n + " 2026" }));
-}
+const monthOptions = monthKeyOptions;
 
 // Isi rekap absensi murni (tanpa dialog/tombol sendiri) — dipakai oleh
 // RecapDialog (wrapper tombol + dialog terpisah, untuk halaman Absensi)

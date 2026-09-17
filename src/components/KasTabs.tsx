@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import type { Account, CashAccount, Payable, Transaction } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
-import { laporanLabaRugi, monthKey, saldoKasSampai, saldoKasSebelum, AGING_BUCKET_ORDER, type AgingRow } from "@/lib/finance";
+import { laporanLabaRugi, monthKey, monthKeyOptions, saldoKasSampai, saldoKasSebelum, AGING_BUCKET_ORDER, type AgingRow } from "@/lib/finance";
 import { AddTransactionDialog } from "@/components/AddTransactionDialog";
 import { EditTransactionDialog } from "@/components/EditTransactionDialog";
 import { AddAccountDialog } from "@/components/AddAccountDialog";
@@ -40,10 +40,7 @@ const TAB_LABEL: Record<Tab, string> = {
   anggaran: "Anggaran",
 };
 
-function monthOptions() {
-  const names = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  return names.map((n, i) => ({ value: "2026-" + String(i + 1).padStart(2, "0"), label: n + " 2026" }));
-}
+const monthOptions = monthKeyOptions;
 
 export function KasTabs({ accounts, cashAccounts, transactions, payables, closedPeriods, agingRows }: Props) {
   const [tab, setTab] = useState<Tab>("transaksi");
