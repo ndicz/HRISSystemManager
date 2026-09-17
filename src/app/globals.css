@@ -139,7 +139,7 @@ img { display: block; max-width: 100%; }
   background: #fff; border: 1px solid var(--color-divider); border-radius: var(--radius-md);
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
-.input::placeholder { color: color-mix(in srgb, var(--color-text) 45%, transparent); opacity: 1; }
+.input::placeholder { color: color-mix(in srgb, var(--color-text) 62%, transparent); opacity: 1; }
 .input:hover { border-color: color-mix(in srgb, var(--color-text) 26%, transparent); }
 .input:focus-visible { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent); outline: none; }
 .seg { display: inline-flex; overflow: hidden; border: 1px solid var(--color-divider); background: #fff; border-radius: var(--radius-md); }

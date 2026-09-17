@@ -153,6 +153,7 @@ export function PayrollDetailDialog({
             <div className="dialog-body" style={{ maxHeight: "62vh", overflowY: "auto" }}>
               {tab === "ringkasan" && (
                 <>
+                  <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-2)" }}>Kolom yang bisa diedit: kosongkan = pakai jumlah otomatis (ditampilkan sebagai placeholder).</p>
                   <table className="table table-nested" style={{ marginBottom: "var(--space-2)" }}>
                     <thead><tr><th>Komponen</th><th>Jumlah</th></tr></thead>
                     <tbody>
@@ -165,7 +166,7 @@ export function PayrollDetailDialog({
                                 className="input"
                                 type="number"
                                 min={0}
-                                placeholder={`Otomatis (${formatRp(Math.abs(r.amount))})`}
+                                placeholder={formatRp(Math.abs(r.amount))}
                                 value={r.editable.value}
                                 onChange={(e) => r.editable!.onChange(e.target.value)}
                                 style={{ maxWidth: 180, minHeight: 30, fontSize: 13 }}
