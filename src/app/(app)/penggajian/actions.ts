@@ -61,27 +61,6 @@ export async function bayarGaji(employeeIds: string[], period: string) {
   if (!employeeIds || employeeIds.length === 0) throw new Error("Tidak ada karyawan untuk dibayar.");
   if (!/^\d{4}-\d{2}$/.test(period)) throw new Error("Periode tidak valid.");
 
-  const { start: periodStart, end: periodEnd } = payrollPeriodRange(period);
-
-  const [employees, rates, brackets, account, cashAccount] = await Promise.all([
-    db.employee.findMany({
-      where: { id: { in: employeeIds } },
-      include: {
-        salaryComponents: true,
-        payrollEntries: { where: { period } },
-        overtimeDays: { where: { period } },
-        assignments: { where: { period }, select: { cost: true, status: true, period: true } },
-        attendance: { where: { date: { gte: periodStart, lte: periodEnd } }, select: { date: true, status: true, lateMin: true } },
-        site: { select: { bpjsKesehatanOverride: true, bpjsKetenagakerjaanOverride: true } },
-      },
-    }),
-    db.payrollRate.findMany({ where: { period } }),
-    db.latenessBracket.findMany(),
-    db.account.findFirst({ where: { code: "5001" } }),
-    db.cashAccount.findFirst({ where: { kind: "besar" } }),
-  ]);
-  if (!account || !cashAccount) throw new Error("Akun kas / COA Gaji Karyawan belum tersedia — jalankan ulang seed.");
-
   let paid = 0;
   let skipped = 0;
   let total = 0;
@@ -93,49 +72,83 @@ export async function bayarGaji(employeeIds: string[], period: string) {
   // keeps going.
   const failed: { name: string; reason: string }[] = [];
 
-  await mapLimit(employees, 8, async (emp) => {
-    try {
-      const existingEntry = emp.payrollEntries[0] ?? null;
-      if (existingEntry?.paid) {
-        skipped++;
-        return;
-      }
+  // Next.js redacts any THROWN error's real message in production — the
+  // client only ever sees the generic "Server Components render" text
+  // (formatActionError's digest is the only trace left). Per Next's own
+  // guidance, an "expected" failure here should be a return value instead
+  // of a throw, so wrap everything past basic validation and surface
+  // whatever actually broke as a real, readable message.
+  try {
+    const { start: periodStart, end: periodEnd } = payrollPeriodRange(period);
 
-      const rate = resolvePayrollRate(rates, period, emp.siteId);
-      const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
-      const assignments = resolveAssignments(emp.assignments, period);
-      const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets, site: emp.site });
-
-      const tx = await db.transaction.create({
-        data: {
-          date: new Date(),
-          accountCoaId: account.id,
-          cashAccountId: cashAccount.id,
-          desc: "Gaji " + period + " — " + emp.name,
-          amount: p.total,
-          type: "keluar",
+    const [employees, rates, brackets, account, cashAccount] = await Promise.all([
+      db.employee.findMany({
+        where: { id: { in: employeeIds } },
+        include: {
+          salaryComponents: true,
+          payrollEntries: { where: { period } },
+          overtimeDays: { where: { period } },
+          assignments: { where: { period }, select: { cost: true, status: true, period: true } },
+          attendance: { where: { date: { gte: periodStart, lte: periodEnd } }, select: { date: true, status: true, lateMin: true } },
+          site: { select: { bpjsKesehatanOverride: true, bpjsKetenagakerjaanOverride: true } },
         },
-      });
-
-      await db.payrollEntry.upsert({
-        where: { employeeId_period: { employeeId: emp.id, period } },
-        update: { paid: true, paidTransactionId: tx.id },
-        create: { employeeId: emp.id, period, paid: true, paidTransactionId: tx.id },
-      });
-
-      paid++;
-      total += p.total;
-    } catch (err) {
-      failed.push({ name: emp.name, reason: err instanceof Error ? err.message : String(err) });
+      }),
+      db.payrollRate.findMany({ where: { period } }),
+      db.latenessBracket.findMany(),
+      db.account.findFirst({ where: { code: "5001" } }),
+      db.cashAccount.findFirst({ where: { kind: "besar" } }),
+    ]);
+    if (!account || !cashAccount) {
+      return { paid, skipped, total, failed, fatalError: "Akun kas / COA Gaji Karyawan belum tersedia — jalankan ulang seed." };
     }
-  });
 
-  await logAudit({
-    data: { userId: session.user.id, action: "payroll.pay", entity: "Employee", detail: JSON.stringify({ period, paid, skipped, total, failed }) },
-  });
+    await mapLimit(employees, 8, async (emp) => {
+      try {
+        const existingEntry = emp.payrollEntries[0] ?? null;
+        if (existingEntry?.paid) {
+          skipped++;
+          return;
+        }
 
-  revalidatePath("/penggajian");
-  revalidatePath("/kas");
+        const rate = resolvePayrollRate(rates, period, emp.siteId);
+        const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
+        const assignments = resolveAssignments(emp.assignments, period);
+        const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets, site: emp.site });
+
+        const tx = await db.transaction.create({
+          data: {
+            date: new Date(),
+            accountCoaId: account.id,
+            cashAccountId: cashAccount.id,
+            desc: "Gaji " + period + " — " + emp.name,
+            amount: p.total,
+            type: "keluar",
+          },
+        });
+
+        await db.payrollEntry.upsert({
+          where: { employeeId_period: { employeeId: emp.id, period } },
+          update: { paid: true, paidTransactionId: tx.id },
+          create: { employeeId: emp.id, period, paid: true, paidTransactionId: tx.id },
+        });
+
+        paid++;
+        total += p.total;
+      } catch (err) {
+        failed.push({ name: emp.name, reason: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    await logAudit({
+      data: { userId: session.user.id, action: "payroll.pay", entity: "Employee", detail: JSON.stringify({ period, paid, skipped, total, failed }) },
+    });
+
+    revalidatePath("/penggajian");
+    revalidatePath("/kas");
+  } catch (err) {
+    return { paid, skipped, total, failed, fatalError: err instanceof Error ? err.message : String(err) };
+  }
+
   return { paid, skipped, total, failed };
 }
 
