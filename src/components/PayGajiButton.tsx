@@ -16,6 +16,13 @@ export function PayGajiButton({
   period: string;
   label: string;
   totalAmount: number;
+  // Called when the dialog is dismissed AFTER a successful payment — never
+  // right when bayarGaji resolves. It used to fire immediately on success
+  // and callers used it to clear their selection state, which for a
+  // selection-driven "Bayar Gaji Terpilih" button unmounts this very
+  // component (it only renders while something is selected) before the
+  // "N karyawan dibayar" result had a chance to show — the payment went
+  // through, but the dialog vanished out from under the user instantly.
   onPaid?: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -29,7 +36,6 @@ export function PayGajiButton({
       try {
         const res = await bayarGaji(employeeIds, period);
         setResult(res);
-        onPaid?.();
       } catch (err) {
         setError(formatActionError(err));
       }
@@ -37,9 +43,11 @@ export function PayGajiButton({
   }
 
   function close() {
+    const hadResult = result !== null;
     setOpen(false);
     setResult(null);
     setError("");
+    if (hadResult) onPaid?.();
   }
 
   return (
