@@ -27,7 +27,16 @@ export async function bayarThr(employeeId: string) {
   if (!emp || emp.thrPaid) return;
 
   const { thr } = computeThr(emp, emp.salaryComponents);
-  const account = await db.account.findFirst({ where: { code: "5008" } });
+  // Same self-heal as bayarGaji's "Gaji Karyawan" category below — a
+  // missing COA label is harmless to recreate, unlike the CashAccount.
+  let account = await db.account.findFirst({ where: { code: "5008" } });
+  if (!account) {
+    try {
+      account = await db.account.create({ data: { code: "5008", name: "Beban THR", type: "keluar" } });
+    } catch {
+      account = await db.account.findFirst({ where: { code: "5008" } });
+    }
+  }
   const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
 
   if (account && cashAccount) {
@@ -81,7 +90,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
   try {
     const { start: periodStart, end: periodEnd } = payrollPeriodRange(period);
 
-    const [employees, rates, brackets, account, cashAccount] = await Promise.all([
+    const [employees, rates, brackets, existingAccount, cashAccount] = await Promise.all([
       db.employee.findMany({
         where: { id: { in: employeeIds } },
         include: {
@@ -98,8 +107,33 @@ export async function bayarGaji(employeeIds: string[], period: string) {
       db.account.findFirst({ where: { code: "5001" } }),
       db.cashAccount.findFirst({ where: { kind: "besar" } }),
     ]);
-    if (!account || !cashAccount) {
-      return { paid, skipped, total, failed, fatalError: "Akun kas / COA Gaji Karyawan belum tersedia — jalankan ulang seed." };
+    if (!cashAccount) {
+      // Unlike the COA category below, a CashAccount is a real bank/cash
+      // account with a real opening balance — guessing one here would
+      // quietly corrupt actual Kas figures, so this one always needs a
+      // person to add it (with the real balance) rather than being
+      // auto-created.
+      return {
+        paid, skipped, total, failed,
+        fatalError: "Belum ada rekening kas jenis \"Kas besar\" — tambahkan dulu di halaman Pengeluaran & Kas dengan tombol \"+ Rekening baru\" (pilih \"Kas besar (rekening bank)\"), lalu coba lagi.",
+      };
+    }
+    // "Gaji Karyawan" (code 5001) is just an expense category label, not
+    // real money — safe to recreate automatically if it's missing (e.g.
+    // production was never fully seeded) instead of blocking every payroll
+    // run on it. code is @unique, so a concurrent bayarGaji call hitting
+    // the same gap could race on the create — fall back to a fresh lookup
+    // rather than surfacing that as a failure.
+    let account = existingAccount;
+    if (!account) {
+      try {
+        account = await db.account.create({ data: { code: "5001", name: "Gaji Karyawan", type: "keluar", budget: 200000000 } });
+      } catch {
+        account = await db.account.findFirst({ where: { code: "5001" } });
+      }
+    }
+    if (!account) {
+      return { paid, skipped, total, failed, fatalError: "Gagal membuat kategori akun Gaji Karyawan (kode 5001) — coba lagi." };
     }
 
     await mapLimit(employees, 8, async (emp) => {
