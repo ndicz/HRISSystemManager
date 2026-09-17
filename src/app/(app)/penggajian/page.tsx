@@ -14,13 +14,13 @@ function attendanceWindowStart() {
 }
 
 export default async function PenggajianPage() {
-  const [employees, rates, sitesFull] = await Promise.all([
+  const [employees, rates, sitesFull, positions, latenessBrackets] = await Promise.all([
     db.employee.findMany({
       where: { status: "aktif" },
       include: {
         site: true, position: true, salaryComponents: true, payrollEntries: true,
-        // Only date/status/lateMin ever feed the payroll math (monthlyAttendanceTally,
-        // bestAttendanceMonth) — checkIn/checkOut/location etc. are only shown via the
+        // Only date/status/lateMin ever feed the payroll math (payrollAttendanceTally,
+        // bestPayrollPeriod) — checkIn/checkOut/location etc. are only shown via the
         // separate per-employee Rekap Bulanan fetch, not from this preloaded list, so
         // pulling every column here just adds transfer + row-mapping cost for nothing.
         attendance: { where: { date: { gte: attendanceWindowStart() } }, select: { date: true, status: true, lateMin: true } },
@@ -32,6 +32,8 @@ export default async function PenggajianPage() {
     }),
     db.payrollRate.findMany(),
     db.site.findMany({ select: { id: true, name: true } }),
+    db.position.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.latenessBracket.findMany(),
   ]);
 
   return (
@@ -41,7 +43,7 @@ export default async function PenggajianPage() {
         <p style={{ margin: "var(--space-1) 0 0", opacity: 0.6 }}>Perhitungan gaji, lembur, potongan, dan THR</p>
       </div>
 
-      <PenggajianTabs employees={employees} rates={rates} sites={sitesFull} />
+      <PenggajianTabs employees={employees} rates={rates} sites={sitesFull} positions={positions} latenessBrackets={latenessBrackets} />
     </div>
   );
 }

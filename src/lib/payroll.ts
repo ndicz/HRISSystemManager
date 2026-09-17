@@ -79,6 +79,108 @@ export function bestAttendanceMonth(records: Pick<AttendanceRecord, "date">[]): 
   return best;
 }
 
+// Payroll runs on a 21st–20th cycle, not the calendar month — set by
+// request once the client's actual attendance cutoff moved to the 20th.
+// This is deliberately scoped to payroll only: Kas/laporan keuangan and
+// the general Absensi page keep using plain calendar months (monthKey)
+// throughout this file and elsewhere, since those still close on the 1st.
+const PAYROLL_CUTOFF_DAY = 21;
+
+// The period label a date falls into — day 21 of a month through day 20
+// of the next rolls into *that* next month's label (e.g. Aug 21–Sep 20 is
+// period "Y-09"), mirroring how the client already talks about "periode
+// September" for that same span.
+export function payrollPeriodKey(d: Date): string {
+  const shifted = new Date(d.getFullYear(), d.getMonth() + (d.getDate() >= PAYROLL_CUTOFF_DAY ? 1 : 0), 1);
+  return shifted.getFullYear() + "-" + String(shifted.getMonth() + 1).padStart(2, "0");
+}
+
+// Inverse of payrollPeriodKey: the actual [start, end] calendar dates a
+// period label covers. JS Date normalizes an out-of-range month index
+// (e.g. month -1 for a January period's December start) into the correct
+// adjacent year on its own.
+export function payrollPeriodRange(period: string): { start: Date; end: Date } {
+  const [y, m] = period.split("-").map(Number); // m is 1-indexed
+  const start = new Date(y, m - 2, PAYROLL_CUTOFF_DAY, 0, 0, 0, 0);
+  const end = new Date(y, m - 1, PAYROLL_CUTOFF_DAY - 1, 23, 59, 59, 999);
+  return { start, end };
+}
+
+const PAYROLL_MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+// "21 Agu – 20 Sep 2026" — used anywhere a payroll period used to just show
+// "September 2026" (period picker, slip gaji).
+export function payrollPeriodLabel(period: string): string {
+  const { start, end } = payrollPeriodRange(period);
+  const startLabel = `${start.getDate()} ${PAYROLL_MONTH_ABBR[start.getMonth()]}`;
+  const endLabel = `${end.getDate()} ${PAYROLL_MONTH_ABBR[end.getMonth()]} ${end.getFullYear()}`;
+  return `${startLabel} – ${endLabel}`;
+}
+
+// Same shape as monthlyAttendanceTally, but scoped to the payroll period's
+// actual 21–20 date range instead of a calendar month.
+export function payrollAttendanceTally(records: Pick<AttendanceRecord, "date" | "status" | "lateMin">[], period: string) {
+  const { start, end } = payrollPeriodRange(period);
+  const periodRecords = records.filter((r) => r.date >= start && r.date <= end);
+  const presentDays = periodRecords.filter((r) => r.status === "Hadir").length;
+  const leaveDays = periodRecords.filter((r) => r.status === "Izin").length;
+  const alphaDays = periodRecords.filter((r) => r.status === "Alpha").length;
+  const lateCount = periodRecords.filter((r) => r.lateMin > 0).length;
+  return { presentDays, leaveDays, alphaDays, lateCount, workDays: presentDays + leaveDays + alphaDays };
+}
+
+// Same idea as bestAttendanceMonth, grouped by payroll period instead of
+// calendar month — used to default the Penggajian period picker.
+export function bestPayrollPeriod(records: Pick<AttendanceRecord, "date">[]): string | null {
+  if (records.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const r of records) {
+    const key = payrollPeriodKey(r.date);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [key, count] of counts) {
+    if (count > bestCount) {
+      best = key;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+// A lateness deduction table row: minMinutes–maxMinutes (maxMinutes null =
+// no upper bound) maps to a flat Rp amount for that one late occurrence.
+// scope narrows who it applies to; ties are broken most-specific-wins.
+export type LatenessBracketLike = {
+  scope: string; // "global" | "site" | "position" | "employee"
+  siteId: string | null;
+  positionId: string | null;
+  employeeId: string | null;
+  minMinutes: number;
+  maxMinutes: number | null;
+  amount: number;
+};
+
+// Employee-specific brackets win outright over position, which wins over
+// site, which wins over the global default — never merged across scopes,
+// so exactly one table applies to any given employee. Within that table,
+// the first bracket whose range contains lateMin is used.
+export function resolveLatenessAmount(
+  brackets: LatenessBracketLike[],
+  lateMin: number,
+  ctx: { employeeId: string; positionId: string; siteId: string },
+): number {
+  if (lateMin <= 0) return 0;
+  const byEmployee = brackets.filter((b) => b.scope === "employee" && b.employeeId === ctx.employeeId);
+  const byPosition = brackets.filter((b) => b.scope === "position" && b.positionId === ctx.positionId);
+  const bySite = brackets.filter((b) => b.scope === "site" && b.siteId === ctx.siteId);
+  const byGlobal = brackets.filter((b) => b.scope === "global");
+  const scoped = byEmployee.length > 0 ? byEmployee : byPosition.length > 0 ? byPosition : bySite.length > 0 ? bySite : byGlobal;
+  const match = scoped.find((b) => lateMin >= b.minMinutes && (b.maxMinutes === null || lateMin <= b.maxMinutes));
+  return match?.amount ?? 0;
+}
+
 // computePayroll scoped to one specific month's actual attendance, rather
 // than the employee's live/current aggregate — overtimeHours and kasbon
 // aren't tracked per month in this schema, so those still come from the
@@ -90,13 +192,19 @@ export function bestAttendanceMonth(records: Pick<AttendanceRecord, "date">[]): 
 // proportional-to-salary math — matching how the client's real payroll
 // spreadsheet works. Without a configured rate, behavior is unchanged.
 export function computeMonthlyPayroll(
-  emp: Pick<Employee, "overtimeHours" | "kasbon" | "kasbonCicilan" | "bpjsKesehatanOverride" | "bpjsKetenagakerjaanOverride">,
+  emp: Pick<Employee, "id" | "positionId" | "siteId" | "overtimeHours" | "kasbon" | "kasbonCicilan" | "bpjsKesehatanOverride" | "bpjsKetenagakerjaanOverride">,
   components: SalaryComponent[],
   records: Pick<AttendanceRecord, "date" | "status" | "lateMin">[],
   period: string,
-  opts?: { rate?: PayrollRate | null; entry?: PayrollEntry | null; overtimeDays?: Pick<OvertimeDay, "type">[]; assignments?: Pick<Assignment, "cost">[] },
+  opts?: {
+    rate?: PayrollRate | null;
+    entry?: PayrollEntry | null;
+    overtimeDays?: Pick<OvertimeDay, "type">[];
+    assignments?: Pick<Assignment, "cost">[];
+    latenessBrackets?: LatenessBracketLike[];
+  },
 ) {
-  const tally = monthlyAttendanceTally(records, period);
+  const tally = payrollAttendanceTally(records, period);
   const base = computePayroll(
     {
       ...tally,
@@ -164,7 +272,19 @@ export function computeMonthlyPayroll(
   // category, for cases HR needs to correct by hand.
   const potonganIzin = entry?.potonganIzinOverride ?? tally.leaveDays * rate.izinRate;
   const potonganAlpha = entry?.potonganAlphaOverride ?? tally.alphaDays * rate.alphaRate;
-  const potonganTerlambat = entry?.potonganTerlambatOverride ?? tally.lateCount * rate.terlambatRate;
+  // A configured bracket table (minutes late -> Rp) takes over from the
+  // flat per-occurrence terlambatRate entirely once any bracket exists
+  // anywhere — resolveLatenessAmount itself picks the most specific table
+  // (this employee, then their jabatan, then their tempat kerja, then the
+  // global default) and prices each late day by its actual lateMin instead
+  // of a single flat number per occurrence.
+  const { start: periodStart, end: periodEnd } = payrollPeriodRange(period);
+  const lateRecordsInPeriod = records.filter((r) => r.date >= periodStart && r.date <= periodEnd && r.lateMin > 0);
+  const brackets = opts?.latenessBrackets ?? [];
+  const potonganTerlambatAuto = brackets.length > 0
+    ? lateRecordsInPeriod.reduce((sum, r) => sum + resolveLatenessAmount(brackets, r.lateMin, { employeeId: emp.id, positionId: emp.positionId, siteId: emp.siteId }), 0)
+    : tally.lateCount * rate.terlambatRate;
+  const potonganTerlambat = entry?.potonganTerlambatOverride ?? potonganTerlambatAuto;
   const lemburReguler = lemburRegulerCount * rate.lemburRegulerRate;
   const lemburMerah = lemburMerahCount * rate.lemburMerahRate;
   const allowance = entry?.allowance ?? 0;
@@ -222,9 +342,9 @@ export function computeFinalSettlement(
   records: Pick<AttendanceRecord, "date" | "status" | "lateMin">[],
   resignDate: Date,
 ) {
-  const period = monthKey(resignDate);
-  const filtered = records.filter((r) => monthKey(r.date) === period && r.date <= resignDate);
-  const tally = monthlyAttendanceTally(filtered, period);
+  const period = payrollPeriodKey(resignDate);
+  const filtered = records.filter((r) => payrollPeriodKey(r.date) === period && r.date <= resignDate);
+  const tally = payrollAttendanceTally(filtered, period);
   const result = computePayroll(
     {
       ...tally,

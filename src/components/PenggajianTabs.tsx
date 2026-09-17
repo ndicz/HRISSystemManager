@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from "react";
 import type { AttendanceRecord, Employee, Site, Position, SalaryComponent, PayrollRate, PayrollEntry, AllowancePayment, OvertimeDay, Assignment } from "@prisma/client";
-import { bestAttendanceMonth, computeMonthlyPayroll, computeThr, formatRp, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments } from "@/lib/payroll";
-import { monthKey } from "@/lib/finance";
+import { bestPayrollPeriod, computeMonthlyPayroll, computeThr, formatRp, payrollPeriodKey, payrollPeriodLabel, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments, type LatenessBracketLike } from "@/lib/payroll";
 import { buildBcaTransferSheet } from "@/lib/bankTransfer";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 import { ThrButton } from "@/components/ThrButton";
 import { PayrollRateDialog } from "@/components/PayrollRateDialog";
+import { LatenessBracketDialog } from "@/components/LatenessBracketDialog";
 import { PayAllowanceDialog } from "@/components/PayAllowanceDialog";
 import { PayGajiButton } from "@/components/PayGajiButton";
 import { PayrollDetailDialog } from "@/components/PayrollDetailDialog";
@@ -29,18 +29,24 @@ type Emp = Employee & {
 type SiteOption = { id: string; name: string };
 
 function monthOptions() {
-  const names = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  return names.map((n, i) => ({ value: "2026-" + String(i + 1).padStart(2, "0"), label: n + " 2026" }));
+  return Array.from({ length: 12 }, (_, i) => {
+    const value = "2026-" + String(i + 1).padStart(2, "0");
+    return { value, label: payrollPeriodLabel(value) };
+  });
 }
 
-export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; rates: PayrollRate[]; sites: SiteOption[] }) {
+export function PenggajianTabs({
+  employees, rates, sites, positions, latenessBrackets,
+}: {
+  employees: Emp[]; rates: PayrollRate[]; sites: SiteOption[]; positions: SiteOption[]; latenessBrackets: LatenessBracketLike[];
+}) {
   const [tab, setTab] = useState<"gaji" | "thr" | "insentif">("gaji");
   const [q, setQ] = useState("");
-  // Default to whichever month actually has attendance data across all
-  // employees, rather than today's real calendar month (usually empty
-  // right after an import).
+  // Default to whichever payroll period (21–20) actually has attendance
+  // data across all employees, rather than today's real calendar month
+  // (usually empty right after an import).
   const [period, setPeriod] = useState(
-    () => bestAttendanceMonth(employees.flatMap((e) => e.attendance)) ?? monthKey(new Date()),
+    () => bestPayrollPeriod(employees.flatMap((e) => e.attendance)) ?? payrollPeriodKey(new Date()),
   );
 
   const [siteFilter, setSiteFilter] = useState("");
@@ -68,7 +74,7 @@ export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; 
     const entry = resolvePayrollEntry(e.payrollEntries, period);
     const overtimeDays = resolveOvertimeDays(e.overtimeDays, period);
     const assignments = resolveAssignments(e.assignments, period);
-    return { e, entry, p: computeMonthlyPayroll(e, e.salaryComponents, e.attendance, period, { rate, entry, overtimeDays, assignments }) };
+    return { e, entry, p: computeMonthlyPayroll(e, e.salaryComponents, e.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets }) };
   });
   const totals = payrollRows.reduce(
     (acc, r) => ({
@@ -207,6 +213,7 @@ export function PenggajianTabs({ employees, rates, sites }: { employees: Emp[]; 
                   Transfer bank
                 </button>
                 <PayrollRateDialog period={period} sites={sites} rates={rates} />
+                <LatenessBracketDialog sites={sites} positions={positions} employees={employees.map((e) => ({ id: e.id, name: e.name }))} brackets={latenessBrackets} />
                 <PayGajiButton
                   employeeIds={unpaidRows.map((r) => r.e.id)}
                   period={period}

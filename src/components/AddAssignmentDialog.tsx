@@ -3,18 +3,20 @@
 import { useState, useRef } from "react";
 import { addAssignment } from "@/app/(app)/karyawan/actions";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
-import { monthKey } from "@/lib/finance";
+import { payrollPeriodKey, payrollPeriodLabel } from "@/lib/payroll";
 
 function monthOptions() {
-  const names = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  return names.map((n, i) => ({ value: "2026-" + String(i + 1).padStart(2, "0"), label: n + " 2026" }));
+  return Array.from({ length: 12 }, (_, i) => {
+    const value = "2026-" + String(i + 1).padStart(2, "0");
+    return { value, label: payrollPeriodLabel(value) };
+  });
 }
 
 export function AddAssignmentDialog({ employees }: { employees: EmployeeOption[] }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [employeeId, setEmployeeId] = useState("");
-  const [period, setPeriod] = useState(() => monthKey(new Date()));
+  const [period, setPeriod] = useState(() => payrollPeriodKey(new Date()));
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
@@ -24,7 +26,7 @@ export function AddAssignmentDialog({ employees }: { employees: EmployeeOption[]
       setOpen(false);
       formRef.current?.reset();
       setEmployeeId("");
-      setPeriod(monthKey(new Date()));
+      setPeriod(payrollPeriodKey(new Date()));
     } finally {
       setPending(false);
     }
