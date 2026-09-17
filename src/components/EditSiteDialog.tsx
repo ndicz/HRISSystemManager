@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { updateSite, deleteSite } from "@/app/(app)/karyawan/actions";
 
-type SiteRow = { id: string; name: string; address: string; supervisor: string; umr: number };
+type SiteRow = {
+  id: string; name: string; address: string; supervisor: string; umr: number;
+  bpjsKesehatanOverride: number | null; bpjsKetenagakerjaanOverride: number | null;
+};
 
 export function EditSiteDialog({ site }: { site: SiteRow }) {
   const [open, setOpen] = useState(false);
@@ -58,6 +61,23 @@ export function EditSiteDialog({ site }: { site: SiteRow }) {
               <div className="field">
                 <label htmlFor="edit-site-umr">UMR/UMK (Rp)</label>
                 <input className="input" id="edit-site-umr" name="umr" type="number" min={0} defaultValue={site.umr} />
+              </div>
+              <div style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)" }}>
+                <div className="card-kicker" style={{ marginBottom: "var(--space-2)" }}>Override BPJS untuk semua karyawan di tempat kerja ini</div>
+                <p style={{ fontSize: 12, opacity: 0.6, margin: "0 0 var(--space-3)" }}>
+                  Kosongkan = pakai rumus otomatis. Override manual per karyawan (di halaman Penggajian) tetap menang
+                  atas ini kalau ada.
+                </p>
+                <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label htmlFor="edit-site-bpjs-kes">BPJS Kesehatan (Rp)</label>
+                    <input className="input" id="edit-site-bpjs-kes" name="bpjsKesehatanOverride" type="number" min={0} placeholder="Otomatis" defaultValue={site.bpjsKesehatanOverride ?? ""} />
+                  </div>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label htmlFor="edit-site-bpjs-tk">BPJS Ketenagakerjaan (Rp)</label>
+                    <input className="input" id="edit-site-bpjs-tk" name="bpjsKetenagakerjaanOverride" type="number" min={0} placeholder="Otomatis" defaultValue={site.bpjsKetenagakerjaanOverride ?? ""} />
+                  </div>
+                </div>
               </div>
               {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               {delError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{delError}</p>}

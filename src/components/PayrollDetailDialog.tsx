@@ -111,12 +111,13 @@ export function PayrollDetailDialog({
         { key: "terlambat", label: "Potongan terlambat", amount: -p.potonganTerlambat },
         { key: "lemburReguler", label: "Lembur reguler", amount: p.lemburReguler },
         { key: "lemburMerah", label: "Lembur merah", amount: p.lemburMerah },
-        { key: "allowance", label: "Allowance", amount: p.allowance },
+        { key: "allowance", label: "Bonus", amount: p.allowance },
       ]
     : [
         { key: "gajiPokok", label: "Gaji pokok", amount: p.gajiPokok, editable: gajiPokokEdit },
         { key: "potonganAbsensi", label: "Potongan absensi", amount: -p.potonganAbsensi, editable: potonganAbsensiEdit },
         { key: "lembur", label: "Lembur", amount: p.lembur },
+        { key: "allowance", label: "Bonus", amount: p.allowance },
       ];
   rows.push(
     { key: "penugasan", label: "Penugasan tambahan", amount: p.penugasanTambahan, editable: penugasanTambahanEdit },

@@ -218,6 +218,7 @@ export function computeMonthlyPayroll(
     overtimeDays?: Pick<OvertimeDay, "type">[];
     assignments?: Pick<Assignment, "cost">[];
     latenessBrackets?: LatenessBracketLike[];
+    site?: { bpjsKesehatanOverride: number | null; bpjsKetenagakerjaanOverride: number | null };
   },
 ) {
   const tally = payrollAttendanceTally(records, period);
@@ -232,6 +233,14 @@ export function computeMonthlyPayroll(
     },
     components,
   );
+  // A tempat kerja can fix BPJS for everyone there at once — but a personal
+  // override (already folded into base.bpjs* above) always wins over it,
+  // so only step in when the employee has none of their own.
+  if (opts?.site) {
+    base.bpjsKesehatan = emp.bpjsKesehatanOverride ?? opts.site.bpjsKesehatanOverride ?? base.bpjsKesehatan;
+    base.bpjsKetenagakerjaan = emp.bpjsKetenagakerjaanOverride ?? opts.site.bpjsKetenagakerjaanOverride ?? base.bpjsKetenagakerjaan;
+    base.bpjs = base.bpjsKesehatan + base.bpjsKetenagakerjaan;
+  }
   const entry = opts?.entry;
 
   // Completed Penugasan Tambahan for this period — earned pay on top of
@@ -271,13 +280,18 @@ export function computeMonthlyPayroll(
     const lembur = entry?.lemburOverride ?? autoLembur;
     const potonganAbsensi = entry?.potonganAbsensiOverride ?? base.potonganAbsensi;
     const potongan = potonganAbsensi + base.bpjs + kasbonBulanIni;
-    const total = gajiPokok - potongan + lembur + penugasanTambahan;
+    // Bonus (PayrollEntry.allowance) folds into the monthly total the same
+    // way here as in the flat-rate branch below — previously hardcoded to
+    // 0, so a bonus entered for an employee/period without a configured
+    // PayrollRate silently never actually paid out.
+    const allowance = entry?.allowance ?? 0;
+    const total = gajiPokok - potongan + lembur + allowance + penugasanTambahan;
     return {
       ...base,
       gajiPokok, potonganAbsensi, kasbonBulanIni, potongan,
-      lembur, total,
+      lembur, allowance, total,
       potonganIzin: 0, potonganAlpha: 0, potonganTerlambat: 0,
-      lemburReguler: 0, lemburMerah: 0, allowance: 0, penugasanTambahan,
+      lemburReguler: 0, lemburMerah: 0, penugasanTambahan,
       usesFlatRate: false as const,
     };
   }

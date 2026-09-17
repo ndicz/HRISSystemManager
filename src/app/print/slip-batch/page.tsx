@@ -46,7 +46,7 @@ export default async function SlipBatchPrintPage({
         const entry = resolvePayrollEntry(emp.payrollEntries, period);
         const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
         const assignments = resolveAssignments(emp.assignments, period);
-        const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets });
+        const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets, site: emp.site });
         const periode = payrollPeriodLabel(period);
 
         return (
@@ -80,7 +80,7 @@ export default async function SlipBatchPrintPage({
                     <tr><td>Gaji pokok</td><td>{formatRp(p.gajiPokok)}</td></tr>
                     <tr><td>Lembur reguler</td><td>{formatRp(p.lemburReguler)}</td></tr>
                     <tr><td>Lembur hari libur</td><td>{formatRp(p.lemburMerah)}</td></tr>
-                    <tr><td>Allowance</td><td>{formatRp(p.allowance)}</td></tr>
+                    <tr><td>Bonus</td><td>{formatRp(p.allowance)}</td></tr>
                     {p.penugasanTambahan > 0 && <tr><td>Penugasan tambahan</td><td>{formatRp(p.penugasanTambahan)}</td></tr>}
                     <tr><td>Potongan izin</td><td>-{formatRp(p.potonganIzin)}</td></tr>
                     <tr><td>Potongan alfa</td><td>-{formatRp(p.potonganAlpha)}</td></tr>
@@ -97,6 +97,7 @@ export default async function SlipBatchPrintPage({
                   <>
                     <tr><td>Gaji pokok</td><td>{formatRp(p.gajiPokok)}</td></tr>
                     <tr><td>Lembur</td><td>{formatRp(p.lembur)}</td></tr>
+                    {p.allowance > 0 && <tr><td>Bonus</td><td>{formatRp(p.allowance)}</td></tr>}
                     {p.penugasanTambahan > 0 && <tr><td>Penugasan tambahan</td><td>{formatRp(p.penugasanTambahan)}</td></tr>}
                     <tr><td>Potongan absensi</td><td>-{formatRp(p.potonganAbsensi)}</td></tr>
                     <tr><td>Potongan BPJS Kesehatan</td><td>-{formatRp(p.bpjsKesehatan)}</td></tr>

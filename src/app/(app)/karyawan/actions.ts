@@ -407,7 +407,17 @@ export async function updateSite(id: string, formData: FormData) {
   const umr = Math.max(0, parseInt(String(formData.get("umr") ?? "0"), 10) || 0);
   if (!name) throw new Error("Nama tempat kerja wajib diisi.");
 
-  await db.site.update({ where: { id }, data: { name, address: address || "-", supervisor: supervisor || "-", umr } });
+  const intOrNull = (k: string) => {
+    const raw = String(formData.get(k) ?? "").trim();
+    return raw ? Math.max(0, parseInt(raw, 10) || 0) : null;
+  };
+  const bpjsKesehatanOverride = intOrNull("bpjsKesehatanOverride");
+  const bpjsKetenagakerjaanOverride = intOrNull("bpjsKetenagakerjaanOverride");
+
+  await db.site.update({
+    where: { id },
+    data: { name, address: address || "-", supervisor: supervisor || "-", umr, bpjsKesehatanOverride, bpjsKetenagakerjaanOverride },
+  });
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "site.update", entity: "Site", entityId: id },

@@ -24,7 +24,6 @@ export default async function PenggajianPage() {
         // separate per-employee Rekap Bulanan fetch, not from this preloaded list, so
         // pulling every column here just adds transfer + row-mapping cost for nothing.
         attendance: { where: { date: { gte: attendanceWindowStart() } }, select: { date: true, status: true, lateMin: true } },
-        allowancePayments: { orderBy: { date: "desc" } },
         overtimeDays: { orderBy: { date: "asc" } },
         assignments: { select: { cost: true, status: true, period: true } },
       },
