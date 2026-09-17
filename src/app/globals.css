@@ -227,13 +227,33 @@ img { display: block; max-width: 100%; }
    table out from under it, the header disappears with it). Removing the
    table's own scroll box here makes dialog-body the single scrolling
    ancestor instead, so the sticky header attaches to that one correctly. */
-.table-nested { max-height: none; overflow: visible; }
+/* .table's background is a horizontal-scroll shadow/fade affordance —
+   makes no sense once overflow is reset to visible just above, but it was
+   never reset alongside it, so it kept rendering as a permanent, meaningless
+   smudge along both edges of every nested table regardless of whether that
+   table could actually scroll. */
+.table-nested { max-height: none; overflow: visible; background: none; }
 
 .dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--color-neutral-900) 55%, transparent); backdrop-filter: blur(2px); z-index: 50; }
 .dialog { width: min(440px, 100%); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface); border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); box-shadow: var(--shadow-lg); max-height: calc(100dvh - var(--space-8)); overflow-y: auto; }
 .dialog-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 20px; }
 .dialog-body { font-size: 14px; opacity: 0.85; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }
+
+/* The browser's default scrollbar on a tall dialog-body renders as a wide,
+   pale overlay pill (especially on macOS/Android Chrome) that reads as a
+   stray white smudge next to the content instead of a scroll affordance.
+   Thinner + theme-colored so it recedes instead of standing out. */
+.dialog, .dialog-body, .table {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-text) 25%, transparent) transparent;
+}
+.dialog::-webkit-scrollbar, .dialog-body::-webkit-scrollbar, .table::-webkit-scrollbar { width: 6px; height: 6px; }
+.dialog::-webkit-scrollbar-track, .dialog-body::-webkit-scrollbar-track, .table::-webkit-scrollbar-track { background: transparent; }
+.dialog::-webkit-scrollbar-thumb, .dialog-body::-webkit-scrollbar-thumb, .table::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-text) 25%, transparent);
+  border-radius: 10px;
+}
 
 /* App shell */
 .app-shell { display: flex; min-height: 100vh; background: var(--color-bg); }
