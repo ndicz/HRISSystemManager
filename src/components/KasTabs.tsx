@@ -12,6 +12,7 @@ import { AddPayableDialog } from "@/components/AddPayableDialog";
 import { PayableActions } from "@/components/PayableActions";
 import { TransferDialog } from "@/components/TransferDialog";
 import { AddCashAccountDialog } from "@/components/AddCashAccountDialog";
+import { EditCashAccountDialog } from "@/components/EditCashAccountDialog";
 import { BudgetEditButton } from "@/components/BudgetEditButton";
 import { DocHandoverDateInput } from "@/components/DocHandoverDateInput";
 import { closePeriod, reopenPeriod } from "@/app/(app)/kas/actions";
@@ -358,7 +359,10 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
             <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)" }}>
               {cashAccounts.map((c) => (
                 <div className="card" key={c.id}>
-                  <div className="card-kicker">{c.name}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-2)" }}>
+                    <div className="card-kicker">{c.name}</div>
+                    <EditCashAccountDialog cashAccount={c} />
+                  </div>
                   <div className="card-title" style={{ fontSize: 20 }}>{formatRp(cashAccountBalance(c.id))}</div>
                   <p className="card-body">Saldo awal {formatRp(c.opening)}</p>
                 </div>

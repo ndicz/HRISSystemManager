@@ -158,6 +158,48 @@ export async function createCashAccount(formData: FormData) {
   revalidatePath("/kas");
 }
 
+export async function updateCashAccount(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const cashAccount = await db.cashAccount.findUnique({ where: { id } });
+  if (!cashAccount) throw new Error("Rekening tidak ditemukan.");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const kind = String(formData.get("kind") ?? cashAccount.kind);
+  const opening = Math.max(0, parseInt(String(formData.get("opening") ?? "0"), 10) || 0);
+  if (!name) throw new Error("Nama rekening wajib diisi.");
+  if (kind !== "kecil" && kind !== "besar") throw new Error("Jenis rekening tidak valid.");
+
+  await db.cashAccount.update({ where: { id }, data: { name, kind, opening } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "cashAccount.update", entity: "CashAccount", entityId: id, detail: JSON.stringify({ name, kind, opening }) },
+  });
+
+  revalidatePath("/kas");
+}
+
+export async function deleteCashAccount(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const cashAccount = await db.cashAccount.findUnique({ where: { id }, include: { _count: { select: { transactions: true } } } });
+  if (!cashAccount) return;
+
+  if (cashAccount._count.transactions > 0) {
+    throw new Error(`Rekening tidak bisa dihapus — masih ada ${cashAccount._count.transactions} transaksi yang tercatat di rekening ini.`);
+  }
+
+  await db.cashAccount.delete({ where: { id } });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "cashAccount.delete", entity: "CashAccount", entityId: id, detail: cashAccount.name },
+  });
+
+  revalidatePath("/kas");
+}
+
 export async function setBudget(accountId: string, budget: number) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
