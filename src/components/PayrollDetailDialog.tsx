@@ -9,6 +9,7 @@ import { PayrollEntryPanel } from "@/components/PayrollEntryPanel";
 import { AttendanceRecapPanel } from "@/components/AttendanceRecapPanel";
 import { PayGajiButton } from "@/components/PayGajiButton";
 import { BASE_PATH } from "@/lib/basePath";
+import { formatActionError } from "@/lib/errors";
 
 type Payroll = ReturnType<typeof computeMonthlyPayroll>;
 type Tab = "ringkasan" | "lembur" | "absensi";
@@ -60,7 +61,7 @@ export function PayrollDetailDialog({
         setBpjsSaved(true);
         router.refresh();
       })
-      .catch((err) => setBpjsError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setBpjsError(formatActionError(err)))
       .finally(() => setBpjsPending(false));
   }
 
@@ -95,7 +96,7 @@ export function PayrollDetailDialog({
         setAmountsSaved(true);
         router.refresh();
       })
-      .catch((err) => setAmountsError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setAmountsError(formatActionError(err)))
       .finally(() => setAmountsPending(false));
   }
 
@@ -222,9 +223,15 @@ export function PayrollDetailDialog({
               ) : (
                 <PayGajiButton employeeIds={[employeeId]} period={period} totalAmount={p.total} label="Bayar gaji" />
               )}
-              <a href={`${BASE_PATH}/print/slip/${employeeId}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
-                Cetak slip
-              </a>
+              {entry?.paid ? (
+                <a href={`${BASE_PATH}/print/slip/${employeeId}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+                  Cetak slip
+                </a>
+              ) : (
+                <button type="button" className="btn btn-secondary" disabled title="Bayar gaji dulu sebelum cetak slip">
+                  Cetak slip
+                </button>
+              )}
               <button type="button" className="btn btn-secondary" onClick={close}>
                 Tutup
               </button>

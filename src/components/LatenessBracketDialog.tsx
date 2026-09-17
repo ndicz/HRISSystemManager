@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveLatenessBrackets, deleteLatenessBrackets } from "@/app/(app)/penggajian/actions";
 import { formatRp, type LatenessBracketLike } from "@/lib/payroll";
+import { formatActionError } from "@/lib/errors";
 
 type Option = { id: string; name: string };
 type Scope = "global" | "site" | "position" | "employee";
@@ -96,7 +97,7 @@ export function LatenessBracketDialog({
       setOpen(false);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -111,7 +112,7 @@ export function LatenessBracketDialog({
       setRows([emptyRow()]);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

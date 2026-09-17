@@ -5,6 +5,7 @@ import { setLeadStage, markLeadLost, reopenLead, convertLeadToClient, addLeadAct
 import { formatRp } from "@/lib/payroll";
 import { RupiahInput } from "@/components/RupiahInput";
 import { STAGE_TAG, STAGE_LABEL, type LeadRow } from "@/components/CrmTables";
+import { formatActionError } from "@/lib/errors";
 
 const ACTIVE_STAGES = ["kontak_awal", "penawaran", "negosiasi", "deal"];
 
@@ -36,7 +37,7 @@ export function LeadDetailDialog({ lead, onChanged }: { lead: LeadRow; onChanged
         await action();
         onChanged?.();
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }
@@ -50,7 +51,7 @@ export function LeadDetailDialog({ lead, onChanged }: { lead: LeadRow; onChanged
         setNote("");
         onChanged?.();
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }
@@ -63,7 +64,7 @@ export function LeadDetailDialog({ lead, onChanged }: { lead: LeadRow; onChanged
       setEditing(false);
       onChanged?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setEditPending(false);
     }

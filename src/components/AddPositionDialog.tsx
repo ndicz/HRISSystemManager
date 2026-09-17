@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { addPosition } from "@/app/(app)/karyawan/actions";
+import { formatActionError } from "@/lib/errors";
 
 export function AddPositionDialog() {
   const [open, setOpen] = useState(false);
@@ -19,7 +20,7 @@ export function AddPositionDialog() {
       formRef.current?.reset();
       setSalaryType("bulanan");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

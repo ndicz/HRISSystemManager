@@ -5,6 +5,7 @@ import type { InventoryRequest } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
 import { cancelInventoryRequest, completeInventoryRequest } from "@/app/(app)/gudang/actions";
 import { BASE_PATH } from "@/lib/basePath";
+import { formatActionError } from "@/lib/errors";
 
 const STATUS_TAG: Record<string, string> = {
   berjalan: "tag tag-outline",
@@ -34,7 +35,7 @@ export function InventoryRequestDetailDialog({ request }: { request: InventoryRe
     setCancelPending(true);
     cancelInventoryRequest(request.id)
       .then(() => setOpen(false))
-      .catch((err) => setCancelError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setCancelError(formatActionError(err)))
       .finally(() => setCancelPending(false));
   }
 
@@ -43,7 +44,7 @@ export function InventoryRequestDetailDialog({ request }: { request: InventoryRe
     setCompletePending(true);
     completeInventoryRequest(request.id)
       .then(() => setOpen(false))
-      .catch((err) => setCompleteError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setCompleteError(formatActionError(err)))
       .finally(() => setCompletePending(false));
   }
 

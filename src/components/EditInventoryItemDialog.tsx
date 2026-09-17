@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateInventoryItem, deleteInventoryItem, restockItem } from "@/app/(app)/gudang/actions";
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatRp } from "@/lib/payroll";
+import { formatActionError } from "@/lib/errors";
 
 type ItemRow = { id: string; name: string; unit: string; qty: number; price: number; category: string | null; trackStock: boolean; purpose: string };
 
@@ -26,7 +27,7 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
       await updateInventoryItem(item.id, formData);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -38,7 +39,7 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
     setDelPending(true);
     deleteInventoryItem(item.id)
       .then(() => setOpen(false))
-      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setDelError(formatActionError(err)))
       .finally(() => setDelPending(false));
   }
 
@@ -49,7 +50,7 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
     fd.set("addQty", addQty);
     restockItem(item.id, fd)
       .then(() => setAddQty(""))
-      .catch((err) => setRestockError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setRestockError(formatActionError(err)))
       .finally(() => setRestockPending(false));
   }
 

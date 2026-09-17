@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateCandidate, deleteCandidate } from "@/app/(app)/rekrutmen/actions";
+import { formatActionError } from "@/lib/errors";
 
 type CandidateRow = { id: string; name: string; position: string };
 type Option = { id: string; name: string };
@@ -20,7 +21,7 @@ export function EditCandidateDialog({ candidate, positions }: { candidate: Candi
       await updateCandidate(candidate.id, formData);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -32,7 +33,7 @@ export function EditCandidateDialog({ candidate, positions }: { candidate: Candi
     setDelPending(true);
     deleteCandidate(candidate.id)
       .then(() => setOpen(false))
-      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setDelError(formatActionError(err)))
       .finally(() => setDelPending(false));
   }
 

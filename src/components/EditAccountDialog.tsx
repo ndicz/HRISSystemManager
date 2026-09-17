@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateAccount, deleteAccount } from "@/app/(app)/kas/actions";
+import { formatActionError } from "@/lib/errors";
 
 type AccountRow = { id: string; code: string; name: string; type: string };
 
@@ -20,7 +21,7 @@ export function EditAccountDialog({ account }: { account: AccountRow }) {
       await updateAccount(account.id, formData);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -32,7 +33,7 @@ export function EditAccountDialog({ account }: { account: AccountRow }) {
     setDelPending(true);
     deleteAccount(account.id)
       .then(() => setOpen(false))
-      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setDelError(formatActionError(err)))
       .finally(() => setDelPending(false));
   }
 

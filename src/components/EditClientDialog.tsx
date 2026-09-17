@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateClient, deleteClient } from "@/app/(app)/klien/actions";
+import { formatActionError } from "@/lib/errors";
 
 type ClientRow = {
   id: string;
@@ -28,7 +29,7 @@ export function EditClientDialog({ client }: { client: ClientRow }) {
       await updateClient(client.id, formData);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -40,7 +41,7 @@ export function EditClientDialog({ client }: { client: ClientRow }) {
     setDelPending(true);
     deleteClient(client.id)
       .then(() => setOpen(false))
-      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setDelError(formatActionError(err)))
       .finally(() => setDelPending(false));
   }
 

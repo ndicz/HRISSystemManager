@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { updateEmployeeDetails, deleteEmployee } from "@/app/(app)/karyawan/actions";
 import { formatRp, kasbonPerBulan } from "@/lib/payroll";
+import { formatActionError } from "@/lib/errors";
 
 type Emp = {
   id: string;
@@ -52,7 +53,7 @@ export function EditEmployeeDialog({ employee, sites, positions }: { employee: E
     setDelPending(true);
     deleteEmployee(employee.id)
       .then(() => setOpen(false))
-      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setDelError(formatActionError(err)))
       .finally(() => setDelPending(false));
   }
 

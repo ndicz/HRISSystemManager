@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { parseAttendanceImport, applyAttendanceImport } from "@/app/(app)/absensi/actions";
 import type { AttendanceImportResult } from "@/lib/attendanceImport";
+import { formatActionError } from "@/lib/errors";
 
 type Status = "idle" | "parsing" | "error" | "done" | "applying" | "applied";
 
@@ -47,7 +48,7 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
         setResult(parsed);
         setStatus("done");
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
         setStatus("error");
       }
     });
@@ -63,7 +64,7 @@ export function ImportAttendanceDialog({ sites }: { sites: { id: string; name: s
         setApplySummary(res);
         setStatus("applied");
       } catch (err) {
-        setApplyError(err instanceof Error ? err.message : String(err));
+        setApplyError(formatActionError(err));
         setStatus("done");
       }
     });

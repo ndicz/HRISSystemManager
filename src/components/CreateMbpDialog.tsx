@@ -7,6 +7,7 @@ import { formatRp } from "@/lib/payroll";
 import { mbpPpnValue } from "@/lib/finance";
 import { RupiahInput } from "@/components/RupiahInput";
 import { ClientCombobox, type ClientOption } from "@/components/ClientCombobox";
+import { formatActionError } from "@/lib/errors";
 
 type PendingRequest = { id: string; itemName: string; unit: string; qty: number; cost: number; requesterName: string };
 
@@ -91,7 +92,7 @@ export function CreateMbpDialog({
       router.refresh();
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

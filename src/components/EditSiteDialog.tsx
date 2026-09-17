@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateSite, deleteSite } from "@/app/(app)/karyawan/actions";
+import { formatActionError } from "@/lib/errors";
 
 type SiteRow = {
   id: string; name: string; address: string; supervisor: string; umr: number;
@@ -22,7 +23,7 @@ export function EditSiteDialog({ site }: { site: SiteRow }) {
       await updateSite(site.id, formData);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -34,7 +35,7 @@ export function EditSiteDialog({ site }: { site: SiteRow }) {
     setDelPending(true);
     deleteSite(site.id)
       .then(() => setOpen(false))
-      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setDelError(formatActionError(err)))
       .finally(() => setDelPending(false));
   }
 

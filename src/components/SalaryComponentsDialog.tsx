@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { fetchSalaryComponents, addSalaryComponent, updateSalaryComponent, removeSalaryComponent } from "@/app/(app)/karyawan/actions";
 import { formatRp } from "@/lib/payroll";
+import { formatActionError } from "@/lib/errors";
 
 type Component = { id: string; name: string; amount: number };
 
@@ -42,7 +43,7 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
         setComponents(data);
         setEditingId(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }
@@ -61,7 +62,7 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
         setNewName("");
         setNewAmount("");
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }
@@ -73,7 +74,7 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
         const data = await removeSalaryComponent(componentId);
         setComponents(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }

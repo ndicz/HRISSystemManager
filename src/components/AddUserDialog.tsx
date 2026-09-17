@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { createUser } from "@/app/(app)/pengguna/actions";
 import type { NavItem } from "@/lib/rbac";
+import { formatActionError } from "@/lib/errors";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",
@@ -37,7 +38,7 @@ export function AddUserDialog({
       setRole("EMPLOYEE");
       setCustomAccess(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

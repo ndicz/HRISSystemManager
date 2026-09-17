@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { PayrollRate } from "@prisma/client";
 import { savePayrollRate, deletePayrollRate } from "@/app/(app)/penggajian/actions";
+import { formatActionError } from "@/lib/errors";
 
 type Site = { id: string; name: string };
 
@@ -32,7 +33,7 @@ export function PayrollRateDialog({ period, sites, rates }: { period: string; si
     setDelPending(true);
     deletePayrollRate(period, siteId || null)
       .then(() => setOpen(false))
-      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setDelError(formatActionError(err)))
       .finally(() => setDelPending(false));
   }
 

@@ -6,6 +6,7 @@ import { addMbpRequest } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
 import { RupiahInput } from "@/components/RupiahInput";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
+import { formatActionError } from "@/lib/errors";
 
 type ItemOption = { id: string; name: string; unit: string; price: number };
 
@@ -76,7 +77,7 @@ export function MbpRequestForm({
       router.refresh();
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

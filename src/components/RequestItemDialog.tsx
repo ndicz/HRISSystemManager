@@ -4,6 +4,7 @@ import { useState, useRef, useMemo } from "react";
 import { requestItem } from "@/app/(app)/gudang/actions";
 import { formatRp } from "@/lib/payroll";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
+import { formatActionError } from "@/lib/errors";
 
 type ItemOption = { id: string; name: string; unit: string; qty: number; price: number; trackStock: boolean };
 
@@ -50,7 +51,7 @@ export function RequestItemDialog({ items, employees, siteNames }: { items: Item
       resetRequesterFields();
       setFormKey((k) => k + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

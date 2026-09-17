@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { updateTransaction } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
+import { formatActionError } from "@/lib/errors";
 
 type Option = { id: string; name: string; type?: string };
 type Tx = { id: string; date: Date; accountCoaId: string; cashAccountId: string; desc: string; amount: number; type: string };
@@ -27,7 +28,7 @@ export function EditTransactionDialog({ tx, accounts, cashAccounts, disabled }: 
       await updateTransaction(tx.id, formData);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

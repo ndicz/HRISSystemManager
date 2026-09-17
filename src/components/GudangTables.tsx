@@ -11,6 +11,7 @@ import { InventoryRequestDetailDialog } from "@/components/InventoryRequestDetai
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { toggleInventoryItemActive, completeInventoryRequest } from "@/app/(app)/gudang/actions";
 import { BASE_PATH } from "@/lib/basePath";
+import { formatActionError } from "@/lib/errors";
 
 function ActiveToggle({ id, active }: { id: string; active: boolean }) {
   const [pending, startTransition] = useTransition();
@@ -94,7 +95,7 @@ function CompleteButton({ id }: { id: string }) {
   return (
     <div>
       <button type="button" className="btn btn-ghost" disabled={pending} onClick={() => { setError(""); startTransition(async () => {
-        try { await completeInventoryRequest(id); } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+        try { await completeInventoryRequest(id); } catch (err) { setError(formatActionError(err)); }
       }); }}>
         {pending ? "…" : "Selesaikan"}
       </button>

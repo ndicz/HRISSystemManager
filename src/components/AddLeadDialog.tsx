@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { addLead } from "@/app/(app)/crm/actions";
 import { RupiahInput } from "@/components/RupiahInput";
+import { formatActionError } from "@/lib/errors";
 
 export function AddLeadDialog({ onSuccess }: { onSuccess?: () => void }) {
   const [open, setOpen] = useState(false);
@@ -21,7 +22,7 @@ export function AddLeadDialog({ onSuccess }: { onSuccess?: () => void }) {
       setFormKey((k) => k + 1);
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

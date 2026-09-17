@@ -93,6 +93,11 @@ export function PenggajianTabs({
   );
   const unpaidRows = payrollRows.filter((r) => !r.entry?.paid);
   const unpaidTotal = unpaidRows.reduce((s, r) => s + r.p.total, 0);
+  // Cetak slip is a receipt for money that's already gone out — printing it
+  // before "Bayar Gaji" runs would let HR hand an employee proof of payment
+  // that hasn't actually been paid. Every "Cetak slip" control below is
+  // gated to only the rows that are actually paid.
+  const paidRows = payrollRows.filter((r) => r.entry?.paid);
 
   // Manual pick — separate from "Bayar Gaji (semua belum dibayar)"/batch
   // per site, for cases where HR only wants to pay a specific handful of
@@ -109,6 +114,7 @@ export function PenggajianTabs({
   }
   const selectedRows = payrollRows.filter((r) => selectedIds.has(r.e.id));
   const selectedTotal = selectedRows.reduce((s, r) => s + r.p.total, 0);
+  const selectedPaidRows = selectedRows.filter((r) => r.entry?.paid);
   // Select-all covers every row currently shown, paid or not — paying a
   // mixed selection is safe since bayarGaji skips anyone already paid, and
   // printing slips for already-paid employees is the whole point of this
@@ -197,10 +203,11 @@ export function PenggajianTabs({
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  disabled={periodEmployees.length === 0}
-                  onClick={() => window.open(`${BASE_PATH}/print/slip-batch?ids=${periodEmployees.map((e) => e.id).join(",")}&period=${period}`, "_blank")}
+                  disabled={paidRows.length === 0}
+                  title={paidRows.length === 0 ? "Belum ada yang dibayar untuk periode ini" : undefined}
+                  onClick={() => window.open(`${BASE_PATH}/print/slip-batch?ids=${paidRows.map((r) => r.e.id).join(",")}&period=${period}`, "_blank")}
                 >
-                  Cetak slip ({periodEmployees.length})
+                  Cetak slip ({paidRows.length})
                 </button>
                 <button type="button" className="btn btn-secondary" disabled={bankReadyRows.length === 0} onClick={downloadBankTransfer}>
                   Transfer bank
@@ -236,9 +243,11 @@ export function PenggajianTabs({
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => window.open(`${BASE_PATH}/print/slip-batch?ids=${selectedRows.map((r) => r.e.id).join(",")}&period=${period}`, "_blank")}
+                    disabled={selectedPaidRows.length === 0}
+                    title={selectedPaidRows.length === 0 ? "Belum ada yang dipilih yang sudah dibayar" : undefined}
+                    onClick={() => window.open(`${BASE_PATH}/print/slip-batch?ids=${selectedPaidRows.map((r) => r.e.id).join(",")}&period=${period}`, "_blank")}
                   >
-                    Cetak Slip Terpilih
+                    Cetak Slip Terpilih ({selectedPaidRows.length})
                   </button>
                   <PayGajiButton
                     employeeIds={selectedRows.map((r) => r.e.id)}
@@ -315,6 +324,7 @@ export function PenggajianTabs({
                   );
                   const siteUnpaidIds = rows.filter((r) => !r.entry?.paid).map((r) => r.e.id);
                   const siteUnpaidTotal = rows.filter((r) => !r.entry?.paid).reduce((s, r) => s + r.p.total, 0);
+                  const sitePaidIds = rows.filter((r) => r.entry?.paid).map((r) => r.e.id);
                   // Checkbox select-all for this site covers every row here
                   // (paid or not) — same reasoning as the global select-all.
                   const siteAllIds = rows.map((r) => r.e.id);
@@ -348,15 +358,21 @@ export function PenggajianTabs({
                                 totalAmount={siteUnpaidTotal}
                                 label={`Bayar gaji ${siteName} (${siteUnpaidIds.length} belum dibayar)`}
                               />
-                              <a
-                                href={`${BASE_PATH}/print/slip-batch?ids=${rows.map((r) => r.e.id).join(",")}&period=${period}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-ghost"
-                                style={{ fontWeight: 400 }}
-                              >
-                                Cetak slip {siteName}
-                              </a>
+                              {sitePaidIds.length > 0 ? (
+                                <a
+                                  href={`${BASE_PATH}/print/slip-batch?ids=${sitePaidIds.join(",")}&period=${period}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-ghost"
+                                  style={{ fontWeight: 400 }}
+                                >
+                                  Cetak slip {siteName} ({sitePaidIds.length})
+                                </a>
+                              ) : (
+                                <button type="button" className="btn btn-ghost" style={{ fontWeight: 400 }} disabled title="Belum ada yang dibayar untuk periode ini">
+                                  Cetak slip {siteName}
+                                </button>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -393,7 +409,13 @@ export function PenggajianTabs({
                               bpjsKetenagakerjaanOverride={e.bpjsKetenagakerjaanOverride}
                             />
                           </td>
-                          <td><a href={`${BASE_PATH}/print/slip/${e.id}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak slip</a></td>
+                          <td>
+                            {entry?.paid ? (
+                              <a href={`${BASE_PATH}/print/slip/${e.id}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak slip</a>
+                            ) : (
+                              <button type="button" className="btn btn-ghost" disabled title="Bayar gaji dulu sebelum cetak slip">Cetak slip</button>
+                            )}
+                          </td>
                         </tr>
                         );
                       })}

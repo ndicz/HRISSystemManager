@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { parseBpjsImport, applyBpjsImport } from "@/app/(app)/karyawan/actions";
 import type { BpjsImportRow } from "@/lib/bpjsImport";
+import { formatActionError } from "@/lib/errors";
 
 type Status = "idle" | "parsing" | "error" | "done" | "applying" | "applied";
 
@@ -43,7 +44,7 @@ export function ImportBpjsDialog() {
         setRows(parsed);
         setStatus("done");
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
         setStatus("error");
       }
     });
@@ -59,7 +60,7 @@ export function ImportBpjsDialog() {
         setApplySummary(res);
         setStatus("applied");
       } catch (err) {
-        setApplyError(err instanceof Error ? err.message : String(err));
+        setApplyError(formatActionError(err));
         setStatus("done");
       }
     });
