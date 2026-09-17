@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { PayrollEntry, OvertimeDay } from "@prisma/client";
 import { savePayrollEntry, addOvertimeDay, removeOvertimeDay } from "@/app/(app)/penggajian/actions";
 
@@ -24,6 +25,7 @@ export function PayrollEntryPanel({
   entry: PayrollEntry | null;
   overtimeDays: OvertimeDay[];
 }) {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -38,6 +40,7 @@ export function PayrollEntryPanel({
     try {
       await savePayrollEntry(formData);
       setSaved(true);
+      router.refresh();
     } finally {
       setPending(false);
     }
@@ -53,6 +56,7 @@ export function PayrollEntryPanel({
         fd.set("date", newDate);
         fd.set("type", newType);
         await addOvertimeDay(fd);
+        router.refresh();
       } catch (err) {
         setDayError(err instanceof Error ? err.message : String(err));
       }
@@ -64,6 +68,7 @@ export function PayrollEntryPanel({
     startDayTransition(async () => {
       try {
         await removeOvertimeDay(id);
+        router.refresh();
       } catch (err) {
         setDayError(err instanceof Error ? err.message : String(err));
       }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { PayrollEntry, OvertimeDay } from "@prisma/client";
 import { formatRp, computeMonthlyPayroll } from "@/lib/payroll";
 import { updateBpjsOverride, updatePayrollAmounts } from "@/app/(app)/penggajian/actions";
@@ -37,6 +38,7 @@ export function PayrollDetailDialog({
   bpjsKesehatanOverride: number | null;
   bpjsKetenagakerjaanOverride: number | null;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("ringkasan");
   const [bpjsKes, setBpjsKes] = useState(bpjsKesehatanOverride?.toString() ?? "");
@@ -54,7 +56,10 @@ export function PayrollDetailDialog({
       bpjsKes.trim() ? Math.max(0, parseInt(bpjsKes, 10) || 0) : null,
       bpjsTk.trim() ? Math.max(0, parseInt(bpjsTk, 10) || 0) : null,
     )
-      .then(() => setBpjsSaved(true))
+      .then(() => {
+        setBpjsSaved(true);
+        router.refresh();
+      })
       .catch((err) => setBpjsError(err instanceof Error ? err.message : String(err)))
       .finally(() => setBpjsPending(false));
   }
@@ -86,7 +91,10 @@ export function PayrollDetailDialog({
       penugasanTambahanOverride: toOverride(penugasanTambahan),
       kasbonOverride: toOverride(kasbon),
     })
-      .then(() => setAmountsSaved(true))
+      .then(() => {
+        setAmountsSaved(true);
+        router.refresh();
+      })
       .catch((err) => setAmountsError(err instanceof Error ? err.message : String(err)))
       .finally(() => setAmountsPending(false));
   }
