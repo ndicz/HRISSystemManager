@@ -41,7 +41,12 @@ export function RupiahInput({
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const digits = e.target.value.replace(/\D/g, "");
+    // Typing "1" right after an existing "0" (a freshly-focused field, or
+    // right after backspacing to empty) inserts at the cursor rather than
+    // replacing it, so the raw digits can be "01" — strip leading zeros
+    // before they ever reach the display, or every such field shows "01",
+    // "007", etc. instead of the number that was actually typed.
+    const digits = e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
     setDisplay(formatThousands(digits));
     onValueChange?.(parseInt(digits, 10) || 0);
   }

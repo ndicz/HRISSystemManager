@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { PayrollEntry, OvertimeDay } from "@prisma/client";
 import { savePayrollEntry, addOvertimeDay, removeOvertimeDay } from "@/app/(app)/penggajian/actions";
 import { formatActionError } from "@/lib/errors";
+import { RupiahInput } from "@/components/RupiahInput";
 
 function todayInputValue() {
   const d = new Date();
@@ -133,20 +134,12 @@ export function PayrollEntryPanel({
 
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="allowance">Allowance (Rp)</label>
-          <input className="input" id="allowance" name="allowance" type="number" min={0} defaultValue={entry?.allowance ?? 0} />
+          <RupiahInput id="allowance" name="allowance" defaultValue={entry?.allowance} placeholder="0" />
         </div>
 
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="lemburOverride">Lembur manual (Rp)</label>
-          <input
-            className="input"
-            id="lemburOverride"
-            name="lemburOverride"
-            type="number"
-            min={0}
-            placeholder="Otomatis dari tanggal lembur di atas"
-            defaultValue={entry?.lemburOverride ?? ""}
-          />
+          <RupiahInput id="lemburOverride" name="lemburOverride" defaultValue={entry?.lemburOverride} placeholder="Otomatis dari tanggal lembur di atas" />
           <p style={{ fontSize: 11, opacity: 0.55, marginTop: 4 }}>
             Rate lembur bisa beda per orang — isi ini kalau perhitungan otomatis tidak sesuai untuk karyawan ini.
           </p>
@@ -157,15 +150,15 @@ export function PayrollEntryPanel({
           <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-3)" }}>
             <div className="field" style={{ marginBottom: 0 }}>
               <label htmlFor="potonganIzinOverride">Izin (Rp)</label>
-              <input className="input" id="potonganIzinOverride" name="potonganIzinOverride" type="number" min={0} placeholder="Otomatis" defaultValue={entry?.potonganIzinOverride ?? ""} />
+              <RupiahInput id="potonganIzinOverride" name="potonganIzinOverride" defaultValue={entry?.potonganIzinOverride} placeholder="Otomatis" />
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
               <label htmlFor="potonganAlphaOverride">Alfa (Rp)</label>
-              <input className="input" id="potonganAlphaOverride" name="potonganAlphaOverride" type="number" min={0} placeholder="Otomatis" defaultValue={entry?.potonganAlphaOverride ?? ""} />
+              <RupiahInput id="potonganAlphaOverride" name="potonganAlphaOverride" defaultValue={entry?.potonganAlphaOverride} placeholder="Otomatis" />
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
               <label htmlFor="potonganTerlambatOverride">Terlambat (Rp)</label>
-              <input className="input" id="potonganTerlambatOverride" name="potonganTerlambatOverride" type="number" min={0} placeholder="Otomatis" defaultValue={entry?.potonganTerlambatOverride ?? ""} />
+              <RupiahInput id="potonganTerlambatOverride" name="potonganTerlambatOverride" defaultValue={entry?.potonganTerlambatOverride} placeholder="Otomatis" />
             </div>
           </div>
         </div>

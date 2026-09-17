@@ -8,6 +8,7 @@ import { updateBpjsOverride, updatePayrollAmounts } from "@/app/(app)/penggajian
 import { PayrollEntryPanel } from "@/components/PayrollEntryPanel";
 import { AttendanceRecapPanel } from "@/components/AttendanceRecapPanel";
 import { PayGajiButton } from "@/components/PayGajiButton";
+import { RupiahInput } from "@/components/RupiahInput";
 import { BASE_PATH } from "@/lib/basePath";
 import { formatActionError } from "@/lib/errors";
 
@@ -42,8 +43,8 @@ export function PayrollDetailDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("ringkasan");
-  const [bpjsKes, setBpjsKes] = useState(bpjsKesehatanOverride?.toString() ?? "");
-  const [bpjsTk, setBpjsTk] = useState(bpjsKetenagakerjaanOverride?.toString() ?? "");
+  const [bpjsKes, setBpjsKes] = useState(bpjsKesehatanOverride ?? 0);
+  const [bpjsTk, setBpjsTk] = useState(bpjsKetenagakerjaanOverride ?? 0);
   const [bpjsPending, setBpjsPending] = useState(false);
   const [bpjsError, setBpjsError] = useState("");
   const [bpjsSaved, setBpjsSaved] = useState(false);
@@ -52,11 +53,7 @@ export function PayrollDetailDialog({
     setBpjsError("");
     setBpjsPending(true);
     setBpjsSaved(false);
-    updateBpjsOverride(
-      employeeId,
-      bpjsKes.trim() ? Math.max(0, parseInt(bpjsKes, 10) || 0) : null,
-      bpjsTk.trim() ? Math.max(0, parseInt(bpjsTk, 10) || 0) : null,
-    )
+    updateBpjsOverride(employeeId, bpjsKes > 0 ? bpjsKes : null, bpjsTk > 0 ? bpjsTk : null)
       .then(() => {
         setBpjsSaved(true);
         router.refresh();
@@ -69,17 +66,18 @@ export function PayrollDetailDialog({
   // else (gaji pokok, potongan absensi, penugasan tambahan, kasbon) — same
   // null-means-auto convention as BPJS above, but saved separately since
   // this form's fields don't overlap with either the BPJS box or the
-  // "Lembur & Potongan" tab's own overrides.
-  const [gajiPokok, setGajiPokok] = useState(entry?.gajiPokokOverride?.toString() ?? "");
-  const [potonganAbsensi, setPotonganAbsensi] = useState(entry?.potonganAbsensiOverride?.toString() ?? "");
-  const [penugasanTambahan, setPenugasanTambahan] = useState(entry?.penugasanTambahanOverride?.toString() ?? "");
-  const [kasbon, setKasbon] = useState(entry?.kasbonOverride?.toString() ?? "");
+  // "Lembur & Potongan" tab's own overrides. 0 doubles as "no override" the
+  // same way RupiahInput itself treats a blank field as 0.
+  const [gajiPokok, setGajiPokok] = useState(entry?.gajiPokokOverride ?? 0);
+  const [potonganAbsensi, setPotonganAbsensi] = useState(entry?.potonganAbsensiOverride ?? 0);
+  const [penugasanTambahan, setPenugasanTambahan] = useState(entry?.penugasanTambahanOverride ?? 0);
+  const [kasbon, setKasbon] = useState(entry?.kasbonOverride ?? 0);
   const [amountsPending, setAmountsPending] = useState(false);
   const [amountsError, setAmountsError] = useState("");
   const [amountsSaved, setAmountsSaved] = useState(false);
 
-  function toOverride(v: string): number | null {
-    return v.trim() ? Math.max(0, parseInt(v, 10) || 0) : null;
+  function toOverride(v: number): number | null {
+    return v > 0 ? v : null;
   }
 
   function saveAmounts() {
@@ -105,12 +103,12 @@ export function PayrollDetailDialog({
     setTab("ringkasan");
   }
 
-  type Row = { key: string; label: string; amount: number; editable?: { value: string; onChange: (v: string) => void } };
+  type Row = { key: string; label: string; amount: number; editable?: { value: number; onChange: (v: number) => void } };
 
-  const gajiPokokEdit = { value: gajiPokok, onChange: (v: string) => { setGajiPokok(v); setAmountsSaved(false); } };
-  const potonganAbsensiEdit = { value: potonganAbsensi, onChange: (v: string) => { setPotonganAbsensi(v); setAmountsSaved(false); } };
-  const penugasanTambahanEdit = { value: penugasanTambahan, onChange: (v: string) => { setPenugasanTambahan(v); setAmountsSaved(false); } };
-  const kasbonEdit = { value: kasbon, onChange: (v: string) => { setKasbon(v); setAmountsSaved(false); } };
+  const gajiPokokEdit = { value: gajiPokok, onChange: (v: number) => { setGajiPokok(v); setAmountsSaved(false); } };
+  const potonganAbsensiEdit = { value: potonganAbsensi, onChange: (v: number) => { setPotonganAbsensi(v); setAmountsSaved(false); } };
+  const penugasanTambahanEdit = { value: penugasanTambahan, onChange: (v: number) => { setPenugasanTambahan(v); setAmountsSaved(false); } };
+  const kasbonEdit = { value: kasbon, onChange: (v: number) => { setKasbon(v); setAmountsSaved(false); } };
 
   const rows: Row[] = p.usesFlatRate
     ? [
@@ -154,7 +152,7 @@ export function PayrollDetailDialog({
             <div className="dialog-body" style={{ maxHeight: "62vh", overflowY: "auto" }}>
               {tab === "ringkasan" && (
                 <>
-                  <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-2)" }}>Kolom yang bisa diedit: kosongkan = pakai jumlah otomatis (ditampilkan sebagai placeholder).</p>
+                  <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-2)" }}>Kolom yang bisa diedit: kosongkan = pakai jumlah otomatis (ditunjukkan di bawah kolom).</p>
                   <table className="table table-nested" style={{ marginBottom: "var(--space-2)" }}>
                     <thead><tr><th>Komponen</th><th>Jumlah</th></tr></thead>
                     <tbody>
@@ -163,15 +161,16 @@ export function PayrollDetailDialog({
                           <td>{r.label}</td>
                           <td>
                             {r.editable ? (
-                              <input
-                                className="input"
-                                type="number"
-                                min={0}
-                                placeholder={formatRp(Math.abs(r.amount))}
-                                value={r.editable.value}
-                                onChange={(e) => r.editable!.onChange(e.target.value)}
-                                style={{ maxWidth: 180, minHeight: 30, fontSize: 13 }}
-                              />
+                              <>
+                                <RupiahInput
+                                  name={r.key}
+                                  defaultValue={r.editable.value}
+                                  placeholder="0"
+                                  onValueChange={r.editable.onChange}
+                                  style={{ maxWidth: 180, minHeight: 30, fontSize: 13 }}
+                                />
+                                <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>Otomatis: {formatRp(Math.abs(r.amount))}</div>
+                              </>
                             ) : formatRp(r.amount)}
                           </td>
                         </tr>
@@ -192,11 +191,11 @@ export function PayrollDetailDialog({
                     <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "var(--space-3)", alignItems: "end" }}>
                       <div className="field" style={{ marginBottom: 0 }}>
                         <label htmlFor="detail-bpjs-kes">BPJS Kesehatan (Rp)</label>
-                        <input className="input" id="detail-bpjs-kes" type="number" min={0} placeholder="Otomatis" value={bpjsKes} onChange={(e) => { setBpjsKes(e.target.value); setBpjsSaved(false); }} />
+                        <RupiahInput id="detail-bpjs-kes" name="bpjsKes" defaultValue={bpjsKes} placeholder="Otomatis" onValueChange={(v) => { setBpjsKes(v); setBpjsSaved(false); }} />
                       </div>
                       <div className="field" style={{ marginBottom: 0 }}>
                         <label htmlFor="detail-bpjs-tk">BPJS Ketenagakerjaan (Rp)</label>
-                        <input className="input" id="detail-bpjs-tk" type="number" min={0} placeholder="Otomatis" value={bpjsTk} onChange={(e) => { setBpjsTk(e.target.value); setBpjsSaved(false); }} />
+                        <RupiahInput id="detail-bpjs-tk" name="bpjsTk" defaultValue={bpjsTk} placeholder="Otomatis" onValueChange={(v) => { setBpjsTk(v); setBpjsSaved(false); }} />
                       </div>
                       <button type="button" className="btn btn-secondary" disabled={bpjsPending} onClick={saveBpjs}>
                         {bpjsPending ? "Menyimpan…" : "Simpan"}

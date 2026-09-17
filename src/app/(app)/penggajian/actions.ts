@@ -72,47 +72,58 @@ export async function bayarGaji(employeeIds: string[], period: string) {
   let paid = 0;
   let skipped = 0;
   let total = 0;
+  // One employee's data blowing up (a bad DB write, an unexpected constraint
+  // violation, whatever) used to take the whole batch down with it — 96
+  // people who paid fine looked exactly like 97 people who didn't, and the
+  // generic redacted error gave no way to tell which was which. Now a
+  // per-employee failure is caught, recorded, and the rest of the batch
+  // keeps going.
+  const failed: { name: string; reason: string }[] = [];
 
   await mapLimit(employees, 8, async (emp) => {
-    const existingEntry = emp.payrollEntries[0] ?? null;
-    if (existingEntry?.paid) {
-      skipped++;
-      return;
+    try {
+      const existingEntry = emp.payrollEntries[0] ?? null;
+      if (existingEntry?.paid) {
+        skipped++;
+        return;
+      }
+
+      const rate = resolvePayrollRate(rates, period, emp.siteId);
+      const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
+      const assignments = resolveAssignments(emp.assignments, period);
+      const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets, site: emp.site });
+
+      const tx = await db.transaction.create({
+        data: {
+          date: new Date(),
+          accountCoaId: account.id,
+          cashAccountId: cashAccount.id,
+          desc: "Gaji " + period + " — " + emp.name,
+          amount: p.total,
+          type: "keluar",
+        },
+      });
+
+      await db.payrollEntry.upsert({
+        where: { employeeId_period: { employeeId: emp.id, period } },
+        update: { paid: true, paidTransactionId: tx.id },
+        create: { employeeId: emp.id, period, paid: true, paidTransactionId: tx.id },
+      });
+
+      paid++;
+      total += p.total;
+    } catch (err) {
+      failed.push({ name: emp.name, reason: err instanceof Error ? err.message : String(err) });
     }
-
-    const rate = resolvePayrollRate(rates, period, emp.siteId);
-    const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
-    const assignments = resolveAssignments(emp.assignments, period);
-    const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets, site: emp.site });
-
-    const tx = await db.transaction.create({
-      data: {
-        date: new Date(),
-        accountCoaId: account.id,
-        cashAccountId: cashAccount.id,
-        desc: "Gaji " + period + " — " + emp.name,
-        amount: p.total,
-        type: "keluar",
-      },
-    });
-
-    await db.payrollEntry.upsert({
-      where: { employeeId_period: { employeeId: emp.id, period } },
-      update: { paid: true, paidTransactionId: tx.id },
-      create: { employeeId: emp.id, period, paid: true, paidTransactionId: tx.id },
-    });
-
-    paid++;
-    total += p.total;
   });
 
   await db.auditLog.create({
-    data: { userId: session.user.id, action: "payroll.pay", entity: "Employee", detail: JSON.stringify({ period, paid, skipped, total }) },
+    data: { userId: session.user.id, action: "payroll.pay", entity: "Employee", detail: JSON.stringify({ period, paid, skipped, total, failed }) },
   });
 
   revalidatePath("/penggajian");
   revalidatePath("/kas");
-  return { paid, skipped, total };
+  return { paid, skipped, total, failed };
 }
 
 export async function savePayrollRate(formData: FormData) {

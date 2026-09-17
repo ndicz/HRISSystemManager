@@ -139,8 +139,12 @@ export function PenggajianTabs({
   }
   const sitesInRows = [...sitesInRowsMap.values()].sort((a, b) => a.siteName.localeCompare(b.siteName));
 
-  const bankReadyRows = payrollRows.filter((r) => r.e.bankAccount);
-  const bankMissingCount = payrollRows.length - bankReadyRows.length;
+  // Transfer bank is a reference for money that's already gone out, same
+  // reasoning as the Cetak slip gate above — only paid employees belong in
+  // the file, not everyone with a bank account on file.
+  const paidThisPeriod = payrollRows.filter((r) => r.entry?.paid);
+  const bankReadyRows = paidThisPeriod.filter((r) => r.e.bankAccount);
+  const bankMissingCount = paidThisPeriod.length - bankReadyRows.length;
 
   function downloadBankTransfer() {
     const sheet = buildBcaTransferSheet(
@@ -268,7 +272,7 @@ export function PenggajianTabs({
 
           {bankMissingCount > 0 && (
             <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-3)" }}>
-              {bankMissingCount} karyawan belum punya nomor rekening (isi lewat dialog &quot;Profil&quot; di halaman Karyawan) — dilewati dari file transfer bank.
+              {bankMissingCount} karyawan sudah dibayar tapi belum punya nomor rekening (isi lewat dialog &quot;Profil&quot; di halaman Karyawan) — dilewati dari file transfer bank.
             </p>
           )}
 

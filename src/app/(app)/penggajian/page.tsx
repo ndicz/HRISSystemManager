@@ -1,6 +1,14 @@
 import { db } from "@/lib/db";
 import { PenggajianTabs } from "@/components/PenggajianTabs";
 
+// bayarGaji does two sequential DB round trips per employee it pays — for a
+// big site-wide run (dozens to 100+ employees) that can add up past the
+// platform's default Server Action timeout, which surfaces as a generic,
+// undiagnosable redacted error with no indication of how many actually got
+// paid before the cutoff. Raising it here covers every Server Action this
+// page calls, not just Bayar Gaji.
+export const maxDuration = 60;
+
 // Every employee's *entire* attendance history gets fetched on this page —
 // with no bound, that grows every month forever and this page would only
 // keep getting slower. A rolling 6-month window comfortably covers the
