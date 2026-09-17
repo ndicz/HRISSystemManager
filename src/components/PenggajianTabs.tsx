@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { AttendanceRecord, Employee, Site, Position, SalaryComponent, PayrollRate, PayrollEntry, AllowancePayment, OvertimeDay, Assignment } from "@prisma/client";
-import { bestPayrollPeriod, computeMonthlyPayroll, computeThr, formatRp, payrollPeriodKey, payrollPeriodLabel, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments, type LatenessBracketLike } from "@/lib/payroll";
+import { bestPayrollPeriod, computeMonthlyPayroll, computeThr, formatRp, payrollPeriodKey, payrollPeriodOptions, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments, type LatenessBracketLike } from "@/lib/payroll";
 import { buildBcaTransferSheet } from "@/lib/bankTransfer";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 import { ThrButton } from "@/components/ThrButton";
@@ -28,12 +28,7 @@ type Emp = Employee & {
 
 type SiteOption = { id: string; name: string };
 
-function monthOptions() {
-  return Array.from({ length: 12 }, (_, i) => {
-    const value = "2026-" + String(i + 1).padStart(2, "0");
-    return { value, label: payrollPeriodLabel(value) };
-  });
-}
+const monthOptions = payrollPeriodOptions;
 
 export function PenggajianTabs({
   employees, rates, sites, positions, latenessBrackets,

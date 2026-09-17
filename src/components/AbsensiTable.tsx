@@ -6,7 +6,7 @@ import { RecapDialog } from "@/components/RecapDialog";
 import { EditEmployeeDialog } from "@/components/EditEmployeeDialog";
 import { SalaryComponentsDialog } from "@/components/SalaryComponentsDialog";
 import { bestAttendanceMonth, formatRp, kasbonPerBulan, monthlyAttendanceTally } from "@/lib/payroll";
-import { monthKey } from "@/lib/finance";
+import { monthKey, monthKeyOptions } from "@/lib/finance";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
@@ -23,10 +23,7 @@ function attendanceTag(presentDays: number, workDays: number) {
   return "tag tag-neutral";
 }
 
-function monthOptions() {
-  const names = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  return names.map((n, i) => ({ value: "2026-" + String(i + 1).padStart(2, "0"), label: n + " 2026" }));
-}
+const monthOptions = monthKeyOptions;
 
 export function AbsensiTable({ employees, sites, positions }: { employees: Emp[]; sites: SiteOption[]; positions: PositionOption[] }) {
   const [q, setQ] = useState("");

@@ -3,14 +3,9 @@
 import { useState, useRef } from "react";
 import { addAssignment } from "@/app/(app)/karyawan/actions";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
-import { payrollPeriodKey, payrollPeriodLabel } from "@/lib/payroll";
+import { payrollPeriodKey, payrollPeriodOptions } from "@/lib/payroll";
 
-function monthOptions() {
-  return Array.from({ length: 12 }, (_, i) => {
-    const value = "2026-" + String(i + 1).padStart(2, "0");
-    return { value, label: payrollPeriodLabel(value) };
-  });
-}
+const monthOptions = payrollPeriodOptions;
 
 export function AddAssignmentDialog({ employees }: { employees: EmployeeOption[] }) {
   const [open, setOpen] = useState(false);

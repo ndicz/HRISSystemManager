@@ -117,6 +117,22 @@ export function payrollPeriodLabel(period: string): string {
   return `${startLabel} – ${endLabel}`;
 }
 
+// A period picker's option list — rolling window relative to today instead
+// of a year hardcoded into the option values, so the picker keeps working
+// (and keeps offering the current period) without a code change every
+// January. monthsBack/monthsForward count calendar months from now, not
+// payroll periods, which is all that matters for how wide the window is.
+export function payrollPeriodOptions(monthsBack = 12, monthsForward = 3): { value: string; label: string }[] {
+  const now = new Date();
+  const options = [];
+  for (let i = -monthsBack; i <= monthsForward; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const value = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    options.push({ value, label: payrollPeriodLabel(value) });
+  }
+  return options;
+}
+
 // Same shape as monthlyAttendanceTally, but scoped to the payroll period's
 // actual 21–20 date range instead of a calendar month.
 export function payrollAttendanceTally(records: Pick<AttendanceRecord, "date" | "status" | "lateMin">[], period: string) {
