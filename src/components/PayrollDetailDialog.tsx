@@ -152,7 +152,7 @@ export function PayrollDetailDialog({
             <div className="dialog-body" style={{ maxHeight: "62vh", overflowY: "auto" }}>
               {tab === "ringkasan" && (
                 <>
-                  <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-2)" }}>Kolom yang bisa diedit: kosongkan = pakai jumlah otomatis (ditunjukkan di bawah kolom).</p>
+                  <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-2)" }}>Kolom yang bisa diedit: kosongkan = pakai jumlah otomatis (ditampilkan sebagai placeholder).</p>
                   <table className="table table-nested" style={{ marginBottom: "var(--space-2)" }}>
                     <thead><tr><th>Komponen</th><th>Jumlah</th></tr></thead>
                     <tbody>
@@ -161,16 +161,13 @@ export function PayrollDetailDialog({
                           <td>{r.label}</td>
                           <td>
                             {r.editable ? (
-                              <>
-                                <RupiahInput
-                                  name={r.key}
-                                  defaultValue={r.editable.value}
-                                  placeholder="0"
-                                  onValueChange={r.editable.onChange}
-                                  style={{ maxWidth: 180, minHeight: 30, fontSize: 13 }}
-                                />
-                                <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>Otomatis: {formatRp(Math.abs(r.amount))}</div>
-                              </>
+                              <RupiahInput
+                                name={r.key}
+                                defaultValue={r.editable.value}
+                                placeholder={formatRp(Math.abs(r.amount))}
+                                onValueChange={r.editable.onChange}
+                                style={{ maxWidth: 180, minHeight: 30, fontSize: 13 }}
+                              />
                             ) : formatRp(r.amount)}
                           </td>
                         </tr>

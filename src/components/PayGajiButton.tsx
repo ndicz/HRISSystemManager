@@ -20,7 +20,7 @@ export function PayGajiButton({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [result, setResult] = useState<{ paid: number; skipped: number; total: number; failed: { name: string; reason: string }[] } | null>(null);
+  const [result, setResult] = useState<{ paid: number; skipped: number; total: number; failed: { name: string; reason: string }[]; fatalError?: string } | null>(null);
   const [error, setError] = useState("");
 
   function confirm() {
@@ -62,11 +62,18 @@ export function PayGajiButton({
                 </>
               ) : (
                 <>
-                  <p style={{ marginTop: 0 }}>
-                    {result.paid} karyawan dibayar (total {formatRp(result.total)})
-                    {result.skipped > 0 ? `, ${result.skipped} sudah dibayar sebelumnya (dilewati)` : ""}
-                    {result.failed.length > 0 ? `, ${result.failed.length} gagal` : ""}.
-                  </p>
+                  {result.fatalError ? (
+                    <p style={{ marginTop: 0, color: "var(--color-danger)" }}>
+                      Proses terhenti: {result.fatalError}
+                      {(result.paid > 0 || result.skipped > 0) && ` (${result.paid} sempat dibayar, ${result.skipped} sudah dibayar sebelumnya, sebelum proses terhenti)`}.
+                    </p>
+                  ) : (
+                    <p style={{ marginTop: 0 }}>
+                      {result.paid} karyawan dibayar (total {formatRp(result.total)})
+                      {result.skipped > 0 ? `, ${result.skipped} sudah dibayar sebelumnya (dilewati)` : ""}
+                      {result.failed.length > 0 ? `, ${result.failed.length} gagal` : ""}.
+                    </p>
+                  )}
                   {result.failed.length > 0 && (
                     <div style={{ fontSize: 13, color: "var(--color-danger)" }}>
                       <p style={{ margin: "0 0 4px", fontWeight: 600 }}>Gagal dibayar:</p>
