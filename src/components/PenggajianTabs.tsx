@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AttendanceRecord, Employee, Site, Position, SalaryComponent, PayrollRate, PayrollEntry, AllowancePayment, OvertimeDay, Assignment } from "@prisma/client";
+import type { AttendanceRecord, Employee, Site, Position, SalaryComponent, PayrollRate, PayrollEntry, OvertimeDay, Assignment } from "@prisma/client";
 import { bestPayrollPeriod, computeMonthlyPayroll, computeThr, formatRp, payrollPeriodKey, payrollPeriodOptions, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments, type LatenessBracketLike } from "@/lib/payroll";
 import { buildBcaTransferSheet } from "@/lib/bankTransfer";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 import { ThrButton } from "@/components/ThrButton";
 import { PayrollRateDialog } from "@/components/PayrollRateDialog";
 import { LatenessBracketDialog } from "@/components/LatenessBracketDialog";
-import { PayAllowanceDialog } from "@/components/PayAllowanceDialog";
+import { SetBonusDialog } from "@/components/SetBonusDialog";
 import { PayGajiButton } from "@/components/PayGajiButton";
 import { PayrollDetailDialog } from "@/components/PayrollDetailDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
@@ -21,7 +21,6 @@ type Emp = Employee & {
   salaryComponents: SalaryComponent[];
   attendance: Pick<AttendanceRecord, "date" | "status" | "lateMin">[];
   payrollEntries: PayrollEntry[];
-  allowancePayments: AllowancePayment[];
   overtimeDays: OvertimeDay[];
   assignments: Pick<Assignment, "cost" | "status" | "period">[];
 };
@@ -35,7 +34,7 @@ export function PenggajianTabs({
 }: {
   employees: Emp[]; rates: PayrollRate[]; sites: SiteOption[]; positions: SiteOption[]; latenessBrackets: LatenessBracketLike[];
 }) {
-  const [tab, setTab] = useState<"gaji" | "thr" | "insentif">("gaji");
+  const [tab, setTab] = useState<"gaji" | "thr">("gaji");
   const [q, setQ] = useState("");
   // Default to whichever payroll period (21–20) actually has attendance
   // data across all employees, rather than today's real calendar month
@@ -69,7 +68,7 @@ export function PenggajianTabs({
     const entry = resolvePayrollEntry(e.payrollEntries, period);
     const overtimeDays = resolveOvertimeDays(e.overtimeDays, period);
     const assignments = resolveAssignments(e.assignments, period);
-    return { e, entry, p: computeMonthlyPayroll(e, e.salaryComponents, e.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets }) };
+    return { e, entry, p: computeMonthlyPayroll(e, e.salaryComponents, e.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets, site: e.site }) };
   });
   const totals = payrollRows.reduce(
     (acc, r) => ({
@@ -139,10 +138,6 @@ export function PenggajianTabs({
   const sumThrDibayar = thrRows.filter((r) => r.e.thrPaid).reduce((s, r) => s + r.t.thr, 0);
 
   const employeeOptions = employees.map((e) => ({ id: e.id, name: e.name, empCode: e.empCode }));
-  const allowanceRows = filteredEmployees
-    .flatMap((e) => e.allowancePayments.map((p) => ({ ...p, empName: e.name })))
-    .sort((a, b) => b.date.getTime() - a.date.getTime());
-  const sumAllowance = allowanceRows.reduce((s, p) => s + p.amount, 0);
 
   const { sorted: sortedThr, sortKey: thrSortKey, sortDir: thrSortDir, toggleSort: toggleThrSort } = useSortableRows(thrRows, (r, key) => {
     if (key === "name") return r.e.name;
@@ -150,19 +145,11 @@ export function PenggajianTabs({
   });
   const { paged: pagedThr, page: pageThr, setPage: setPageThr, totalItems: totalThr } = usePagedRows(sortedThr);
 
-  const { sorted: sortedAllowance, sortKey: allowanceSortKey, sortDir: allowanceSortDir, toggleSort: toggleAllowanceSort } = useSortableRows(allowanceRows, (p, key) => {
-    if (key === "empName") return p.empName;
-    if (key === "date") return p.date;
-    return null;
-  });
-  const { paged: pagedAllowance, page: pageAllowance, setPage: setPageAllowance, totalItems: totalAllowance } = usePagedRows(sortedAllowance);
-
   return (
     <div>
       <div className="seg" role="radiogroup" style={{ width: "fit-content", marginBottom: "var(--space-3)" }}>
         <label className="seg-opt"><input type="radio" checked={tab === "gaji"} onChange={() => setTab("gaji")} /> Gaji Bulanan</label>
         <label className="seg-opt"><input type="radio" checked={tab === "thr"} onChange={() => setTab("thr")} /> THR</label>
-        <label className="seg-opt"><input type="radio" checked={tab === "insentif"} onChange={() => setTab("insentif")} /> Insentif/Bonus</label>
       </div>
       <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
         <input
@@ -209,6 +196,7 @@ export function PenggajianTabs({
                 </button>
                 <PayrollRateDialog period={period} sites={sites} rates={rates} />
                 <LatenessBracketDialog sites={sites} positions={positions} employees={employees.map((e) => ({ id: e.id, name: e.name }))} brackets={latenessBrackets} />
+                <SetBonusDialog employees={employeeOptions} period={period} currentBonuses={payrollRows.map((r) => ({ employeeId: r.e.id, amount: r.entry?.allowance ?? 0 }))} />
                 <PayGajiButton
                   employeeIds={unpaidRows.map((r) => r.e.id)}
                   period={period}
@@ -453,40 +441,6 @@ export function PenggajianTabs({
         </>
       )}
 
-      {tab === "insentif" && (
-        <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-4)" }}>
-            <div className="card" style={{ padding: "var(--space-3) var(--space-4)" }}>
-              <div className="card-kicker">Total bonus/insentif dibayar</div>
-              <div className="card-title" style={{ fontSize: 20 }}>{formatRp(sumAllowance)}</div>
-            </div>
-            <PayAllowanceDialog employees={employeeOptions} />
-          </div>
-          <p style={{ fontSize: 12, opacity: 0.55, marginTop: 0, marginBottom: "var(--space-3)" }}>
-            Pembayaran di luar gaji tanggal 1 — dicatat sebagai transaksi kas tersendiri, tidak ikut masuk ke perhitungan Gaji Bulanan.
-          </p>
-          <div className="card">
-            {allowanceRows.length === 0 ? <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada pembayaran bonus/insentif.</p> : (
-              <>
-              <table className="table">
-                <thead><tr><SortableTh label="Tanggal" sortKey="date" activeKey={allowanceSortKey} dir={allowanceSortDir} onSort={toggleAllowanceSort} /><SortableTh label="Karyawan" sortKey="empName" activeKey={allowanceSortKey} dir={allowanceSortDir} onSort={toggleAllowanceSort} /><th>Jumlah</th><th>Keterangan</th></tr></thead>
-                <tbody>
-                  {pagedAllowance.map((p) => (
-                    <tr key={p.id}>
-                      <td className="text-muted">{p.date.toLocaleDateString("id-ID")}</td>
-                      <td>{p.empName}</td>
-                      <td>{formatRp(p.amount)}</td>
-                      <td className="text-muted">{p.desc ?? "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <Pagination page={pageAllowance} totalItems={totalAllowance} onChange={setPageAllowance} />
-              </>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 }

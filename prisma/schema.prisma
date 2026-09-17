@@ -60,6 +60,12 @@ model Site {
   address          String
   supervisor       String
   umr              Int               @default(0)
+  // null = every employee here uses the standard formula (or their own
+  // personal override, which still wins over this) — set to fix BPJS for
+  // everyone at this tempat kerja at once, same override semantics as
+  // Employee.bpjsKesehatanOverride/bpjsKetenagakerjaanOverride.
+  bpjsKesehatanOverride       Int?
+  bpjsKetenagakerjaanOverride Int?
   employees        Employee[]
   payrollRates     PayrollRate[]
   latenessBrackets LatenessBracket[]

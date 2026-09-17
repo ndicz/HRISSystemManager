@@ -59,6 +59,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
         overtimeDays: { where: { period } },
         assignments: { where: { period }, select: { cost: true, status: true, period: true } },
         attendance: { where: { date: { gte: periodStart, lte: periodEnd } }, select: { date: true, status: true, lateMin: true } },
+        site: { select: { bpjsKesehatanOverride: true, bpjsKetenagakerjaanOverride: true } },
       },
     }),
     db.payrollRate.findMany({ where: { period } }),
@@ -82,7 +83,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
     const rate = resolvePayrollRate(rates, period, emp.siteId);
     const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
     const assignments = resolveAssignments(emp.assignments, period);
-    const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets });
+    const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets, site: emp.site });
 
     const tx = await db.transaction.create({
       data: {
@@ -321,49 +322,38 @@ export async function removeOvertimeDay(id: string) {
 // Batched: each row is a different employee with its own amount, sharing
 // one desc/date — one Transaction + one AllowancePayment per row, so Kas
 // detail stays granular per person even though it's one submission.
-export async function payAllowanceBatch(rows: { employeeId: string; amount: number }[], desc: string | null, dateRaw: string) {
+// Bonus now folds straight into the monthly gaji run instead of paying out
+// as its own off-cycle Kas transaction — sets PayrollEntry.allowance for
+// each row, same field the "Lembur & Potongan" single-employee form
+// already writes, just batched across employees for one period at once.
+// Cairs together with everyone else's pay the next time "Bayar Gaji" runs
+// for that period, not immediately.
+export async function setBonusBatch(period: string, rows: { employeeId: string; amount: number }[]) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!rows || rows.length === 0) throw new Error("Tidak ada baris untuk dibayar.");
-  if (rows.some((r) => !r.employeeId || r.amount <= 0)) throw new Error("Setiap baris wajib punya karyawan dan jumlah > 0.");
-
-  const date = dateRaw ? new Date(dateRaw) : new Date();
-  const employees = await db.employee.findMany({ where: { id: { in: rows.map((r) => r.employeeId) } } });
-  const empById = new Map(employees.map((e) => [e.id, e]));
-  if (rows.some((r) => !empById.has(r.employeeId))) throw new Error("Salah satu karyawan tidak ditemukan.");
-
-  const account = await db.account.findFirst({ where: { code: "5010" } });
-  const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
-  if (!account || !cashAccount) throw new Error("Akun kas / COA Bonus-Insentif belum tersedia — jalankan ulang seed.");
+  if (!/^\d{4}-\d{2}$/.test(period)) throw new Error("Periode tidak valid.");
+  if (!rows || rows.length === 0) throw new Error("Tidak ada baris untuk disimpan.");
+  if (rows.some((r) => !r.employeeId || r.amount < 0)) throw new Error("Setiap baris wajib punya karyawan dan jumlah tidak boleh negatif.");
 
   await mapLimit(rows, 8, async (row) => {
-    const emp = empById.get(row.employeeId)!;
-    const tx = await db.transaction.create({
-      data: {
-        date,
-        accountCoaId: account.id,
-        cashAccountId: cashAccount.id,
-        desc: "Bonus/Insentif — " + emp.name + (desc ? " — " + desc : ""),
-        amount: row.amount,
-        type: "keluar",
-      },
-    });
-    await db.allowancePayment.create({
-      data: { employeeId: row.employeeId, date, amount: row.amount, desc, transactionId: tx.id, createdById: session.user.id },
+    await db.payrollEntry.upsert({
+      where: { employeeId_period: { employeeId: row.employeeId, period } },
+      update: { allowance: row.amount },
+      create: { employeeId: row.employeeId, period, allowance: row.amount },
     });
   });
 
   await db.auditLog.create({
     data: {
       userId: session.user.id,
-      action: "allowance.payBatch",
+      action: "payrollEntry.bonusBatch",
       entity: "Employee",
-      detail: JSON.stringify({ count: rows.length, total: rows.reduce((s, r) => s + r.amount, 0), desc }),
+      detail: JSON.stringify({ period, count: rows.length, total: rows.reduce((s, r) => s + r.amount, 0) }),
     },
   });
 
   revalidatePath("/penggajian");
-  revalidatePath("/kas");
+  revalidatePath("/print/slip");
 }
 
 type LatenessBracketRow = { minMinutes: number; maxMinutes: number | null; amount: number };
