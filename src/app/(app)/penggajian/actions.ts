@@ -6,6 +6,19 @@ import { revalidatePath } from "next/cache";
 import { computeThr, computeMonthlyPayroll, resolvePayrollRate, resolveOvertimeDays, resolveAssignments, payrollPeriodKey, payrollPeriodRange } from "@/lib/payroll";
 import { mapLimit } from "@/lib/concurrency";
 
+// Audit trail writes are best-effort — losing one to a transient DB hiccup
+// should never block, or silently half-complete, the actual mutation it's
+// describing (bayarGaji already writes the Transaction + PayrollEntry
+// before this runs; a crash here must not make a real payment look like it
+// failed). Every db.auditLog.create in this file goes through this.
+async function logAudit(args: Parameters<typeof db.auditLog.create>[0]) {
+  try {
+    await db.auditLog.create(args);
+  } catch (err) {
+    console.error("[audit] failed to record", args.data?.action, err);
+  }
+}
+
 export async function bayarThr(employeeId: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
@@ -31,7 +44,7 @@ export async function bayarThr(employeeId: string) {
   }
 
   await db.employee.update({ where: { id: employeeId }, data: { thrPaid: true } });
-  await db.auditLog.create({ data: { userId: session.user.id, action: "thr.pay", entity: "Employee", entityId: employeeId } });
+  await logAudit({ data: { userId: session.user.id, action: "thr.pay", entity: "Employee", entityId: employeeId } });
 
   revalidatePath("/penggajian");
   revalidatePath("/kas");
@@ -117,7 +130,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
     }
   });
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "payroll.pay", entity: "Employee", detail: JSON.stringify({ period, paid, skipped, total, failed }) },
   });
 
@@ -153,7 +166,7 @@ export async function savePayrollRate(formData: FormData) {
     await db.payrollRate.create({ data: { period, siteId, ...data } });
   }
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "payrollRate.save", entity: "PayrollRate", detail: JSON.stringify({ period, siteId, ...data }) },
   });
 
@@ -173,7 +186,7 @@ export async function deletePayrollRate(period: string, siteId: string | null) {
 
   await db.payrollRate.delete({ where: { id: existing.id } });
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "payrollRate.delete", entity: "PayrollRate", detail: JSON.stringify({ period, siteId }) },
   });
 
@@ -212,7 +225,7 @@ export async function savePayrollEntry(formData: FormData) {
     create: { employeeId, period, ...data },
   });
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "payrollEntry.save", entity: "Employee", entityId: employeeId, detail: JSON.stringify({ period }) },
   });
 
@@ -249,7 +262,7 @@ export async function updatePayrollAmounts(
     create: { employeeId, period, ...data },
   });
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "payrollEntry.amounts", entity: "Employee", entityId: employeeId, detail: JSON.stringify({ period, ...data }) },
   });
 
@@ -273,7 +286,7 @@ export async function updateBpjsOverride(employeeId: string, bpjsKesehatan: numb
     },
   });
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "employee.update", entity: "Employee", entityId: employeeId, detail: JSON.stringify({ bpjsKesehatan, bpjsKetenagakerjaan }) },
   });
 
@@ -301,7 +314,7 @@ export async function addOvertimeDay(formData: FormData) {
 
   await db.overtimeDay.create({ data: { employeeId, period, date, type, note } });
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "overtimeDay.add", entity: "Employee", entityId: employeeId, detail: JSON.stringify({ date: dateRaw, type }) },
   });
 
@@ -318,7 +331,7 @@ export async function removeOvertimeDay(id: string) {
 
   await db.overtimeDay.delete({ where: { id } });
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "overtimeDay.remove", entity: "Employee", entityId: day.employeeId, detail: JSON.stringify({ date: day.date, type: day.type }) },
   });
 
@@ -354,7 +367,7 @@ export async function setBonusBatch(period: string, rows: { employeeId: string; 
     });
   });
 
-  await db.auditLog.create({
+  await logAudit({
     data: {
       userId: session.user.id,
       action: "payrollEntry.bonusBatch",
@@ -399,7 +412,7 @@ export async function saveLatenessBrackets(
       : []),
   ]);
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "latenessBracket.save", entity: "LatenessBracket", detail: JSON.stringify({ scope, refId, rows: rows.length }) },
   });
 
@@ -419,7 +432,7 @@ export async function deleteLatenessBrackets(scope: "global" | "site" | "positio
     },
   });
 
-  await db.auditLog.create({
+  await logAudit({
     data: { userId: session.user.id, action: "latenessBracket.delete", entity: "LatenessBracket", detail: JSON.stringify({ scope, refId }) },
   });
 
