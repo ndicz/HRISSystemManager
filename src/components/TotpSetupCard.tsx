@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { startTotpSetup, confirmTotpSetup, disableTotp } from "@/app/(app)/audit/actions";
+import { formatActionError } from "@/lib/errors";
 
 export function TotpSetupCard({ initialEnabled }: { initialEnabled: boolean }) {
   const [enabled, setEnabled] = useState(initialEnabled);
@@ -27,7 +28,7 @@ export function TotpSetupCard({ initialEnabled }: { initialEnabled: boolean }) {
         setSetup(null);
         setCode("");
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }

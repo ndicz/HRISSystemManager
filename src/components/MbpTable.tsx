@@ -8,6 +8,7 @@ import { mbpTotal } from "@/lib/finance";
 import { BASE_PATH } from "@/lib/basePath";
 import { EditMbpDialog } from "@/components/EditMbpDialog";
 import type { ClientOption } from "@/components/ClientCombobox";
+import { formatActionError } from "@/lib/errors";
 
 type PendingRequest = { id: string; itemName: string; unit: string; qty: number; cost: number; requesterName: string };
 
@@ -68,7 +69,7 @@ function RowActions({ mbp, clients, siteNames, pendingRequests, onChanged }: { m
         router.refresh();
         onChanged?.();
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }

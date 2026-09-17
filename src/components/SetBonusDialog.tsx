@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setBonusBatch } from "@/app/(app)/penggajian/actions";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
+import { formatActionError } from "@/lib/errors";
 
 type Row = { key: number; employeeId: string; amount: string };
 let nextKey = 1;
@@ -54,7 +55,7 @@ export function SetBonusDialog({
       setOpen(false);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

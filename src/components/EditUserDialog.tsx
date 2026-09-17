@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateUser, resetUserPassword, resetUserTotp, deleteUser } from "@/app/(app)/pengguna/actions";
 import type { NavItem } from "@/lib/rbac";
+import { formatActionError } from "@/lib/errors";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",
@@ -63,7 +64,7 @@ export function EditUserDialog({
       await resetUserTotp(formData);
       setTotpEnabled(false);
     } catch (err) {
-      setTotpError(err instanceof Error ? err.message : String(err));
+      setTotpError(formatActionError(err));
     } finally {
       setTotpPending(false);
     }
@@ -76,7 +77,7 @@ export function EditUserDialog({
       await updateUser(formData);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -89,7 +90,7 @@ export function EditUserDialog({
       await resetUserPassword(formData);
       setPwOpen(false);
     } catch (err) {
-      setPwError(err instanceof Error ? err.message : String(err));
+      setPwError(formatActionError(err));
     } finally {
       setPwPending(false);
     }
@@ -105,7 +106,7 @@ export function EditUserDialog({
       await deleteUser(formData);
       setOpen(false);
     } catch (err) {
-      setDelError(err instanceof Error ? err.message : String(err));
+      setDelError(formatActionError(err));
     } finally {
       setDelPending(false);
     }

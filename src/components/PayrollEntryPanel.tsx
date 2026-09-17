@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { PayrollEntry, OvertimeDay } from "@prisma/client";
 import { savePayrollEntry, addOvertimeDay, removeOvertimeDay } from "@/app/(app)/penggajian/actions";
+import { formatActionError } from "@/lib/errors";
 
 function todayInputValue() {
   const d = new Date();
@@ -58,7 +59,7 @@ export function PayrollEntryPanel({
         await addOvertimeDay(fd);
         router.refresh();
       } catch (err) {
-        setDayError(err instanceof Error ? err.message : String(err));
+        setDayError(formatActionError(err));
       }
     });
   }
@@ -70,7 +71,7 @@ export function PayrollEntryPanel({
         await removeOvertimeDay(id);
         router.refresh();
       } catch (err) {
-        setDayError(err instanceof Error ? err.message : String(err));
+        setDayError(formatActionError(err));
       }
     });
   }

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { advanceInvoiceStatus, deleteInvoice, cancelInvoice } from "@/app/(app)/klien/actions";
+import { formatActionError } from "@/lib/errors";
 
 const LABEL: Record<string, string> = { draft: "Kirim tagihan", terkirim: "Tandai lunas", lunas: "Lunas", dibatalkan: "Dibatalkan" };
 
@@ -18,7 +19,7 @@ export function InvoiceActions({ id, status, invoiceNo }: { id: string; status: 
       try {
         await deleteInvoice(id);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }
@@ -30,7 +31,7 @@ export function InvoiceActions({ id, status, invoiceNo }: { id: string; status: 
       try {
         await cancelInvoice(id);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }

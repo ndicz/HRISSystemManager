@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { decideMbpRequest } from "@/app/(app)/mbp/actions";
 import { formatRp } from "@/lib/payroll";
+import { formatActionError } from "@/lib/errors";
 
 type RequestRow = {
   id: string;
@@ -44,7 +45,7 @@ function RejectButton({ id, onChanged }: { id: string; onChanged?: () => void })
         router.refresh();
         onChanged?.();
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }

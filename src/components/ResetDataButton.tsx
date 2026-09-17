@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { resetAllData } from "@/app/(app)/audit/actions";
+import { formatActionError } from "@/lib/errors";
 
 const CONFIRM_PHRASE = "HAPUS SEMUA DATA";
 
@@ -25,7 +26,7 @@ export function ResetDataButton() {
         await resetAllData(confirmText);
         setDone(true);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateEmployeeProfile, fetchCertificates, addCertificate, removeCertificate } from "@/app/(app)/karyawan/actions";
+import { formatActionError } from "@/lib/errors";
 
 type Emp = {
   id: string;
@@ -74,7 +75,7 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
         setCertFrom("");
         setCertUntil("");
       } catch (err) {
-        setCertError(err instanceof Error ? err.message : String(err));
+        setCertError(formatActionError(err));
       }
     });
   }
@@ -86,7 +87,7 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
         const data = await removeCertificate(certificateId);
         setCerts(data);
       } catch (err) {
-        setCertError(err instanceof Error ? err.message : String(err));
+        setCertError(formatActionError(err));
       }
     });
   }

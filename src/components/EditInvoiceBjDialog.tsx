@@ -5,6 +5,7 @@ import type { InvoiceBj, InvoiceBjItem } from "@prisma/client";
 import { updateInvoiceBj } from "@/app/(app)/klien/actions";
 import { InvoiceBjFormFields } from "@/components/InvoiceBjFormFields";
 import type { ClientOption } from "@/components/ClientCombobox";
+import { formatActionError } from "@/lib/errors";
 
 type InvoiceRow = InvoiceBj & { items: InvoiceBjItem[] };
 
@@ -21,7 +22,7 @@ export function EditInvoiceBjDialog({ invoice, clients, siteNames }: { invoice: 
       await updateInvoiceBj(invoice.id, formData);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

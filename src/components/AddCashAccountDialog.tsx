@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { createCashAccount } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
+import { formatActionError } from "@/lib/errors";
 
 export function AddCashAccountDialog() {
   const [open, setOpen] = useState(false);
@@ -18,7 +19,7 @@ export function AddCashAccountDialog() {
       setOpen(false);
       formRef.current?.reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }

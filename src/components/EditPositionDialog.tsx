@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { updatePosition, deletePosition } from "@/app/(app)/karyawan/actions";
+import { formatActionError } from "@/lib/errors";
 
 type Position = { id: string; name: string; salaryType: string; baseSalary: number };
 
@@ -21,7 +22,7 @@ export function EditPositionDialog({ position }: { position: Position }) {
       await updatePosition(formData);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -33,7 +34,7 @@ export function EditPositionDialog({ position }: { position: Position }) {
     setDelPending(true);
     deletePosition(position.id)
       .then(() => setOpen(false))
-      .catch((err) => setDelError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setDelError(formatActionError(err)))
       .finally(() => setDelPending(false));
   }
 

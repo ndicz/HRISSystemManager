@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { bayarGaji } from "@/app/(app)/penggajian/actions";
 import { formatRp } from "@/lib/payroll";
+import { formatActionError } from "@/lib/errors";
 
 export function PayGajiButton({
   employeeIds,
@@ -30,7 +31,7 @@ export function PayGajiButton({
         setResult(res);
         onPaid?.();
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(formatActionError(err));
       }
     });
   }
