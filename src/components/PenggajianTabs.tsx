@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { AttendanceRecord, Employee, Site, Position, SalaryComponent, PayrollRate, PayrollEntry, OvertimeDay, Assignment } from "@prisma/client";
-import { bestPayrollPeriod, computeMonthlyPayroll, computeThr, formatRp, payrollPeriodKey, payrollPeriodOptions, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments, type LatenessBracketLike } from "@/lib/payroll";
+import { bestPayrollPeriod, computeMonthlyPayroll, computeThr, formatRp, payrollAttendanceTally, payrollPeriodKey, payrollPeriodOptions, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments, type LatenessBracketLike } from "@/lib/payroll";
 import { buildBcaTransferSheet } from "@/lib/bankTransfer";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 import { ThrButton } from "@/components/ThrButton";
@@ -63,7 +63,18 @@ export function PenggajianTabs({
   // one, every row falls back to the legacy proportional calculation.
   const periodHasRate = rates.some((r) => r.period === period);
 
-  const payrollRows = filteredEmployees.map((e) => {
+  // Without this gate, an employee with zero attendance records for the
+  // selected period still showed a full month's pay (computeMonthlyPayroll
+  // falls back to the full gaji pokok with no potongan when workDays is 0
+  // — correct for "worked the whole month with nothing to deduct", but
+  // wrong for "absensi belum diupload"). Only list someone here once
+  // there's actual attendance for this period, or payroll already has an
+  // entry for them (a manual override/bonus/payment already recorded).
+  const periodEmployees = filteredEmployees.filter(
+    (e) => payrollAttendanceTally(e.attendance, period).workDays > 0 || e.payrollEntries.some((pe) => pe.period === period),
+  );
+
+  const payrollRows = periodEmployees.map((e) => {
     const rate = resolvePayrollRate(rates, period, e.siteId);
     const entry = resolvePayrollEntry(e.payrollEntries, period);
     const overtimeDays = resolveOvertimeDays(e.overtimeDays, period);
@@ -186,10 +197,10 @@ export function PenggajianTabs({
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  disabled={filteredEmployees.length === 0}
-                  onClick={() => window.open(`/print/slip-batch?ids=${filteredEmployees.map((e) => e.id).join(",")}&period=${period}`, "_blank")}
+                  disabled={periodEmployees.length === 0}
+                  onClick={() => window.open(`${BASE_PATH}/print/slip-batch?ids=${periodEmployees.map((e) => e.id).join(",")}&period=${period}`, "_blank")}
                 >
-                  Cetak slip ({filteredEmployees.length})
+                  Cetak slip ({periodEmployees.length})
                 </button>
                 <button type="button" className="btn btn-secondary" disabled={bankReadyRows.length === 0} onClick={downloadBankTransfer}>
                   Transfer bank
@@ -225,7 +236,7 @@ export function PenggajianTabs({
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => window.open(`/print/slip-batch?ids=${selectedRows.map((r) => r.e.id).join(",")}&period=${period}`, "_blank")}
+                    onClick={() => window.open(`${BASE_PATH}/print/slip-batch?ids=${selectedRows.map((r) => r.e.id).join(",")}&period=${period}`, "_blank")}
                   >
                     Cetak Slip Terpilih
                   </button>
@@ -266,7 +277,15 @@ export function PenggajianTabs({
             <div className="card"><div className="card-kicker">Total dibayar</div><div className="card-title" style={{ fontSize: 20 }}>{formatRp(totals.total)}</div></div>
           </div>
           <div className="card">
-            {payrollRows.length === 0 ? <p style={{ fontSize: 13, opacity: 0.6 }}>{employees.length === 0 ? "Belum ada karyawan." : "Tidak ada hasil."}</p> : (
+            {payrollRows.length === 0 ? (
+              <p style={{ fontSize: 13, opacity: 0.6 }}>
+                {employees.length === 0
+                  ? "Belum ada karyawan."
+                  : filteredEmployees.length === 0
+                  ? "Tidak ada hasil."
+                  : "Belum ada data absensi untuk periode ini."}
+              </p>
+            ) : (
               <table className="table">
                 <thead>
                   <tr>
