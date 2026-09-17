@@ -55,22 +55,24 @@ model AuditLog {
 // ── Org structure ──────────────────────────────────────────────────────
 
 model Site {
-  id           String        @id @default(cuid())
-  name         String
-  address      String
-  supervisor   String
-  umr          Int           @default(0)
-  employees    Employee[]
-  payrollRates PayrollRate[]
-  createdAt    DateTime      @default(now())
+  id               String            @id @default(cuid())
+  name             String
+  address          String
+  supervisor       String
+  umr              Int               @default(0)
+  employees        Employee[]
+  payrollRates     PayrollRate[]
+  latenessBrackets LatenessBracket[]
+  createdAt        DateTime          @default(now())
 }
 
 model Position {
-  id         String     @id @default(cuid())
-  name       String     @unique
-  salaryType String // "bulanan" | "harian"
-  baseSalary Int
-  employees  Employee[]
+  id               String            @id @default(cuid())
+  name             String            @unique
+  salaryType       String // "bulanan" | "harian"
+  baseSalary       Int
+  employees        Employee[]
+  latenessBrackets LatenessBracket[]
 }
 
 model Client {
@@ -144,6 +146,7 @@ model Employee {
   payrollEntries    PayrollEntry[]
   allowancePayments AllowancePayment[]
   overtimeDays      OvertimeDay[]
+  latenessBrackets  LatenessBracket[]
   user              User?
 
   resignDate   DateTime?
@@ -196,6 +199,33 @@ model PayrollRate {
 
   @@unique([period, siteId])
   @@index([period])
+}
+
+// One row of a lateness-deduction table: lateMin in [minMinutes, maxMinutes]
+// (maxMinutes null = no upper bound) deducts amount Rp for that one late
+// occurrence. Not period-scoped — this is a standing policy, not something
+// reset every payroll run. scope narrows which employees a given table of
+// rows applies to; resolveLatenessAmount in lib/payroll.ts picks the most
+// specific table for a given employee (theirs, then their jabatan's, then
+// their tempat kerja's, then the global default) rather than merging rows
+// across scopes.
+model LatenessBracket {
+  id         String    @id @default(cuid())
+  scope      String // "global" | "site" | "position" | "employee"
+  siteId     String?
+  site       Site?     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  positionId String?
+  position   Position? @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  minMinutes Int
+  maxMinutes Int?
+  amount     Int
+  createdAt  DateTime  @default(now())
+
+  @@index([scope, siteId])
+  @@index([scope, positionId])
+  @@index([scope, employeeId])
 }
 
 // Manually-entered per-employee-per-period overtime counts + allowance —

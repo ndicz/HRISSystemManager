@@ -1,15 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { bestAttendanceMonth, computeMonthlyPayroll, formatRp, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments } from "@/lib/payroll";
-import { monthKey } from "@/lib/finance";
+import { bestPayrollPeriod, computeMonthlyPayroll, formatRp, payrollPeriodKey, payrollPeriodLabel, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments } from "@/lib/payroll";
 import { PrintDocument } from "@/components/print/PrintDocument";
-
-const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-
-function periodLabel(period: string) {
-  const [year, month] = period.split("-").map(Number);
-  return `${MONTH_NAMES[(month ?? 1) - 1]} ${year}`;
-}
 
 export default async function SlipPrintPage({
   params,
@@ -20,7 +12,7 @@ export default async function SlipPrintPage({
 }) {
   const { employeeId } = await params;
   const { period: periodParam } = await searchParams;
-  const [emp, payrollRates] = await Promise.all([
+  const [emp, payrollRates, latenessBrackets] = await Promise.all([
     db.employee.findUnique({
       where: { id: employeeId },
       include: {
@@ -30,18 +22,19 @@ export default async function SlipPrintPage({
       },
     }),
     db.payrollRate.findMany(),
+    db.latenessBracket.findMany(),
   ]);
   if (!emp) notFound();
 
   const period = periodParam && /^\d{4}-\d{2}$/.test(periodParam)
     ? periodParam
-    : bestAttendanceMonth(emp.attendance) ?? monthKey(new Date());
+    : bestPayrollPeriod(emp.attendance) ?? payrollPeriodKey(new Date());
   const rate = resolvePayrollRate(payrollRates, period, emp.siteId);
   const entry = resolvePayrollEntry(emp.payrollEntries, period);
   const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
   const assignments = resolveAssignments(emp.assignments, period);
-  const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry, overtimeDays, assignments });
-  const periode = periodLabel(period);
+  const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets });
+  const periode = payrollPeriodLabel(period);
 
   return (
     <PrintDocument

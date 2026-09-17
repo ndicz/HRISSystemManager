@@ -3,8 +3,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
-import { computeThr, computeMonthlyPayroll, resolvePayrollRate, resolveOvertimeDays, resolveAssignments } from "@/lib/payroll";
-import { monthKey } from "@/lib/finance";
+import { computeThr, computeMonthlyPayroll, resolvePayrollRate, resolveOvertimeDays, resolveAssignments, payrollPeriodKey, payrollPeriodRange } from "@/lib/payroll";
 import { mapLimit } from "@/lib/concurrency";
 
 export async function bayarThr(employeeId: string) {
@@ -49,11 +48,9 @@ export async function bayarGaji(employeeIds: string[], period: string) {
   if (!employeeIds || employeeIds.length === 0) throw new Error("Tidak ada karyawan untuk dibayar.");
   if (!/^\d{4}-\d{2}$/.test(period)) throw new Error("Periode tidak valid.");
 
-  const [y, m] = period.split("-").map(Number);
-  const monthStart = new Date(y, m - 1, 1);
-  const monthEnd = new Date(y, m, 1);
+  const { start: periodStart, end: periodEnd } = payrollPeriodRange(period);
 
-  const [employees, rates, account, cashAccount] = await Promise.all([
+  const [employees, rates, brackets, account, cashAccount] = await Promise.all([
     db.employee.findMany({
       where: { id: { in: employeeIds } },
       include: {
@@ -61,10 +58,11 @@ export async function bayarGaji(employeeIds: string[], period: string) {
         payrollEntries: { where: { period } },
         overtimeDays: { where: { period } },
         assignments: { where: { period }, select: { cost: true, status: true, period: true } },
-        attendance: { where: { date: { gte: monthStart, lt: monthEnd } }, select: { date: true, status: true, lateMin: true } },
+        attendance: { where: { date: { gte: periodStart, lte: periodEnd } }, select: { date: true, status: true, lateMin: true } },
       },
     }),
     db.payrollRate.findMany({ where: { period } }),
+    db.latenessBracket.findMany(),
     db.account.findFirst({ where: { code: "5001" } }),
     db.cashAccount.findFirst({ where: { kind: "besar" } }),
   ]);
@@ -84,7 +82,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
     const rate = resolvePayrollRate(rates, period, emp.siteId);
     const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
     const assignments = resolveAssignments(emp.assignments, period);
-    const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments });
+    const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets });
 
     const tx = await db.transaction.create({
       data: {
@@ -287,7 +285,7 @@ export async function addOvertimeDay(formData: FormData) {
 
   const date = new Date(dateRaw);
   if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
-  const period = monthKey(date);
+  const period = payrollPeriodKey(date);
 
   await db.overtimeDay.create({ data: { employeeId, period, date, type, note } });
 
@@ -366,4 +364,63 @@ export async function payAllowanceBatch(rows: { employeeId: string; amount: numb
 
   revalidatePath("/penggajian");
   revalidatePath("/kas");
+}
+
+type LatenessBracketRow = { minMinutes: number; maxMinutes: number | null; amount: number };
+
+// Replaces the whole bracket table for one scope target at once (delete +
+// recreate), same "whole list is the unit of change" pattern as MBP items —
+// simpler than diffing individual row edits, and this table is short by
+// nature (a handful of minute ranges).
+export async function saveLatenessBrackets(
+  scope: "global" | "site" | "position" | "employee",
+  refId: string | null,
+  rows: LatenessBracketRow[],
+) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+  if (scope !== "global" && !refId) throw new Error("Target cakupan wajib dipilih.");
+  if (rows.some((r) => r.minMinutes < 0 || r.amount < 0 || (r.maxMinutes !== null && r.maxMinutes < r.minMinutes))) {
+    throw new Error("Rentang menit atau nominal tidak valid.");
+  }
+
+  const where = {
+    scope,
+    siteId: scope === "site" ? refId : null,
+    positionId: scope === "position" ? refId : null,
+    employeeId: scope === "employee" ? refId : null,
+  };
+
+  await db.$transaction([
+    db.latenessBracket.deleteMany({ where }),
+    ...(rows.length > 0
+      ? [db.latenessBracket.createMany({ data: rows.map((r) => ({ ...where, minMinutes: r.minMinutes, maxMinutes: r.maxMinutes, amount: r.amount })) })]
+      : []),
+  ]);
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "latenessBracket.save", entity: "LatenessBracket", detail: JSON.stringify({ scope, refId, rows: rows.length }) },
+  });
+
+  revalidatePath("/penggajian");
+}
+
+export async function deleteLatenessBrackets(scope: "global" | "site" | "position" | "employee", refId: string | null) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  await db.latenessBracket.deleteMany({
+    where: {
+      scope,
+      siteId: scope === "site" ? refId : null,
+      positionId: scope === "position" ? refId : null,
+      employeeId: scope === "employee" ? refId : null,
+    },
+  });
+
+  await db.auditLog.create({
+    data: { userId: session.user.id, action: "latenessBracket.delete", entity: "LatenessBracket", detail: JSON.stringify({ scope, refId }) },
+  });
+
+  revalidatePath("/penggajian");
 }
