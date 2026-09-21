@@ -45,30 +45,22 @@ export function PayrollDetailDialog({
   const [tab, setTab] = useState<Tab>("ringkasan");
   const [bpjsKes, setBpjsKes] = useState(bpjsKesehatanOverride ?? 0);
   const [bpjsTk, setBpjsTk] = useState(bpjsKetenagakerjaanOverride ?? 0);
-  const [bpjsPending, setBpjsPending] = useState(false);
-  const [bpjsError, setBpjsError] = useState("");
-  const [bpjsSaved, setBpjsSaved] = useState(false);
 
-  function saveBpjs() {
-    setBpjsError("");
-    setBpjsPending(true);
-    setBpjsSaved(false);
-    updateBpjsOverride(employeeId, bpjsKes > 0 ? bpjsKes : null, bpjsTk > 0 ? bpjsTk : null)
-      .then(() => {
-        setBpjsSaved(true);
-        router.refresh();
-      })
-      .catch((err) => setBpjsError(formatActionError(err)))
-      .finally(() => setBpjsPending(false));
-  }
+  // Once "Bayar gaji" has been clicked, nothing here should still be
+  // editable — the payment already went out for whatever these numbers
+  // were at that moment, so changing them afterward would just make the
+  // screen lie about what was actually paid.
+  const locked = entry?.paid ?? false;
 
-  // Direct inline edits for the four amounts that had no override anywhere
-  // else (gaji pokok, potongan absensi, penugasan tambahan, kasbon) — same
-  // null-means-auto convention as BPJS above, but saved separately since
-  // this form's fields don't overlap with either the BPJS box or the
-  // "Lembur & Potongan" tab's own overrides. 0 doubles as "no override" the
-  // same way RupiahInput itself treats a blank field as 0.
-  const [gajiPokok, setGajiPokok] = useState(entry?.gajiPokokOverride ?? 0);
+  // Direct inline edits for the amounts that had no override anywhere else
+  // (potongan absensi, penugasan tambahan, kasbon, dua BPJS) — 0 doubles as
+  // "no override" the same way RupiahInput itself treats a blank field as
+  // 0. BPJS used to be its own separate box with its own save button below
+  // this table; folded in here so editing any of these is one field + one
+  // "Simpan jumlah" click, not two different save actions in two different
+  // places for the same table. Gaji pokok itself is deliberately NOT
+  // editable here — it's the one number people are least likely to mean to
+  // touch, so there's no input for it to be accidentally changed through.
   const [potonganAbsensi, setPotonganAbsensi] = useState(entry?.potonganAbsensiOverride ?? 0);
   const [penugasanTambahan, setPenugasanTambahan] = useState(entry?.penugasanTambahanOverride ?? 0);
   const [kasbon, setKasbon] = useState(entry?.kasbonOverride ?? 0);
@@ -80,22 +72,27 @@ export function PayrollDetailDialog({
     return v > 0 ? v : null;
   }
 
-  function saveAmounts() {
+  async function saveAmounts() {
     setAmountsError("");
     setAmountsPending(true);
     setAmountsSaved(false);
-    updatePayrollAmounts(employeeId, period, {
-      gajiPokokOverride: toOverride(gajiPokok),
-      potonganAbsensiOverride: toOverride(potonganAbsensi),
-      penugasanTambahanOverride: toOverride(penugasanTambahan),
-      kasbonOverride: toOverride(kasbon),
-    })
-      .then(() => {
-        setAmountsSaved(true);
-        router.refresh();
-      })
-      .catch((err) => setAmountsError(formatActionError(err)))
-      .finally(() => setAmountsPending(false));
+    try {
+      await Promise.all([
+        updatePayrollAmounts(employeeId, period, {
+          gajiPokokOverride: entry?.gajiPokokOverride ?? null,
+          potonganAbsensiOverride: toOverride(potonganAbsensi),
+          penugasanTambahanOverride: toOverride(penugasanTambahan),
+          kasbonOverride: toOverride(kasbon),
+        }),
+        updateBpjsOverride(employeeId, toOverride(bpjsKes), toOverride(bpjsTk)),
+      ]);
+      setAmountsSaved(true);
+      router.refresh();
+    } catch (err) {
+      setAmountsError(formatActionError(err));
+    } finally {
+      setAmountsPending(false);
+    }
   }
 
   function close() {
@@ -105,14 +102,15 @@ export function PayrollDetailDialog({
 
   type Row = { key: string; label: string; amount: number; editable?: { value: number; onChange: (v: number) => void } };
 
-  const gajiPokokEdit = { value: gajiPokok, onChange: (v: number) => { setGajiPokok(v); setAmountsSaved(false); } };
-  const potonganAbsensiEdit = { value: potonganAbsensi, onChange: (v: number) => { setPotonganAbsensi(v); setAmountsSaved(false); } };
-  const penugasanTambahanEdit = { value: penugasanTambahan, onChange: (v: number) => { setPenugasanTambahan(v); setAmountsSaved(false); } };
-  const kasbonEdit = { value: kasbon, onChange: (v: number) => { setKasbon(v); setAmountsSaved(false); } };
+  const potonganAbsensiEdit = locked ? undefined : { value: potonganAbsensi, onChange: (v: number) => { setPotonganAbsensi(v); setAmountsSaved(false); } };
+  const penugasanTambahanEdit = locked ? undefined : { value: penugasanTambahan, onChange: (v: number) => { setPenugasanTambahan(v); setAmountsSaved(false); } };
+  const kasbonEdit = locked ? undefined : { value: kasbon, onChange: (v: number) => { setKasbon(v); setAmountsSaved(false); } };
+  const bpjsKesEdit = locked ? undefined : { value: bpjsKes, onChange: (v: number) => { setBpjsKes(v); setAmountsSaved(false); } };
+  const bpjsTkEdit = locked ? undefined : { value: bpjsTk, onChange: (v: number) => { setBpjsTk(v); setAmountsSaved(false); } };
 
   const rows: Row[] = p.usesFlatRate
     ? [
-        { key: "gajiPokok", label: "Gaji pokok", amount: p.gajiPokok, editable: gajiPokokEdit },
+        { key: "gajiPokok", label: "Gaji pokok", amount: p.gajiPokok },
         { key: "izin", label: "Potongan izin", amount: -p.potonganIzin },
         { key: "alfa", label: "Potongan alfa", amount: -p.potonganAlpha },
         { key: "terlambat", label: "Potongan terlambat", amount: -p.potonganTerlambat },
@@ -121,15 +119,15 @@ export function PayrollDetailDialog({
         { key: "allowance", label: "Bonus", amount: p.allowance },
       ]
     : [
-        { key: "gajiPokok", label: "Gaji pokok", amount: p.gajiPokok, editable: gajiPokokEdit },
+        { key: "gajiPokok", label: "Gaji pokok", amount: p.gajiPokok },
         { key: "potonganAbsensi", label: "Potongan absensi", amount: -p.potonganAbsensi, editable: potonganAbsensiEdit },
         { key: "lembur", label: "Lembur", amount: p.lembur },
         { key: "allowance", label: "Bonus", amount: p.allowance },
       ];
   rows.push(
     { key: "penugasan", label: "Penugasan tambahan", amount: p.penugasanTambahan, editable: penugasanTambahanEdit },
-    { key: "bpjsKes", label: "Potongan BPJS Kesehatan", amount: -p.bpjsKesehatan },
-    { key: "bpjsTk", label: "Potongan BPJS Ketenagakerjaan", amount: -p.bpjsKetenagakerjaan },
+    { key: "bpjsKes", label: "Potongan BPJS Kesehatan", amount: -p.bpjsKesehatan, editable: bpjsKesEdit },
+    { key: "bpjsTk", label: "Potongan BPJS Ketenagakerjaan", amount: -p.bpjsKetenagakerjaan, editable: bpjsTkEdit },
     { key: "kasbon", label: "Potongan kasbon", amount: -p.kasbonBulanIni, editable: kasbonEdit },
   );
 
@@ -152,7 +150,11 @@ export function PayrollDetailDialog({
             <div className="dialog-body" style={{ maxHeight: "62vh", overflowY: "auto" }}>
               {tab === "ringkasan" && (
                 <>
-                  <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-2)" }}>Kolom yang bisa diedit: kosongkan = pakai jumlah otomatis (ditampilkan sebagai placeholder).</p>
+                  <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-2)" }}>
+                    {locked
+                      ? "Gaji ini sudah dibayar — komponennya tidak bisa diubah lagi."
+                      : "Kolom yang bisa diedit: kosongkan = pakai jumlah otomatis (ditampilkan sebagai placeholder). Gaji pokok tidak bisa diubah di sini."}
+                  </p>
                   <table className="table table-nested" style={{ marginBottom: "var(--space-2)" }}>
                     <thead><tr><th>Komponen</th><th>Jumlah</th></tr></thead>
                     <tbody>
@@ -175,37 +177,20 @@ export function PayrollDetailDialog({
                       <tr style={{ fontWeight: 700 }}><td>Total diterima</td><td>{formatRp(p.total)}</td></tr>
                     </tbody>
                   </table>
-                  <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
-                    {amountsError && <span style={{ fontSize: 12, color: "var(--color-danger)" }}>{amountsError}</span>}
-                    {amountsSaved && !amountsPending && <span style={{ fontSize: 12, color: "var(--color-accent)" }}>Tersimpan.</span>}
-                    <button type="button" className="btn btn-secondary" disabled={amountsPending} onClick={saveAmounts}>
-                      {amountsPending ? "Menyimpan…" : "Simpan jumlah"}
-                    </button>
-                  </div>
-
-                  <div style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)" }}>
-                    <div className="card-kicker" style={{ marginBottom: "var(--space-2)" }}>Potongan BPJS (kosongkan = pakai rumus otomatis)</div>
-                    <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "var(--space-3)", alignItems: "end" }}>
-                      <div className="field" style={{ marginBottom: 0 }}>
-                        <label htmlFor="detail-bpjs-kes">BPJS Kesehatan (Rp)</label>
-                        <RupiahInput id="detail-bpjs-kes" name="bpjsKes" defaultValue={bpjsKes} placeholder="Otomatis" onValueChange={(v) => { setBpjsKes(v); setBpjsSaved(false); }} />
-                      </div>
-                      <div className="field" style={{ marginBottom: 0 }}>
-                        <label htmlFor="detail-bpjs-tk">BPJS Ketenagakerjaan (Rp)</label>
-                        <RupiahInput id="detail-bpjs-tk" name="bpjsTk" defaultValue={bpjsTk} placeholder="Otomatis" onValueChange={(v) => { setBpjsTk(v); setBpjsSaved(false); }} />
-                      </div>
-                      <button type="button" className="btn btn-secondary" disabled={bpjsPending} onClick={saveBpjs}>
-                        {bpjsPending ? "Menyimpan…" : "Simpan"}
+                  {!locked && (
+                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
+                      {amountsError && <span style={{ fontSize: 12, color: "var(--color-danger)" }}>{amountsError}</span>}
+                      {amountsSaved && !amountsPending && <span style={{ fontSize: 12, color: "var(--color-accent)" }}>Tersimpan.</span>}
+                      <button type="button" className="btn btn-secondary" disabled={amountsPending} onClick={saveAmounts}>
+                        {amountsPending ? "Menyimpan…" : "Simpan jumlah"}
                       </button>
                     </div>
-                    {bpjsError && <p style={{ fontSize: 13, color: "var(--color-danger)", marginTop: 8, marginBottom: 0 }}>{bpjsError}</p>}
-                    {bpjsSaved && !bpjsPending && <p style={{ fontSize: 12, color: "var(--color-accent)", marginTop: 8, marginBottom: 0 }}>Tersimpan.</p>}
-                  </div>
+                  )}
                 </>
               )}
 
               {tab === "lembur" && (
-                <PayrollEntryPanel employeeId={employeeId} period={period} entry={entry} overtimeDays={overtimeDays} />
+                <PayrollEntryPanel employeeId={employeeId} period={period} entry={entry} overtimeDays={overtimeDays} locked={locked} />
               )}
 
               {tab === "absensi" && (
