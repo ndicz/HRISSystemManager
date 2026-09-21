@@ -6,6 +6,20 @@ export function formatRp(n: number) {
   return (r < 0 ? "-Rp" : "Rp") + Math.abs(r).toLocaleString("id-ID");
 }
 
+// An override of exactly 0 rupiah is, in practice, always leftover data
+// (an old bulk import, or someone once saving a blank field) rather than a
+// real "deduct nothing" decision — BPJS isn't optional, so nobody actually
+// means to zero it out on purpose. RupiahInput itself already treats 0 the
+// same as unset everywhere it's used (shows blank, not "0"), so there is no
+// way to even tell 0 and "no override" apart in the UI — meaning a stray 0
+// here is invisible and permanently outranks site/posisi/formula through
+// plain `??`, which only skips null/undefined. Routing every BPJS override
+// through this first keeps the resolution chain consistent with what the
+// UI already shows.
+function orAuto(v: number | null | undefined): number | null {
+  return v ? v : null;
+}
+
 export function baseSalary(components: SalaryComponent[]): number {
   return components.reduce((sum, c) => sum + c.amount, 0);
 }
@@ -31,10 +45,11 @@ export function computePayroll(
   const potonganAbsensi = base - effective;
   const lemburRate = Math.round(base / 173 * 1.5);
   const lembur = emp.overtimeHours * lemburRate;
-  // null override = use the standard formula; a set override lets HR correct
-  // cases where the formula doesn't match what's actually being deducted.
-  const bpjsKesehatan = emp.bpjsKesehatanOverride ?? computeBpjsKesehatan(base).karyawan;
-  const bpjsKetenagakerjaan = emp.bpjsKetenagakerjaanOverride ?? computeBpjsKetenagakerjaanKaryawan(base);
+  // null/0 override = use the standard formula; a set override lets HR
+  // correct cases where the formula doesn't match what's actually being
+  // deducted.
+  const bpjsKesehatan = orAuto(emp.bpjsKesehatanOverride) ?? computeBpjsKesehatan(base).karyawan;
+  const bpjsKetenagakerjaan = orAuto(emp.bpjsKetenagakerjaanOverride) ?? computeBpjsKetenagakerjaanKaryawan(base);
   const bpjs = bpjsKesehatan + bpjsKetenagakerjaan;
   const kasbonBulanIni = kasbonPerBulan(emp.kasbon, emp.kasbonCicilan);
   const potongan = potonganAbsensi + bpjs + kasbonBulanIni;
@@ -240,8 +255,8 @@ export function computeMonthlyPayroll(
   // arrangement is the more specific, real-world reason BPJS would differ,
   // vs. posisi being more of a fallback grouping).
   if (opts?.site || opts?.position) {
-    base.bpjsKesehatan = emp.bpjsKesehatanOverride ?? opts?.site?.bpjsKesehatanOverride ?? opts?.position?.bpjsKesehatanOverride ?? base.bpjsKesehatan;
-    base.bpjsKetenagakerjaan = emp.bpjsKetenagakerjaanOverride ?? opts?.site?.bpjsKetenagakerjaanOverride ?? opts?.position?.bpjsKetenagakerjaanOverride ?? base.bpjsKetenagakerjaan;
+    base.bpjsKesehatan = orAuto(emp.bpjsKesehatanOverride) ?? orAuto(opts?.site?.bpjsKesehatanOverride) ?? orAuto(opts?.position?.bpjsKesehatanOverride) ?? base.bpjsKesehatan;
+    base.bpjsKetenagakerjaan = orAuto(emp.bpjsKetenagakerjaanOverride) ?? orAuto(opts?.site?.bpjsKetenagakerjaanOverride) ?? orAuto(opts?.position?.bpjsKetenagakerjaanOverride) ?? base.bpjsKetenagakerjaan;
     base.bpjs = base.bpjsKesehatan + base.bpjsKetenagakerjaan;
   }
   const entry = opts?.entry;
