@@ -100,6 +100,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
           assignments: { where: { period }, select: { cost: true, status: true, period: true } },
           attendance: { where: { date: { gte: periodStart, lte: periodEnd } }, select: { date: true, status: true, lateMin: true } },
           site: { select: { bpjsKesehatanOverride: true, bpjsKetenagakerjaanOverride: true } },
+          position: { select: { bpjsKesehatanOverride: true, bpjsKetenagakerjaanOverride: true } },
         },
       }),
       db.payrollRate.findMany({ where: { period } }),
@@ -147,7 +148,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
         const rate = resolvePayrollRate(rates, period, emp.siteId);
         const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
         const assignments = resolveAssignments(emp.assignments, period);
-        const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets, site: emp.site });
+        const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets, site: emp.site, position: emp.position });
 
         const tx = await db.transaction.create({
           data: {

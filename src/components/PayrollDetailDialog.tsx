@@ -46,6 +46,27 @@ export function PayrollDetailDialog({
   const [bpjsKes, setBpjsKes] = useState(bpjsKesehatanOverride ?? 0);
   const [bpjsTk, setBpjsTk] = useState(bpjsKetenagakerjaanOverride ?? 0);
 
+  // This component (the "Detail" button + its dialog) stays mounted for as
+  // long as its table row does, across whatever page navigations happen
+  // while it's closed — e.g. going to Karyawan to edit BPJS, then back to
+  // Penggajian. useState's initializer only runs once, at first mount, so
+  // the states below wouldn't otherwise notice that the props they were
+  // seeded from have since moved on to fresher server data (even though
+  // router.refresh() elsewhere did fetch it) — the dialog would silently
+  // keep showing whatever was current the first time it was ever opened.
+  // Re-seeding every field from the latest props right as the dialog opens
+  // closes that gap without needing this component to remount.
+  function openDialog() {
+    setBpjsKes(bpjsKesehatanOverride ?? 0);
+    setBpjsTk(bpjsKetenagakerjaanOverride ?? 0);
+    setPotonganAbsensi(entry?.potonganAbsensiOverride ?? 0);
+    setPenugasanTambahan(entry?.penugasanTambahanOverride ?? 0);
+    setKasbon(entry?.kasbonOverride ?? 0);
+    setAmountsSaved(false);
+    setAmountsError("");
+    setOpen(true);
+  }
+
   // Once "Bayar gaji" has been clicked, nothing here should still be
   // editable — the payment already went out for whatever these numbers
   // were at that moment, so changing them afterward would just make the
@@ -133,7 +154,7 @@ export function PayrollDetailDialog({
 
   return (
     <>
-      <button type="button" className="btn btn-ghost" onClick={() => setOpen(true)}>
+      <button type="button" className="btn btn-ghost" onClick={openDialog}>
         Detail
       </button>
       {open && (

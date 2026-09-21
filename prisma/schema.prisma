@@ -77,6 +77,12 @@ model Position {
   name             String            @unique
   salaryType       String // "bulanan" | "harian"
   baseSalary       Int
+  // Same override semantics as Site.bpjsKesehatanOverride/
+  // bpjsKetenagakerjaanOverride — fixes BPJS for everyone in this posisi
+  // at once. Precedence: personal (Employee) > tempat kerja (Site) >
+  // posisi (Position) > automatic formula.
+  bpjsKesehatanOverride       Int?
+  bpjsKetenagakerjaanOverride Int?
   employees        Employee[]
   latenessBrackets LatenessBracket[]
 }

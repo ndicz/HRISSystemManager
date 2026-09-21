@@ -79,7 +79,7 @@ export function PenggajianTabs({
     const entry = resolvePayrollEntry(e.payrollEntries, period);
     const overtimeDays = resolveOvertimeDays(e.overtimeDays, period);
     const assignments = resolveAssignments(e.assignments, period);
-    return { e, entry, p: computeMonthlyPayroll(e, e.salaryComponents, e.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets, site: e.site }) };
+    return { e, entry, p: computeMonthlyPayroll(e, e.salaryComponents, e.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets, site: e.site, position: e.position }) };
   });
   const totals = payrollRows.reduce(
     (acc, r) => ({
