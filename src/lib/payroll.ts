@@ -219,6 +219,7 @@ export function computeMonthlyPayroll(
     assignments?: Pick<Assignment, "cost">[];
     latenessBrackets?: LatenessBracketLike[];
     site?: { bpjsKesehatanOverride: number | null; bpjsKetenagakerjaanOverride: number | null };
+    position?: { bpjsKesehatanOverride: number | null; bpjsKetenagakerjaanOverride: number | null };
   },
 ) {
   const tally = payrollAttendanceTally(records, period);
@@ -233,12 +234,14 @@ export function computeMonthlyPayroll(
     },
     components,
   );
-  // A tempat kerja can fix BPJS for everyone there at once — but a personal
-  // override (already folded into base.bpjs* above) always wins over it,
-  // so only step in when the employee has none of their own.
-  if (opts?.site) {
-    base.bpjsKesehatan = emp.bpjsKesehatanOverride ?? opts.site.bpjsKesehatanOverride ?? base.bpjsKesehatan;
-    base.bpjsKetenagakerjaan = emp.bpjsKetenagakerjaanOverride ?? opts.site.bpjsKetenagakerjaanOverride ?? base.bpjsKetenagakerjaan;
+  // Tempat kerja and posisi can each fix BPJS for everyone under them at
+  // once — but a personal override (already folded into base.bpjs* above)
+  // always wins over both, and tempat kerja wins over posisi (a site-wide
+  // arrangement is the more specific, real-world reason BPJS would differ,
+  // vs. posisi being more of a fallback grouping).
+  if (opts?.site || opts?.position) {
+    base.bpjsKesehatan = emp.bpjsKesehatanOverride ?? opts?.site?.bpjsKesehatanOverride ?? opts?.position?.bpjsKesehatanOverride ?? base.bpjsKesehatan;
+    base.bpjsKetenagakerjaan = emp.bpjsKetenagakerjaanOverride ?? opts?.site?.bpjsKetenagakerjaanOverride ?? opts?.position?.bpjsKetenagakerjaanOverride ?? base.bpjsKetenagakerjaan;
     base.bpjs = base.bpjsKesehatan + base.bpjsKetenagakerjaan;
   }
   const entry = opts?.entry;

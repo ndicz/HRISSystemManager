@@ -51,6 +51,22 @@ function firstDayOfPeriod(period: string, mode: "calendar" | "payroll"): string 
   return `${y}-${String(m).padStart(2, "0")}-01`;
 }
 
+// The quick-add date used to accept literally any date regardless of the
+// "Bulan"/period selected above it — so a correction meant for the period
+// on screen could silently land in some other period instead (and vice
+// versa: after typing/picking a date outside the range, nothing stopped
+// you). Constraining it to the selected period's own bounds means the only
+// way to correct a different period's day is to switch "Bulan" first,
+// which is also what makes the date field re-point at that period.
+function periodBounds(period: string, mode: "calendar" | "payroll"): { min: string; max: string } {
+  if (mode === "payroll") {
+    const { start, end } = payrollPeriodRange(period);
+    return { min: toDateInputValue(start), max: toDateInputValue(end) };
+  }
+  const [y, m] = period.split("-").map(Number);
+  return { min: `${y}-${String(m).padStart(2, "0")}-01`, max: toDateInputValue(new Date(y, m, 0)) };
+}
+
 // Isi rekap absensi murni (tanpa dialog/tombol sendiri) — dipakai oleh
 // RecapDialog (wrapper tombol + dialog terpisah, untuk halaman Absensi, yang
 // tetap pakai bulan kalender biasa) maupun langsung ditempel sebagai tab di
@@ -143,6 +159,8 @@ export function AttendanceRecapPanel({
   if (pending && !recap) return <p>Memuat&hellip;</p>;
   if (!recap) return null;
 
+  const bounds = periodBounds(period, mode);
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "var(--space-2)", marginBottom: "var(--space-3)", flexWrap: "wrap" }}>
@@ -185,7 +203,14 @@ export function AttendanceRecapPanel({
       <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-end", marginBottom: "var(--space-3)", flexWrap: "wrap" }}>
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="rec-date">Tanggal</label>
-          <input className="input" id="rec-date" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+          <input
+            className="input" id="rec-date" type="date" value={newDate}
+            min={bounds.min} max={bounds.max}
+            onChange={(e) => {
+              const v = e.target.value;
+              setNewDate(v < bounds.min ? bounds.min : v > bounds.max ? bounds.max : v);
+            }}
+          />
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="rec-status">Status</label>

@@ -33,7 +33,7 @@ export default async function SlipPrintPage({
   const entry = resolvePayrollEntry(emp.payrollEntries, period);
   const overtimeDays = resolveOvertimeDays(emp.overtimeDays, period);
   const assignments = resolveAssignments(emp.assignments, period);
-  const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets, site: emp.site });
+  const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry, overtimeDays, assignments, latenessBrackets, site: emp.site, position: emp.position });
   const periode = payrollPeriodLabel(period);
 
   return (

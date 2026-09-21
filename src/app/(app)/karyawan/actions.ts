@@ -486,10 +486,17 @@ export async function updatePosition(formData: FormData) {
   const baseSalary = Math.max(0, parseInt(String(formData.get("baseSalary") ?? "0"), 10) || 0);
   if (!positionId || !name) throw new Error("Nama posisi wajib diisi.");
 
+  const intOrNull = (k: string) => {
+    const raw = String(formData.get(k) ?? "").trim();
+    return raw ? Math.max(0, parseInt(raw, 10) || 0) : null;
+  };
+  const bpjsKesehatanOverride = intOrNull("bpjsKesehatanOverride");
+  const bpjsKetenagakerjaanOverride = intOrNull("bpjsKetenagakerjaanOverride");
+
   const conflict = await db.position.findUnique({ where: { name } });
   if (conflict && conflict.id !== positionId) throw new Error("Posisi dengan nama ini sudah ada.");
 
-  await db.position.update({ where: { id: positionId }, data: { name, salaryType, baseSalary } });
+  await db.position.update({ where: { id: positionId }, data: { name, salaryType, baseSalary, bpjsKesehatanOverride, bpjsKetenagakerjaanOverride } });
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "position.update", entity: "Position", entityId: positionId, detail: JSON.stringify({ name, salaryType, baseSalary }) },
