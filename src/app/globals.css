@@ -232,14 +232,27 @@ img { display: block; max-width: 100%; }
    boxes that fight over which one the sticky header belongs to (the
    header sticks to the table's own box, so once dialog-body scrolls the
    table out from under it, the header disappears with it). Removing the
-   table's own scroll box here makes dialog-body the single scrolling
-   ancestor instead, so the sticky header attaches to that one correctly. */
+   table's own VERTICAL scroll box here makes dialog-body the single
+   vertically-scrolling ancestor instead, so the sticky header attaches to
+   that one correctly.
+   Horizontal is a different story: a wide table (many columns, e.g. the
+   attendance recap) still needs to scroll sideways, and without any
+   overflow-x boundary of its own, that overflow doesn't just vanish — it
+   bleeds out to the *dialog's* own implicit overflow-x, so scrolling right
+   to see the table's later columns drags the ENTIRE dialog sideways with
+   it (title, tabs, buttons, everything), rather than just the table. Give
+   it back overflow-x specifically (leaving vertical alone) so a wide table
+   scrolls in its own lane. Trade-off: since max-height stays none, this
+   container never actually grows a real vertical scrollbar, so the sticky
+   header technically attaches to it instead of dialog-body and won't
+   visually pin while scrolling down — a small loss next to a dialog that
+   no longer scrolls itself out of view sideways. */
 /* .table's background is a horizontal-scroll shadow/fade affordance —
-   makes no sense once overflow is reset to visible just above, but it was
-   never reset alongside it, so it kept rendering as a permanent, meaningless
-   smudge along both edges of every nested table regardless of whether that
-   table could actually scroll. */
-.table-nested { max-height: none; overflow: visible; background: none; }
+   makes no sense once vertical overflow is reset to visible just above,
+   but it was never reset alongside it, so it kept rendering as a
+   permanent, meaningless smudge along both edges of every nested table
+   regardless of whether that table could actually scroll. */
+.table-nested { max-height: none; overflow-y: visible; overflow-x: auto; background: none; }
 
 /* Most Edit/Detail dialogs are rendered from a button inside a <td> (see
    .table td's white-space: nowrap below) — position: fixed moves them
