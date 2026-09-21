@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateClient, deleteClient } from "@/app/(app)/klien/actions";
 import { formatActionError } from "@/lib/errors";
+import { RupiahInput } from "@/components/RupiahInput";
 
 type ClientRow = {
   id: string;
@@ -78,7 +79,11 @@ export function EditClientDialog({ client }: { client: ClientRow }) {
               </div>
               <div className="field">
                 <label htmlFor="edit-client-feeValue">Nilai fee</label>
-                <input className="input" id="edit-client-feeValue" name="feeValue" type="number" min={0} defaultValue={client.feeValue} />
+                {feeType === "flat" ? (
+                  <RupiahInput id="edit-client-feeValue" name="feeValue" defaultValue={client.feeValue} />
+                ) : (
+                  <input className="input" id="edit-client-feeValue" name="feeValue" type="number" min={0} defaultValue={client.feeValue} />
+                )}
               </div>
               {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               {delError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{delError}</p>}

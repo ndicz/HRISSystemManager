@@ -2,10 +2,12 @@
 
 import { useState, useRef } from "react";
 import { addClient } from "@/app/(app)/klien/actions";
+import { RupiahInput } from "@/components/RupiahInput";
 
 export function AddClientDialog() {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [feeType, setFeeType] = useState("percent");
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
@@ -13,6 +15,7 @@ export function AddClientDialog() {
     try {
       await addClient(formData);
       setOpen(false);
+      setFeeType("percent");
       formRef.current?.reset();
     } finally {
       setPending(false);
@@ -38,13 +41,17 @@ export function AddClientDialog() {
               <div className="field">
                 <label>Skema fee</label>
                 <div className="seg" role="radiogroup">
-                  <label className="seg-opt"><input type="radio" name="feeType" value="percent" defaultChecked /> % dari gaji</label>
-                  <label className="seg-opt"><input type="radio" name="feeType" value="flat" /> Flat/karyawan</label>
+                  <label className="seg-opt"><input type="radio" name="feeType" value="percent" checked={feeType === "percent"} onChange={() => setFeeType("percent")} /> % dari gaji</label>
+                  <label className="seg-opt"><input type="radio" name="feeType" value="flat" checked={feeType === "flat"} onChange={() => setFeeType("flat")} /> Flat/karyawan</label>
                 </div>
               </div>
               <div className="field">
                 <label htmlFor="feeValue">Nilai fee</label>
-                <input className="input" id="feeValue" name="feeValue" type="number" placeholder="0" />
+                {feeType === "flat" ? (
+                  <RupiahInput id="feeValue" name="feeValue" placeholder="0" />
+                ) : (
+                  <input className="input" id="feeValue" name="feeValue" type="number" placeholder="0" />
+                )}
               </div>
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>

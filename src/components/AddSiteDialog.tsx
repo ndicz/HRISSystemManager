@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { addSite } from "@/app/(app)/karyawan/actions";
+import { RupiahInput } from "@/components/RupiahInput";
 
 export function AddSiteDialog() {
   const [open, setOpen] = useState(false);
@@ -43,7 +44,7 @@ export function AddSiteDialog() {
               </div>
               <div className="field">
                 <label htmlFor="site-umr">UMR/UMK wilayah (Rp)</label>
-                <input className="input" id="site-umr" name="umr" type="number" min={0} placeholder="mis. 4500000" />
+                <RupiahInput id="site-umr" name="umr" placeholder="mis. 4.500.000" />
               </div>
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>

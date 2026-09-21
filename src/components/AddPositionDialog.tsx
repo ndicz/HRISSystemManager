@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { addPosition } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
+import { RupiahInput } from "@/components/RupiahInput";
 
 export function AddPositionDialog() {
   const [open, setOpen] = useState(false);
@@ -55,7 +56,7 @@ export function AddPositionDialog() {
               </div>
               <div className="field">
                 <label htmlFor="pos-salary">Gaji pokok default (Rp)</label>
-                <input className="input" id="pos-salary" name="baseSalary" type="number" min={0} placeholder="mis. 4900000" />
+                <RupiahInput id="pos-salary" name="baseSalary" placeholder="mis. 4.900.000" />
               </div>
               {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">

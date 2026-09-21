@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { updatePosition, deletePosition } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
+import { RupiahInput } from "@/components/RupiahInput";
 
 type Position = { id: string; name: string; salaryType: string; baseSalary: number };
 
@@ -68,7 +69,7 @@ export function EditPositionDialog({ position }: { position: Position }) {
               </div>
               <div className="field">
                 <label htmlFor="edit-pos-salary">Gaji pokok default (Rp)</label>
-                <input className="input" id="edit-pos-salary" name="baseSalary" type="number" min={0} defaultValue={position.baseSalary} />
+                <RupiahInput id="edit-pos-salary" name="baseSalary" defaultValue={position.baseSalary} />
               </div>
               {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               {delError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{delError}</p>}
