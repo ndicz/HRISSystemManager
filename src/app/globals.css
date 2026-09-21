@@ -132,9 +132,16 @@ img { display: block; max-width: 100%; }
 .btn-ghost:hover { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
 .btn-icon { width: 36px; height: 36px; padding: 0; }
 
+.field { min-width: 0; }
 .field > label { display: block; font-size: 12px; margin-bottom: 5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
 .input {
-  width: 100%; min-height: 36px; padding: 6px 10px; font: inherit;
+  /* Browsers give <input>/<select> a built-in min-content width (~170-190px)
+     regardless of what's actually in them, and flex/grid items don't shrink
+     past their content's min-content by default — so any field this class
+     lands inside a multi-column grid or flex row could force that whole
+     row wider than its container, pushing content off the side of a dialog
+     no matter how wide the dialog itself is set. */
+  min-width: 0; width: 100%; min-height: 36px; padding: 6px 10px; font: inherit;
   font-size: 14px; color: var(--color-text); caret-color: var(--color-accent);
   background: #fff; border: 1px solid var(--color-divider); border-radius: var(--radius-md);
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
@@ -234,7 +241,16 @@ img { display: block; max-width: 100%; }
    table could actually scroll. */
 .table-nested { max-height: none; overflow: visible; background: none; }
 
-.dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--color-neutral-900) 55%, transparent); backdrop-filter: blur(2px); z-index: 50; }
+/* Most Edit/Detail dialogs are rendered from a button inside a <td> (see
+   .table td's white-space: nowrap below) — position: fixed moves them
+   elsewhere on screen, but they're still DOM descendants of that <td>, and
+   white-space is an inherited property, so every label/paragraph in the
+   dialog was silently forced onto one line no matter how wide the dialog
+   was made. That forced every multi-column row (e.g. two BPJS fields
+   side-by-side) to demand its full unwrapped min-content width, pushing
+   content off the dialog's edge — reset it here so dialogs always wrap
+   normally regardless of what table row they happen to be mounted under. */
+.dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--color-neutral-900) 55%, transparent); backdrop-filter: blur(2px); z-index: 50; white-space: normal; }
 .dialog { width: min(440px, 100%); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface); border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); box-shadow: var(--shadow-lg); max-height: calc(100dvh - var(--space-8)); overflow-y: auto; }
 .dialog-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 20px; }
 .dialog-body { font-size: 14px; opacity: 0.85; }
