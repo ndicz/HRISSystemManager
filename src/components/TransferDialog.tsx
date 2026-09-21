@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { addTransfer } from "@/app/(app)/kas/actions";
+import { RupiahInput } from "@/components/RupiahInput";
 
 type Option = { id: string; name: string };
 
@@ -53,7 +54,7 @@ export function TransferDialog({ cashAccounts, disabled }: { cashAccounts: Optio
               </div>
               <div className="field">
                 <label htmlFor="amount">Jumlah (Rp)</label>
-                <input className="input" id="amount" name="amount" type="number" required placeholder="0" />
+                <RupiahInput id="amount" name="amount" placeholder="0" />
               </div>
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>

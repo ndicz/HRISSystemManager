@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveLatenessBrackets, deleteLatenessBrackets } from "@/app/(app)/penggajian/actions";
 import { formatRp, type LatenessBracketLike } from "@/lib/payroll";
 import { formatActionError } from "@/lib/errors";
+import { RupiahInput } from "@/components/RupiahInput";
 
 type Option = { id: string; name: string };
 type Scope = "global" | "site" | "position" | "employee";
@@ -188,9 +189,9 @@ export function LatenessBracketDialog({
                       onChange={(e) => updateRow(row.rowId, { maxMinutes: e.target.value === "" ? null : Math.max(0, parseInt(e.target.value, 10) || 0) })}
                       placeholder="sampai (kosong = tak terbatas)"
                     />
-                    <input
-                      className="input" type="number" min={0} value={row.amount}
-                      onChange={(e) => updateRow(row.rowId, { amount: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                    <RupiahInput
+                      name={`amount-${row.rowId}`} defaultValue={row.amount}
+                      onValueChange={(v) => updateRow(row.rowId, { amount: v })}
                       placeholder="Potongan (Rp)"
                     />
                     <button type="button" className="btn btn-ghost" onClick={() => removeRow(row.rowId)} disabled={rows.length <= 1} title="Hapus baris">&times;</button>

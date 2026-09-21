@@ -20,6 +20,7 @@ export function RupiahInput({
   className = "input",
   style,
   onValueChange,
+  allowNegative = false,
 }: {
   name: string;
   id?: string;
@@ -28,27 +29,32 @@ export function RupiahInput({
   className?: string;
   style?: React.CSSProperties;
   onValueChange?: (raw: number) => void;
+  // Almost every Rupiah field in this app is a non-negative amount, but a
+  // few (salary component deductions) are intentionally signed — off by
+  // default so the common case can't accidentally start accepting "-".
+  allowNegative?: boolean;
 }) {
   const [display, setDisplay] = useState(() => {
     // 0 is treated the same as unset — an amount that's genuinely "not
     // filled in yet" (a blank new row, an unpriced pulled-in request) is
     // far more common than a deliberate Rp0, and showing a bare "0" reads
     // as broken rather than empty, especially stacked several fields deep.
-    const raw = defaultValue !== undefined && defaultValue !== null && defaultValue !== "" && defaultValue !== 0
-      ? String(defaultValue).replace(/\D/g, "")
-      : "";
-    return formatThousands(raw);
+    if (defaultValue === undefined || defaultValue === null || defaultValue === "" || defaultValue === 0) return "";
+    const negative = allowNegative && Number(defaultValue) < 0;
+    const digits = String(defaultValue).replace(/\D/g, "");
+    return (negative ? "-" : "") + formatThousands(digits);
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const negative = allowNegative && e.target.value.trim().startsWith("-");
     // Typing "1" right after an existing "0" (a freshly-focused field, or
     // right after backspacing to empty) inserts at the cursor rather than
     // replacing it, so the raw digits can be "01" — strip leading zeros
     // before they ever reach the display, or every such field shows "01",
     // "007", etc. instead of the number that was actually typed.
     const digits = e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
-    setDisplay(formatThousands(digits));
-    onValueChange?.(parseInt(digits, 10) || 0);
+    setDisplay((negative ? "-" : "") + formatThousands(digits));
+    onValueChange?.((negative ? -1 : 1) * (parseInt(digits, 10) || 0));
   }
 
   return (
@@ -56,7 +62,7 @@ export function RupiahInput({
       <input
         className={className}
         type="text"
-        inputMode="numeric"
+        inputMode={allowNegative ? "text" : "numeric"}
         autoComplete="off"
         id={id}
         placeholder={placeholder}

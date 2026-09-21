@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { fetchSalaryComponents, addSalaryComponent, updateSalaryComponent, removeSalaryComponent } from "@/app/(app)/karyawan/actions";
 import { formatRp } from "@/lib/payroll";
 import { formatActionError } from "@/lib/errors";
+import { RupiahInput } from "@/components/RupiahInput";
 
 type Component = { id: string; name: string; amount: number };
 
@@ -11,10 +12,14 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
   const [open, setOpen] = useState(false);
   const [components, setComponents] = useState<Component[] | null>(null);
   const [newName, setNewName] = useState("");
-  const [newAmount, setNewAmount] = useState("");
+  const [newAmount, setNewAmount] = useState(0);
+  // Bumped after a successful add — RupiahInput is uncontrolled past its
+  // initial mount, so resetting newAmount state alone wouldn't clear what's
+  // still showing in the field; remounting it (via key) does.
+  const [newAmountRev, setNewAmountRev] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editAmount, setEditAmount] = useState("");
+  const [editAmount, setEditAmount] = useState(0);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -31,7 +36,7 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
   function startEdit(c: Component) {
     setEditingId(c.id);
     setEditName(c.name);
-    setEditAmount(String(c.amount));
+    setEditAmount(c.amount);
   }
 
   function handleSaveEdit() {
@@ -39,7 +44,7 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
     setError("");
     startTransition(async () => {
       try {
-        const data = await updateSalaryComponent(editingId!, editName.trim(), parseInt(editAmount, 10) || 0);
+        const data = await updateSalaryComponent(editingId!, editName.trim(), editAmount);
         setComponents(data);
         setEditingId(null);
       } catch (err) {
@@ -56,11 +61,12 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
         const fd = new FormData();
         fd.set("employeeId", employeeId);
         fd.set("name", newName.trim());
-        fd.set("amount", newAmount || "0");
+        fd.set("amount", String(newAmount));
         const data = await addSalaryComponent(fd);
         setComponents(data);
         setNewName("");
-        setNewAmount("");
+        setNewAmount(0);
+        setNewAmountRev((r) => r + 1);
       } catch (err) {
         setError(formatActionError(err));
       }
@@ -111,12 +117,12 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
                               <input className="input" style={{ minHeight: 30, fontSize: 13 }} value={editName} onChange={(e) => setEditName(e.target.value)} />
                             </td>
                             <td>
-                              <input
-                                className="input"
+                              <RupiahInput
+                                name="editAmount"
                                 style={{ minHeight: 30, fontSize: 13, width: 130 }}
-                                type="number"
-                                value={editAmount}
-                                onChange={(e) => setEditAmount(e.target.value)}
+                                defaultValue={editAmount}
+                                onValueChange={setEditAmount}
+                                allowNegative
                               />
                             </td>
                             <td style={{ whiteSpace: "nowrap" }}>
@@ -163,7 +169,7 @@ export function SalaryComponentsDialog({ employeeId, employeeName }: { employeeI
                     </div>
                     <div className="field" style={{ marginBottom: 0, width: 160 }}>
                       <label htmlFor="comp-amount">Jumlah (Rp)</label>
-                      <input className="input" id="comp-amount" type="number" value={newAmount} onChange={(e) => setNewAmount(e.target.value)} />
+                      <RupiahInput key={newAmountRev} id="comp-amount" name="newAmount" defaultValue={newAmount} onValueChange={setNewAmount} allowNegative />
                     </div>
                     <button type="button" className="btn btn-primary" disabled={pending || !newName.trim()} onClick={handleAdd}>
                       Tambah

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { updateEmployeeDetails, deleteEmployee } from "@/app/(app)/karyawan/actions";
 import { formatRp, kasbonPerBulan } from "@/lib/payroll";
 import { formatActionError } from "@/lib/errors";
+import { RupiahInput } from "@/components/RupiahInput";
 
 type Emp = {
   id: string;
@@ -28,6 +30,7 @@ function toDateInputValue(d: Date | null) {
 }
 
 export function EditEmployeeDialog({ employee, sites, positions }: { employee: Emp; sites: Site[]; positions: Position[] }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [contractType, setContractType] = useState(employee.contractType);
   const [kasbon, setKasbon] = useState(employee.kasbon);
@@ -42,6 +45,7 @@ export function EditEmployeeDialog({ employee, sites, positions }: { employee: E
     try {
       await updateEmployeeDetails(formData);
       setOpen(false);
+      router.refresh();
     } finally {
       setPending(false);
     }
@@ -106,15 +110,7 @@ export function EditEmployeeDialog({ employee, sites, positions }: { employee: E
               <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="kasbon">Total kasbon (Rp)</label>
-                  <input
-                    className="input"
-                    id="kasbon"
-                    name="kasbon"
-                    type="number"
-                    min={0}
-                    value={kasbon}
-                    onChange={(e) => setKasbon(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  />
+                  <RupiahInput id="kasbon" name="kasbon" defaultValue={kasbon} placeholder="0" onValueChange={setKasbon} />
                 </div>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="kasbonCicilan">Dicicil (bulan)</label>
@@ -146,27 +142,11 @@ export function EditEmployeeDialog({ employee, sites, positions }: { employee: E
               <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="bpjsKesehatanOverride">BPJS Kesehatan (Rp)</label>
-                  <input
-                    className="input"
-                    id="bpjsKesehatanOverride"
-                    name="bpjsKesehatanOverride"
-                    type="number"
-                    min={0}
-                    placeholder="Otomatis"
-                    defaultValue={employee.bpjsKesehatanOverride ?? ""}
-                  />
+                  <RupiahInput id="bpjsKesehatanOverride" name="bpjsKesehatanOverride" placeholder="Otomatis" defaultValue={employee.bpjsKesehatanOverride} />
                 </div>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="bpjsKetenagakerjaanOverride">BPJS Ketenagakerjaan (Rp)</label>
-                  <input
-                    className="input"
-                    id="bpjsKetenagakerjaanOverride"
-                    name="bpjsKetenagakerjaanOverride"
-                    type="number"
-                    min={0}
-                    placeholder="Otomatis"
-                    defaultValue={employee.bpjsKetenagakerjaanOverride ?? ""}
-                  />
+                  <RupiahInput id="bpjsKetenagakerjaanOverride" name="bpjsKetenagakerjaanOverride" placeholder="Otomatis" defaultValue={employee.bpjsKetenagakerjaanOverride} />
                 </div>
               </div>
 

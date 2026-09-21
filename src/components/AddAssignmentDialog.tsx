@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { addAssignment } from "@/app/(app)/karyawan/actions";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
 import { payrollPeriodKey, payrollPeriodOptions } from "@/lib/payroll";
+import { RupiahInput } from "@/components/RupiahInput";
 
 const monthOptions = payrollPeriodOptions;
 
@@ -51,7 +52,7 @@ export function AddAssignmentDialog({ employees }: { employees: EmployeeOption[]
               </div>
               <div className="field">
                 <label htmlFor="assign-cost">Biaya (Rp)</label>
-                <input className="input" id="assign-cost" name="cost" type="number" min={0} placeholder="0" />
+                <RupiahInput id="assign-cost" name="cost" placeholder="0" />
               </div>
               <div className="field">
                 <label htmlFor="assign-period">Periode slip gaji</label>

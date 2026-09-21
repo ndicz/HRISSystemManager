@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { PayrollRate } from "@prisma/client";
 import { savePayrollRate, deletePayrollRate } from "@/app/(app)/penggajian/actions";
 import { formatActionError } from "@/lib/errors";
+import { RupiahInput } from "@/components/RupiahInput";
 
 type Site = { id: string; name: string };
 
@@ -73,15 +74,15 @@ export function PayrollRateDialog({ period, sites, rates }: { period: string; si
                 <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--space-3)" }}>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="izinRate">Izin</label>
-                    <input className="input" id="izinRate" name="izinRate" type="number" min={0} defaultValue={current?.izinRate ?? 0} />
+                    <RupiahInput id="izinRate" name="izinRate" defaultValue={current?.izinRate} />
                   </div>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="alphaRate">Alfa</label>
-                    <input className="input" id="alphaRate" name="alphaRate" type="number" min={0} defaultValue={current?.alphaRate ?? 0} />
+                    <RupiahInput id="alphaRate" name="alphaRate" defaultValue={current?.alphaRate} />
                   </div>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="terlambatRate">Terlambat</label>
-                    <input className="input" id="terlambatRate" name="terlambatRate" type="number" min={0} defaultValue={current?.terlambatRate ?? 0} />
+                    <RupiahInput id="terlambatRate" name="terlambatRate" defaultValue={current?.terlambatRate} />
                   </div>
                 </div>
               </div>
@@ -91,11 +92,11 @@ export function PayrollRateDialog({ period, sites, rates }: { period: string; si
                 <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="lemburRegulerRate">Reguler</label>
-                    <input className="input" id="lemburRegulerRate" name="lemburRegulerRate" type="number" min={0} defaultValue={current?.lemburRegulerRate ?? 0} />
+                    <RupiahInput id="lemburRegulerRate" name="lemburRegulerRate" defaultValue={current?.lemburRegulerRate} />
                   </div>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="lemburMerahRate">Tanggal merah</label>
-                    <input className="input" id="lemburMerahRate" name="lemburMerahRate" type="number" min={0} defaultValue={current?.lemburMerahRate ?? 0} />
+                    <RupiahInput id="lemburMerahRate" name="lemburMerahRate" defaultValue={current?.lemburMerahRate} />
                   </div>
                 </div>
               </div>

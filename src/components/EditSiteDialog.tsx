@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateSite, deleteSite } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
+import { RupiahInput } from "@/components/RupiahInput";
 
 type SiteRow = {
   id: string; name: string; address: string; supervisor: string; umr: number;
@@ -61,7 +62,7 @@ export function EditSiteDialog({ site }: { site: SiteRow }) {
               </div>
               <div className="field">
                 <label htmlFor="edit-site-umr">UMR/UMK (Rp)</label>
-                <input className="input" id="edit-site-umr" name="umr" type="number" min={0} defaultValue={site.umr} />
+                <RupiahInput id="edit-site-umr" name="umr" defaultValue={site.umr} />
               </div>
               <div style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)" }}>
                 <div className="card-kicker" style={{ marginBottom: "var(--space-2)" }}>Override BPJS untuk semua karyawan di tempat kerja ini</div>
@@ -72,11 +73,11 @@ export function EditSiteDialog({ site }: { site: SiteRow }) {
                 <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="edit-site-bpjs-kes">BPJS Kesehatan (Rp)</label>
-                    <input className="input" id="edit-site-bpjs-kes" name="bpjsKesehatanOverride" type="number" min={0} placeholder="Otomatis" defaultValue={site.bpjsKesehatanOverride ?? ""} />
+                    <RupiahInput id="edit-site-bpjs-kes" name="bpjsKesehatanOverride" placeholder="Otomatis" defaultValue={site.bpjsKesehatanOverride} />
                   </div>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="edit-site-bpjs-tk">BPJS Ketenagakerjaan (Rp)</label>
-                    <input className="input" id="edit-site-bpjs-tk" name="bpjsKetenagakerjaanOverride" type="number" min={0} placeholder="Otomatis" defaultValue={site.bpjsKetenagakerjaanOverride ?? ""} />
+                    <RupiahInput id="edit-site-bpjs-tk" name="bpjsKetenagakerjaanOverride" placeholder="Otomatis" defaultValue={site.bpjsKetenagakerjaanOverride} />
                   </div>
                 </div>
               </div>

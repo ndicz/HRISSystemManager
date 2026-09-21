@@ -4,13 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setBonusBatch } from "@/app/(app)/penggajian/actions";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
+import { RupiahInput } from "@/components/RupiahInput";
 import { formatActionError } from "@/lib/errors";
 
-type Row = { key: number; employeeId: string; amount: string };
+type Row = { key: number; employeeId: string; amount: number };
 let nextKey = 1;
 
 function emptyRow(): Row {
-  return { key: nextKey++, employeeId: "", amount: "" };
+  return { key: nextKey++, employeeId: "", amount: 0 };
 }
 
 export function SetBonusDialog({
@@ -28,7 +29,7 @@ export function SetBonusDialog({
   const [rows, setRows] = useState<Row[]>(() => {
     const existing = currentBonuses
       .filter((b) => b.amount > 0)
-      .map((b) => ({ key: nextKey++, employeeId: b.employeeId, amount: String(b.amount) }));
+      .map((b) => ({ key: nextKey++, employeeId: b.employeeId, amount: b.amount }));
     return existing.length > 0 ? [...existing, emptyRow()] : [emptyRow()];
   });
 
@@ -42,7 +43,7 @@ export function SetBonusDialog({
     setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.key !== key) : rs));
   }
 
-  const validRows = rows.filter((r) => r.employeeId && parseInt(r.amount, 10) >= 0 && r.amount !== "");
+  const validRows = rows.filter((r) => r.employeeId);
 
   async function handleSubmit() {
     setPending(true);
@@ -50,7 +51,7 @@ export function SetBonusDialog({
     try {
       await setBonusBatch(
         period,
-        validRows.map((r) => ({ employeeId: r.employeeId, amount: parseInt(r.amount, 10) || 0 })),
+        validRows.map((r) => ({ employeeId: r.employeeId, amount: r.amount })),
       );
       setOpen(false);
       router.refresh();
@@ -87,13 +88,11 @@ export function SetBonusDialog({
                     </div>
                     <div className="field" style={{ marginBottom: 0 }}>
                       {i === 0 && <label>Jumlah (Rp)</label>}
-                      <input
-                        className="input"
-                        type="number"
-                        min={0}
+                      <RupiahInput
+                        name={`amount-${row.key}`}
                         placeholder="0"
-                        value={row.amount}
-                        onChange={(e) => updateRow(row.key, { amount: e.target.value })}
+                        defaultValue={row.amount}
+                        onValueChange={(v) => updateRow(row.key, { amount: v })}
                       />
                     </div>
                     <button

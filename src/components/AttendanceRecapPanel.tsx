@@ -33,6 +33,16 @@ function toDateInputValue(d: Date) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
+// "Bulan" (period) picks which month's rows are shown, but the quick-add
+// "Tanggal" field defaulted to today's real calendar date regardless — so
+// looking at, say, July while today is September left the date picker
+// silently pointing at September, ready to add/correct the wrong month's
+// day unless the user noticed and changed it by hand.
+function firstDayOfPeriod(period: string): string {
+  const [y, m] = period.split("-").map(Number);
+  return `${y}-${String(m).padStart(2, "0")}-01`;
+}
+
 const monthOptions = monthKeyOptions;
 
 // Isi rekap absensi murni (tanpa dialog/tombol sendiri) — dipakai oleh
@@ -54,7 +64,10 @@ export function AttendanceRecapPanel({ employeeId, employeeName }: { employeeId:
       // Default to whichever month actually has records — right after an
       // import, that's virtually never "today's real calendar month".
       const best = bestAttendanceMonth(data.records);
-      if (best) setPeriod(best);
+      if (best) {
+        setPeriod(best);
+        setNewDate(firstDayOfPeriod(best));
+      }
     });
   }, [employeeId]);
 
@@ -112,7 +125,7 @@ export function AttendanceRecapPanel({ employeeId, employeeName }: { employeeId:
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "var(--space-2)", marginBottom: "var(--space-3)", flexWrap: "wrap" }}>
         <div className="field" style={{ maxWidth: 220, marginBottom: 0 }}>
           <label htmlFor="rec-period">Bulan</label>
-          <select className="input" id="rec-period" value={period} onChange={(e) => setPeriod(e.target.value)}>
+          <select className="input" id="rec-period" value={period} onChange={(e) => { setPeriod(e.target.value); setNewDate(firstDayOfPeriod(e.target.value)); }}>
             {monthOptions().map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
