@@ -51,8 +51,8 @@ export function KaryawanTable({ employees, sites, positions }: { employees: Emp[
           e.contractType,
           e.contractEnd ? e.contractEnd.toLocaleDateString("id-ID") : "-",
           baseSalary(e.salaryComponents),
-          e.bpjsKesehatanOverride ?? "Otomatis",
-          e.bpjsKetenagakerjaanOverride ?? "Otomatis",
+          e.bpjsKesehatanOverride || "Otomatis",
+          e.bpjsKetenagakerjaanOverride || "Otomatis",
           e.kasbon,
           e.kasbonCicilan,
           e.cutiKuota,
@@ -121,8 +121,8 @@ export function KaryawanTable({ employees, sites, positions }: { employees: Emp[
                   </span>
                 </td>
                 <td>{formatRp(baseSalary(e.salaryComponents))}</td>
-                <td className="text-muted">{e.bpjsKesehatanOverride !== null ? formatRp(e.bpjsKesehatanOverride) : "Otomatis"}</td>
-                <td className="text-muted">{e.bpjsKetenagakerjaanOverride !== null ? formatRp(e.bpjsKetenagakerjaanOverride) : "Otomatis"}</td>
+                <td className="text-muted">{e.bpjsKesehatanOverride ? formatRp(e.bpjsKesehatanOverride) : "Otomatis"}</td>
+                <td className="text-muted">{e.bpjsKetenagakerjaanOverride ? formatRp(e.bpjsKetenagakerjaanOverride) : "Otomatis"}</td>
                 <td><EditEmployeeDialog employee={e} sites={sites} positions={positions} /></td>
                 <td><SalaryComponentsDialog employeeId={e.id} employeeName={e.name} /></td>
                 <td><EmployeeProfileDialog employee={e} /></td>

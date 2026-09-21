@@ -20,10 +20,14 @@ import { unzip, parseSharedStrings, parseSheetRows } from "@/lib/attendanceImpor
 export type BpjsImportRow = {
   empCode: string;
   name?: string;
-  // null = the cell was genuinely blank (no data yet, leave the employee
-  // on the auto-calculated formula). A real number — including 0 — is an
-  // explicit value from the source and gets written as an override,
-  // exactly like typing "0" into the manual edit dialog already does.
+  // null = the cell was genuinely blank — leave the employee on the
+  // auto-calculated formula. A 0 cell is written the same way a real
+  // number would be, but payroll.ts's override resolution treats a stored
+  // 0 as "no override" too (same as null) rather than a real Rp0
+  // deduction — BPJS isn't something anyone actually zeroes out on
+  // purpose, and RupiahInput already shows 0 as blank everywhere it's
+  // used, so there'd be no way to tell a deliberate 0 apart from unset
+  // once it's saved anyway.
   bpjsKesehatan: number | null;
   bpjsKetenagakerjaan: number | null;
 };
