@@ -45,7 +45,7 @@ export function EditSiteDialog({ site }: { site: SiteRow }) {
       <button type="button" className="btn btn-ghost" onClick={() => setOpen(true)}>Edit</button>
       {open && (
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
-          <div className="dialog" onClick={(e) => e.stopPropagation()}>
+          <div className="dialog" style={{ width: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit tempat kerja</div>
             <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">

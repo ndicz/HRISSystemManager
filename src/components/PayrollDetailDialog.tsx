@@ -209,7 +209,7 @@ export function PayrollDetailDialog({
               )}
 
               {tab === "absensi" && (
-                <AttendanceRecapPanel employeeId={employeeId} employeeName={employeeName} />
+                <AttendanceRecapPanel employeeId={employeeId} employeeName={employeeName} mode="payroll" initialPeriod={period} />
               )}
             </div>
 
