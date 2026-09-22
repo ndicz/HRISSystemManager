@@ -429,8 +429,11 @@ model Account {
   id     String @id @default(cuid())
   code   String @unique
   name   String
-  type   String // "masuk" | "keluar"
-  budget Int? // monthly budget, for "keluar" accounts
+  // Standard 5-category COA classification: "aset" | "kewajiban" | "modal"
+  // | "pendapatan" | "beban" (see src/lib/coa.ts). Only pendapatan/beban
+  // feed Laba Rugi — aset/kewajiban/modal are balance-sheet categories.
+  type   String
+  budget Int? // monthly budget, for "beban" accounts
 
   transactions Transaction[]
 }
