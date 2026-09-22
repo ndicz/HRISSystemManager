@@ -32,7 +32,7 @@ export async function bayarThr(employeeId: string) {
   let account = await db.account.findFirst({ where: { code: "5008" } });
   if (!account) {
     try {
-      account = await db.account.create({ data: { code: "5008", name: "Beban THR", type: "keluar" } });
+      account = await db.account.create({ data: { code: "5008", name: "Beban THR", type: "beban" } });
     } catch {
       account = await db.account.findFirst({ where: { code: "5008" } });
     }
@@ -128,7 +128,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
     let account = existingAccount;
     if (!account) {
       try {
-        account = await db.account.create({ data: { code: "5001", name: "Gaji Karyawan", type: "keluar", budget: 200000000 } });
+        account = await db.account.create({ data: { code: "5001", name: "Gaji Karyawan", type: "beban", budget: 200000000 } });
       } catch {
         account = await db.account.findFirst({ where: { code: "5001" } });
       }

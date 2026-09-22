@@ -127,8 +127,15 @@ export async function addAccount(formData: FormData) {
 
   const code = String(formData.get("code") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
-  const type = String(formData.get("type") ?? "keluar");
+  const type = String(formData.get("type") ?? "beban");
   if (!code || !name) throw new Error("Kode dan nama akun wajib diisi.");
+
+  // Nothing stopped two accounts sharing the same name before (only `code`
+  // is unique) — caught a real duplicate "Gaji Karyawan" under two
+  // different codes, silently splitting what should've been one account's
+  // transactions across both.
+  const nameConflict = await db.account.findFirst({ where: { name } });
+  if (nameConflict) throw new Error(`Sudah ada akun bernama "${name}" (kode ${nameConflict.code}).`);
 
   await db.account.create({ data: { code, name, type } });
   revalidatePath("/kas");
@@ -227,8 +234,11 @@ export async function updateAccount(id: string, formData: FormData) {
   const type = String(formData.get("type") ?? account.type);
   if (!name) throw new Error("Nama akun wajib diisi.");
   if (PROTECTED_ACCOUNT_CODES.includes(account.code) && type !== account.type) {
-    throw new Error(`Akun ${account.code} dipakai otomatis oleh sistem — jenisnya (masuk/keluar) tidak bisa diubah.`);
+    throw new Error(`Akun ${account.code} dipakai otomatis oleh sistem — kategorinya tidak bisa diubah.`);
   }
+
+  const nameConflict = await db.account.findFirst({ where: { name, id: { not: id } } });
+  if (nameConflict) throw new Error(`Sudah ada akun bernama "${name}" (kode ${nameConflict.code}).`);
 
   await db.account.update({ where: { id }, data: { name, type } });
 
@@ -315,8 +325,13 @@ export async function addTransfer(formData: FormData) {
 
   let transferAccount = await db.account.findFirst({ where: { name: "Transfer Antar Rekening" } });
   if (!transferAccount) {
+    // A wash account — every transfer posts one "keluar" and one "masuk"
+    // leg against it (below), moving money between the company's own cash
+    // pockets rather than earning revenue or spending on anything. "aset"
+    // is the closest real classification for that; it's excluded from
+    // Laba Rugi via isTransfer regardless of what type it's given.
     transferAccount = await db.account.create({
-      data: { code: "9001", name: "Transfer Antar Rekening", type: "keluar" },
+      data: { code: "9001", name: "Transfer Antar Rekening", type: "aset" },
     });
   }
 

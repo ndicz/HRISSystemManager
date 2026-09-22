@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import type { Account, CashAccount, Payable, Transaction } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
 import { laporanLabaRugi, monthKey, monthKeyOptions, saldoKasSampai, saldoKasSebelum, AGING_BUCKET_ORDER, type AgingRow } from "@/lib/finance";
+import { accountTypeLabel, accountTypeTagClass } from "@/lib/coa";
 import { AddTransactionDialog } from "@/components/AddTransactionDialog";
 import { EditTransactionDialog } from "@/components/EditTransactionDialog";
 import { AddAccountDialog } from "@/components/AddAccountDialog";
@@ -304,7 +305,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
 
       {tab === "coa" && (
         <>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}><AddAccountDialog /></div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "var(--space-3)" }}><AddAccountDialog accounts={accounts} /></div>
           <div className="card">
             <table className="table">
               <thead><tr><th>Kode</th><th>Nama</th><th>Kategori</th><th></th></tr></thead>
@@ -313,7 +314,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
                   <tr key={a.id}>
                     <td className="text-muted">{a.code}</td>
                     <td>{a.name}</td>
-                    <td><span className={a.type === "masuk" ? "tag tag-accent" : "tag tag-neutral"}>{a.type === "masuk" ? "Pendapatan" : "Beban"}</span></td>
+                    <td><span className={`tag ${accountTypeTagClass(a.type)}`}>{accountTypeLabel(a.type)}</span></td>
                     <td><EditAccountDialog account={a} /></td>
                   </tr>
                 ))}
@@ -375,7 +376,7 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
       {tab === "anggaran" && (
         <div className="card">
           <div style={{ display: "grid", gap: 16 }}>
-            {accounts.filter((a) => a.type === "keluar").map((a) => {
+            {accounts.filter((a) => a.type === "beban").map((a) => {
               const realisasi = periodTx.filter((t) => t.accountCoaId === a.id && t.type === "keluar").reduce((s, t) => s + t.amount, 0);
               const budget = a.budget ?? 0;
               const pct = budget > 0 ? Math.round((realisasi / budget) * 100) : 0;

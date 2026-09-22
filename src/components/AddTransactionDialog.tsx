@@ -13,7 +13,12 @@ export function AddTransactionDialog({ accounts, cashAccounts, disabled }: { acc
   const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const filteredAccounts = accounts.filter((a) => a.type === type);
+  // Account (COA) categories don't map 1:1 to cash direction the way they
+  // used to when there were only 2 of them — a Kewajiban/Aset/Modal account
+  // can legitimately take either masuk or keluar transactions (paying down
+  // a loan, buying equipment, an owner's capital injection, ...), only
+  // Pendapatan and Beban are inherently one-directional.
+  const filteredAccounts = accounts.filter((a) => (type === "masuk" ? a.type !== "beban" : a.type !== "pendapatan"));
 
   async function handleSubmit(formData: FormData) {
     setPending(true);

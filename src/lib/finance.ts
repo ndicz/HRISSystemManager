@@ -149,14 +149,17 @@ export function terbilang(amount: number): string {
 export function laporanLabaRugi(accounts: Account[], transactions: Transaction[], period: string) {
   const inPeriod = transactions.filter((t) => monthKey(t.date) === period && !t.isTransfer);
 
+  // Only pendapatan/beban accounts belong on an income statement —
+  // aset/kewajiban/modal accounts are balance-sheet categories and are
+  // correctly left out here rather than falling into either bucket.
   const pendapatanRows = accounts
-    .filter((a) => a.type === "masuk")
+    .filter((a) => a.type === "pendapatan")
     .map((a) => {
       const amt = inPeriod.filter((t) => t.accountCoaId === a.id && t.type === "masuk").reduce((s, t) => s + t.amount, 0);
       return { account: a, amt };
     });
   const bebanRows = accounts
-    .filter((a) => a.type === "keluar")
+    .filter((a) => a.type === "beban")
     .map((a) => {
       const amt = inPeriod.filter((t) => t.accountCoaId === a.id && t.type === "keluar").reduce((s, t) => s + t.amount, 0);
       return { account: a, amt };

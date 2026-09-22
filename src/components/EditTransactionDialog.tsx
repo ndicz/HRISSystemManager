@@ -19,7 +19,10 @@ export function EditTransactionDialog({ tx, accounts, cashAccounts, disabled }: 
   const [error, setError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
-  const filteredAccounts = accounts.filter((a) => a.type === type);
+  // Same reasoning as AddTransactionDialog: Aset/Kewajiban/Modal accounts
+  // can take either direction of transaction, only Pendapatan/Beban are
+  // one-directional.
+  const filteredAccounts = accounts.filter((a) => (type === "masuk" ? a.type !== "beban" : a.type !== "pendapatan"));
 
   async function handleSubmit(formData: FormData) {
     setPending(true);

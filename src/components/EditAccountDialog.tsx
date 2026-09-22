@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { updateAccount, deleteAccount } from "@/app/(app)/kas/actions";
 import { formatActionError } from "@/lib/errors";
+import { ACCOUNT_TYPES, type AccountType } from "@/lib/coa";
 
 type AccountRow = { id: string; code: string; name: string; type: string };
 
 export function EditAccountDialog({ account }: { account: AccountRow }) {
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState(account.type);
+  const [type, setType] = useState<AccountType>(account.type as AccountType);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [delError, setDelError] = useState("");
@@ -50,11 +51,12 @@ export function EditAccountDialog({ account }: { account: AccountRow }) {
                 <input className="input" id="edit-acc-name" name="name" required defaultValue={account.name} />
               </div>
               <div className="field">
-                <label>Kategori</label>
-                <div className="seg" role="radiogroup">
-                  <label className="seg-opt"><input type="radio" name="type" value="masuk" checked={type === "masuk"} onChange={() => setType("masuk")} /> Pendapatan</label>
-                  <label className="seg-opt"><input type="radio" name="type" value="keluar" checked={type === "keluar"} onChange={() => setType("keluar")} /> Beban</label>
-                </div>
+                <label htmlFor="edit-acc-type">Kategori</label>
+                <select className="input" id="edit-acc-type" name="type" value={type} onChange={(e) => setType(e.target.value as AccountType)}>
+                  {ACCOUNT_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
               </div>
               {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               {delError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{delError}</p>}
