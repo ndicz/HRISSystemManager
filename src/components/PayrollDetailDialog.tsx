@@ -182,14 +182,14 @@ export function PayrollDetailDialog({
                       {rows.map((r) => (
                         <tr key={r.key}>
                           <td>{r.label}</td>
-                          <td>
+                          <td style={r.editable ? { background: "color-mix(in srgb, var(--color-accent) 7%, transparent)" } : undefined}>
                             {r.editable ? (
                               <RupiahInput
                                 name={r.key}
                                 defaultValue={r.editable.value}
                                 placeholder={formatRp(Math.abs(r.amount))}
                                 onValueChange={r.editable.onChange}
-                                style={{ maxWidth: 180, minHeight: 30, fontSize: 13 }}
+                                style={{ maxWidth: 180, minHeight: 30, fontSize: 13, borderColor: "color-mix(in srgb, var(--color-accent) 45%, var(--color-divider))" }}
                               />
                             ) : formatRp(r.amount)}
                           </td>

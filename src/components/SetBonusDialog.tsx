@@ -33,6 +33,14 @@ export function SetBonusDialog({
     return existing.length > 0 ? [...existing, emptyRow()] : [emptyRow()];
   });
 
+  // Removing a row from this list only removed it from `rows` — it never
+  // told the server to clear that employee's bonus, so setBonusBatch (which
+  // only upserts whatever it's handed) just left their old amount sitting
+  // in the database untouched. Deleting someone here has to mean "zero
+  // their bonus," so the original set of employees is captured once at
+  // open time to diff against on save.
+  const [originalEmployeeIds] = useState(() => new Set(currentBonuses.filter((b) => b.amount > 0).map((b) => b.employeeId)));
+
   function updateRow(key: number, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
@@ -44,15 +52,18 @@ export function SetBonusDialog({
   }
 
   const validRows = rows.filter((r) => r.employeeId);
+  const currentIds = new Set(validRows.map((r) => r.employeeId));
+  const clearedIds = [...originalEmployeeIds].filter((id) => !currentIds.has(id));
+  const hasChanges = validRows.length > 0 || clearedIds.length > 0;
 
   async function handleSubmit() {
     setPending(true);
     setError("");
     try {
-      await setBonusBatch(
-        period,
-        validRows.map((r) => ({ employeeId: r.employeeId, amount: r.amount })),
-      );
+      await setBonusBatch(period, [
+        ...validRows.map((r) => ({ employeeId: r.employeeId, amount: r.amount })),
+        ...clearedIds.map((employeeId) => ({ employeeId, amount: 0 })),
+      ]);
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -117,7 +128,7 @@ export function SetBonusDialog({
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
                   Batal
                 </button>
-                <button type="button" className="btn btn-primary" disabled={pending || validRows.length === 0} onClick={handleSubmit}>
+                <button type="button" className="btn btn-primary" disabled={pending || !hasChanges} onClick={handleSubmit}>
                   {pending ? "Menyimpan…" : "Simpan"}
                 </button>
               </div>
