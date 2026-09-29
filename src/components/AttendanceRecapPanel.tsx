@@ -9,6 +9,12 @@ import {
 import { monthKey, monthKeyOptions } from "@/lib/finance";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 
+// "Izin", "Sakit", and "Cuti" are all treated as paid/no-deduction days by
+// payroll (see isLeaveStatus in lib/payroll) — kept as separate options
+// here purely so the actual reason shows up on the day's own record
+// instead of everything getting recorded as a generic "Izin".
+const STATUS_OPTIONS = ["Hadir", "Izin", "Sakit", "Cuti", "Alpha", "Hari Libur"];
+
 type RecapRow = {
   id: string;
   date: Date;
@@ -215,10 +221,7 @@ export function AttendanceRecapPanel({
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="rec-status">Status</label>
           <select className="input" id="rec-status" value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-            <option value="Hadir">Hadir</option>
-            <option value="Izin">Izin</option>
-            <option value="Alpha">Alpha</option>
-            <option value="Hari Libur">Hari Libur</option>
+            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <button type="button" className="btn btn-primary" disabled={pending} onClick={() => correctDay(newDate, newStatus)}>
@@ -258,10 +261,7 @@ export function AttendanceRecapPanel({
                       disabled={pending && savingDate === dateIso}
                       onChange={(e) => correctDay(dateIso, e.target.value)}
                     >
-                      <option value="Hadir">Hadir</option>
-                      <option value="Izin">Izin</option>
-                      <option value="Alpha">Alpha</option>
-                      <option value="Hari Libur">Hari Libur</option>
+                      {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>
                   <td className="text-muted">{r.scheduledCheckIn ?? "-"}</td>

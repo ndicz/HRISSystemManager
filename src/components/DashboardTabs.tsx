@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Account, CashAccount, Employee, Position, SalaryComponent, Site, Transaction } from "@prisma/client";
-import { expiringContracts, formatRp } from "@/lib/payroll";
+import { expiringContracts, formatRp, isLeaveStatus } from "@/lib/payroll";
 import { monthKey, saldoKasSampai } from "@/lib/finance";
 
 type Emp = Employee & { site: Site; position: Position; salaryComponents: SalaryComponent[] };
@@ -51,7 +51,7 @@ export function DashboardTabs({
   const siteStats = sites.map((s) => {
     const emps = employees.filter((e) => e.siteId === s.id);
     const hadir = emps.filter((e) => e.attStatus === "Hadir").length;
-    const izin = emps.filter((e) => e.attStatus === "Izin").length;
+    const izin = emps.filter((e) => isLeaveStatus(e.attStatus)).length;
     const alpha = emps.filter((e) => e.attStatus === "Alpha").length;
     return { site: s, total: emps.length, hadir, izin, alpha, pct: emps.length > 0 ? Math.max(2, Math.round((hadir / emps.length) * 100)) : 2 };
   });
