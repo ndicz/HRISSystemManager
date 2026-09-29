@@ -62,10 +62,21 @@ export function computePayroll(
 // Employee's live aggregate columns — those only ever reflect whichever
 // month currently has the most imported records, so they can't answer
 // "what did October look like" once November's import has landed.
+
+// "Izin", "Sakit", and "Cuti" are all paid/no-deduction days — same
+// treatment in the payroll math, just recorded under their own label so a
+// day's actual reason shows correctly in the attendance table rather than
+// everything getting flattened into a generic "Izin". Shared here so
+// absensi/actions.ts and attendanceReport.ts can't drift out of sync with
+// what payroll actually treats as a paid leave day.
+export function isLeaveStatus(status: string): boolean {
+  return status === "Izin" || status === "Sakit" || status === "Cuti";
+}
+
 export function monthlyAttendanceTally(records: Pick<AttendanceRecord, "date" | "status" | "lateMin">[], period: string) {
   const monthRecords = records.filter((r) => monthKey(r.date) === period);
   const presentDays = monthRecords.filter((r) => r.status === "Hadir").length;
-  const leaveDays = monthRecords.filter((r) => r.status === "Izin").length;
+  const leaveDays = monthRecords.filter((r) => isLeaveStatus(r.status)).length;
   const alphaDays = monthRecords.filter((r) => r.status === "Alpha").length;
   const lateCount = monthRecords.filter((r) => r.lateMin > 0).length;
   return { presentDays, leaveDays, alphaDays, lateCount, workDays: presentDays + leaveDays + alphaDays };
@@ -154,7 +165,7 @@ export function payrollAttendanceTally(records: Pick<AttendanceRecord, "date" | 
   const { start, end } = payrollPeriodRange(period);
   const periodRecords = records.filter((r) => r.date >= start && r.date <= end);
   const presentDays = periodRecords.filter((r) => r.status === "Hadir").length;
-  const leaveDays = periodRecords.filter((r) => r.status === "Izin").length;
+  const leaveDays = periodRecords.filter((r) => isLeaveStatus(r.status)).length;
   const alphaDays = periodRecords.filter((r) => r.status === "Alpha").length;
   const lateCount = periodRecords.filter((r) => r.lateMin > 0).length;
   return { presentDays, leaveDays, alphaDays, lateCount, workDays: presentDays + leaveDays + alphaDays };

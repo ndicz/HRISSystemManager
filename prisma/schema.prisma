@@ -134,7 +134,7 @@ model Employee {
   workDays                    Int       @default(22)
   presentDays                 Int       @default(22)
   leaveDays                   Int       @default(0)
-  attStatus                   String    @default("Hadir") // today's status: Hadir | Izin | Alpha
+  attStatus                   String    @default("Hadir") // today's status: Hadir | Izin | Sakit | Cuti | Alpha | Hari Libur
   checkIn                     String?
   checkOut                    String?
 
@@ -313,7 +313,7 @@ model AttendanceRecord {
   employeeId        String
   employee          Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   date              DateTime
-  status            String // "Hadir" | "Izin" | "Alpha" | "Hari Libur"
+  status            String // "Hadir" | "Izin" | "Sakit" | "Cuti" | "Alpha" | "Hari Libur" (Izin/Sakit/Cuti all count as paid leave — see isLeaveStatus in lib/payroll.ts)
   checkIn           String?
   checkOut          String?
   scheduledCheckIn  String?

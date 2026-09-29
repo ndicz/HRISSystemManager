@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { parseAttendanceXlsx, type AttendanceImportRow, type AttendanceImportDay } from "@/lib/attendanceImport";
-import { computePayroll } from "@/lib/payroll";
+import { computePayroll, isLeaveStatus } from "@/lib/payroll";
 import { mapLimit } from "@/lib/concurrency";
 
 type Tx = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
@@ -37,7 +37,7 @@ async function recomputeEmployeeAttendance(tx: Tx, employeeId: string) {
   }
 
   const hadir = bestRecords.filter((r) => r.status === "Hadir").length;
-  const izin = bestRecords.filter((r) => r.status === "Izin").length;
+  const izin = bestRecords.filter((r) => isLeaveStatus(r.status)).length;
   const alpha = bestRecords.filter((r) => r.status === "Alpha").length;
   const workDays = hadir + izin + alpha;
 
@@ -288,7 +288,7 @@ export async function fetchAttendanceRecap(employeeId: string) {
 export async function upsertAttendanceDay(employeeId: string, dateIso: string, status: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!["Hadir", "Izin", "Alpha", "Hari Libur"].includes(status)) throw new Error("Status tidak valid.");
+  if (!["Hadir", "Izin", "Sakit", "Cuti", "Alpha", "Hari Libur"].includes(status)) throw new Error("Status tidak valid.");
 
   const date = new Date(dateIso + "T00:00:00");
   if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");

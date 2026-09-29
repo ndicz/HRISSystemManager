@@ -1,6 +1,8 @@
 // Aggregation helpers for the attendance performance report — separate from
 // payroll.ts (unrelated subject, and that file is already sizeable).
 
+import { isLeaveStatus } from "@/lib/payroll";
+
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
 export type AttendanceBucket = { key: string; label: string; hadir: number; izin: number; alpha: number; libur: number };
@@ -9,9 +11,13 @@ function emptyBucket(key: string, label: string): AttendanceBucket {
   return { key, label, hadir: 0, izin: 0, alpha: 0, libur: 0 };
 }
 
+// "izin" here covers Izin/Sakit/Cuti as one reporting bucket — same
+// no-deduction group payroll treats them as (see isLeaveStatus); each day's
+// specific reason still shows correctly on its own record in Rekap
+// Absensi, this is just the rolled-up chart/summary view.
 function tally(bucket: AttendanceBucket, status: string) {
   if (status === "Hadir") bucket.hadir++;
-  else if (status === "Izin") bucket.izin++;
+  else if (isLeaveStatus(status)) bucket.izin++;
   else if (status === "Alpha") bucket.alpha++;
   else if (status === "Hari Libur") bucket.libur++;
 }
@@ -57,7 +63,7 @@ export function employeeAttendanceSummary(
     if (!byEmployee.has(r.employeeId)) byEmployee.set(r.employeeId, { hadir: 0, izin: 0, alpha: 0, total: 0 });
     const s = byEmployee.get(r.employeeId)!;
     if (r.status === "Hadir") s.hadir++;
-    else if (r.status === "Izin") s.izin++;
+    else if (isLeaveStatus(r.status)) s.izin++;
     else if (r.status === "Alpha") s.alpha++;
     if (r.status !== "Hari Libur") s.total++;
   }
