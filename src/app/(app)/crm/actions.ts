@@ -139,20 +139,25 @@ export async function convertLeadToClient(id: string) {
   const nextYear = new Date(now);
   nextYear.setFullYear(now.getFullYear() + 1);
 
-  const client = await db.client.create({
-    data: {
-      name: lead.companyName,
-      pic: lead.picName ?? "",
-      picPhone: lead.picPhone,
-      address: lead.address,
-      feeType: "percent",
-      feeValue: 0,
-      contractStart: now,
-      contractEnd: nextYear,
-    },
+  // Client + the lead's link to it land together, and only once — a double
+  // click used to create the same client twice.
+  const client = await db.$transaction(async (tx) => {
+    const created = await tx.client.create({
+      data: {
+        name: lead.companyName,
+        pic: lead.picName ?? "",
+        picPhone: lead.picPhone,
+        address: lead.address,
+        feeType: "percent",
+        feeValue: 0,
+        contractStart: now,
+        contractEnd: nextYear,
+      },
+    });
+    const linked = await tx.lead.updateMany({ where: { id, clientId: null }, data: { clientId: created.id, convertedAt: now } });
+    if (linked.count === 0) throw new UserError("Prospek ini sudah pernah dijadikan klien.");
+    return created;
   });
-
-  await db.lead.update({ where: { id }, data: { clientId: client.id, convertedAt: now } });
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "lead.convertToClient", entity: "Lead", entityId: id, detail: JSON.stringify({ companyName: lead.companyName, clientId: client.id }) },

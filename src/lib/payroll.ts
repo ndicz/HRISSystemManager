@@ -236,7 +236,7 @@ export function resolveLatenessAmount(
 // computed from flat per-occurrence rates instead of computePayroll's
 // proportional-to-salary math — matching how the client's real payroll
 // spreadsheet works. Without a configured rate, behavior is unchanged.
-export function computeMonthlyPayroll(
+function computeMonthlyPayrollLive(
   emp: Pick<Employee, "id" | "positionId" | "siteId" | "overtimeHours" | "kasbon" | "kasbonCicilan" | "bpjsKesehatanOverride" | "bpjsKetenagakerjaanOverride">,
   components: SalaryComponent[],
   records: Pick<AttendanceRecord, "date" | "status" | "lateMin">[],
@@ -368,6 +368,17 @@ export function computeMonthlyPayroll(
     potongan, total,
     usesFlatRate: true as const,
   };
+}
+
+// A paid period is frozen: its numbers come from the snapshot bayarGaji
+// stored, never from today's data (see PayrollEntry.paidSnapshot). Entries
+// paid before snapshots existed fall back to recomputing, as before.
+export function computeMonthlyPayroll(...args: Parameters<typeof computeMonthlyPayrollLive>): ReturnType<typeof computeMonthlyPayrollLive> {
+  const entry = args[4]?.entry;
+  if (entry?.paid && entry.paidSnapshot && typeof entry.paidSnapshot === "object") {
+    return entry.paidSnapshot as unknown as ReturnType<typeof computeMonthlyPayrollLive>;
+  }
+  return computeMonthlyPayrollLive(...args);
 }
 
 // Rate resolution: a per-site override for the period wins; otherwise the

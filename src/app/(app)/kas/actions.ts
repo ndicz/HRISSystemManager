@@ -275,24 +275,28 @@ export async function payPayable(id: string) {
   await assertPeriodOpen(new Date());
 
   const payable = await db.payable.findUnique({ where: { id } });
-  if (!payable || payable.status === "lunas") return;
+  if (!payable) return;
+  if (payable.status === "lunas") throw new UserError("Hutang ini sudah dibayar sebelumnya — muat ulang halaman.");
 
   const account = await db.account.findFirst({ where: { code: "5009" } });
   const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
-  if (account && cashAccount) {
-    await db.transaction.create({
-      data: {
-        date: new Date(),
-        accountCoaId: account.id,
-        cashAccountId: cashAccount.id,
-        desc: "Bayar hutang — " + payable.vendorName + " (" + payable.desc + ")",
-        amount: payable.amount,
-        type: "keluar",
-      },
-    });
-  }
-
-  await db.payable.update({ where: { id }, data: { status: "lunas", paidAt: new Date() } });
+  await db.$transaction(async (tx) => {
+    // Claim it first: of two clicks (or two tabs) only one pays it out.
+    const claimed = await tx.payable.updateMany({ where: { id, status: { not: "lunas" } }, data: { status: "lunas", paidAt: new Date() } });
+    if (claimed.count === 0) throw new UserError("Hutang ini sudah dibayar sebelumnya — muat ulang halaman.");
+    if (account && cashAccount) {
+      await tx.transaction.create({
+        data: {
+          date: new Date(),
+          accountCoaId: account.id,
+          cashAccountId: cashAccount.id,
+          desc: "Bayar hutang — " + payable.vendorName + " (" + payable.desc + ")",
+          amount: payable.amount,
+          type: "keluar",
+        },
+      });
+    }
+  });
   revalidatePath("/kas");
 }
 

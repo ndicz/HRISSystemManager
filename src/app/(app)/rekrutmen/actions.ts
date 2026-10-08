@@ -6,6 +6,8 @@ import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 import { nextEmpCode, isUniqueViolation } from "@/lib/empCode";
 
+const CANDIDATE_CHANGED = "Status kandidat ini sudah berubah (mungkin baru diproses orang lain) — muat ulang halaman.";
+
 export async function addCandidate(formData: FormData) {
   await requireAccess("/rekrutmen");
 
@@ -17,16 +19,17 @@ export async function addCandidate(formData: FormData) {
   revalidatePath("/rekrutmen");
 }
 
-export async function advanceCandidate(id: string, siteId?: string) {
+export async function advanceCandidate(id: string, fromStatus: string, siteId?: string) {
   const session = await requireAccess("/rekrutmen");
 
   const c = await db.candidate.findUnique({ where: { id } });
   if (!c) return;
+  if (c.status !== fromStatus) throw new UserError(CANDIDATE_CHANGED);
 
-  if (c.status === "lamaran") {
-    await db.candidate.update({ where: { id }, data: { status: "interview" } });
-  } else if (c.status === "interview") {
-    await db.candidate.update({ where: { id }, data: { status: "diterima" } });
+  if (c.status === "lamaran" || c.status === "interview") {
+    // Conditional on the status just read, so a stale tab can't skip a step.
+    const moved = await db.candidate.updateMany({ where: { id, status: c.status }, data: { status: c.status === "lamaran" ? "interview" : "diterima" } });
+    if (moved.count === 0) throw new UserError(CANDIDATE_CHANGED);
   } else if (c.status === "diterima") {
     // Activate: convert candidate into a real employee, at the tempat kerja
     // HR picked (it used to silently take whichever site came first).
@@ -41,8 +44,12 @@ export async function advanceCandidate(id: string, siteId?: string) {
       // Same numbering as Tambah Karyawan.
       const empCode = await nextEmpCode(hireDate);
       try {
-        await db.$transaction([
-          db.employee.create({
+        await db.$transaction(async (tx) => {
+          // Claim the candidate first — a double click used to create the
+          // same new employee twice.
+          const claimed = await tx.candidate.updateMany({ where: { id, status: "diterima" }, data: { status: "aktif" } });
+          if (claimed.count === 0) throw new UserError(CANDIDATE_CHANGED);
+          await tx.employee.create({
             data: {
               empCode,
               name: c.name,
@@ -52,9 +59,8 @@ export async function advanceCandidate(id: string, siteId?: string) {
               contractType: "PKWT",
               salaryComponents: { create: { name: "Gaji Pokok", amount: position.baseSalary } },
             },
-          }),
-          db.candidate.update({ where: { id }, data: { status: "aktif" } }),
-        ]);
+          });
+        });
         break;
       } catch (err) {
         if (!isUniqueViolation(err) || attempt >= 4) throw err;

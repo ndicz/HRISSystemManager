@@ -84,7 +84,7 @@ function RowActions({ mbp, clients, siteNames, pendingRequests, onChanged }: { m
         </button>
       )}
       {canAdvance && (
-        <button type="button" className="btn btn-ghost" disabled={advPending} onClick={() => run(() => advanceMbpStatus(mbp.id), startAdv)}>
+        <button type="button" className="btn btn-ghost" disabled={advPending} onClick={() => run(() => advanceMbpStatus(mbp.id, mbp.status), startAdv)}>
           {ADVANCE_LABEL[mbp.status]}
         </button>
       )}

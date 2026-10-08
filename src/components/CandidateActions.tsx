@@ -30,7 +30,7 @@ export function CandidateActions({ id, status, sites }: { id: string; status: st
         type="button"
         className="btn btn-ghost"
         disabled={advanceDisabled || pending || (needsSite && !siteId)}
-        onClick={() => run(() => advanceCandidate(id, siteId || undefined))}
+        onClick={() => run(() => advanceCandidate(id, status, siteId || undefined))}
       >
         {ADVANCE_LABEL[status] ?? "Aktif"}
       </button>
