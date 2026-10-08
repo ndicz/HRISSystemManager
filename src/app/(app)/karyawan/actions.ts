@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { parseBpjsXlsx, type BpjsImportRow } from "@/lib/bpjsImport";
 import { mapLimit } from "@/lib/concurrency";
 import { assertPeriodOpen } from "@/lib/periodLock";
+import { nextEmpCode, isUniqueViolation } from "@/lib/empCode";
 
 export async function addEmployee(formData: FormData) {
   const session = await requireAccess("/karyawan");
@@ -28,35 +29,34 @@ export async function addEmployee(formData: FormData) {
   if (!position) throw new UserError("Posisi tidak ditemukan.");
 
   const empCodeRaw = String(formData.get("empCode") ?? "").trim();
-  let empCode: string;
   if (empCodeRaw) {
     const taken = await db.employee.findUnique({ where: { empCode: empCodeRaw } });
     if (taken) throw new UserError("Nomor karyawan \"" + empCodeRaw + "\" sudah digunakan.");
-    empCode = empCodeRaw;
-  } else {
-    // "WSP" + running number + bulan masuk + tahun masuk (2 digit) — the
-    // running number is never reused, so once someone resigns and drops off
-    // the active list, later hires' numbers naturally look non-sequential.
-    const empCount = await db.employee.count();
-    const urut = String(empCount + 1).padStart(3, "0");
-    const mm = String(hireDate.getMonth() + 1).padStart(2, "0");
-    const yy = String(hireDate.getFullYear() % 100).padStart(2, "0");
-    empCode = "WSP " + urut + mm + yy;
   }
 
-  const employee = await db.employee.create({
-    data: {
-      empCode,
-      name,
-      siteId,
-      positionId,
-      clientId,
-      hireDate,
-      contractType,
-      contractEnd: contractType === "PKWT" && contractEndRaw ? new Date(contractEndRaw) : null,
-      salaryComponents: { create: { name: "Gaji Pokok", amount: position.baseSalary } },
-    },
-  });
+  const data = {
+    name,
+    siteId,
+    positionId,
+    clientId,
+    hireDate,
+    contractType,
+    contractEnd: contractType === "PKWT" && contractEndRaw ? new Date(contractEndRaw) : null,
+    salaryComponents: { create: { name: "Gaji Pokok", amount: position.baseSalary } },
+  };
+  // An auto number can still collide with one issued a moment ago by a
+  // concurrent add — take the next one and try again rather than fail.
+  let employee: Awaited<ReturnType<typeof db.employee.create>> | null = null;
+  let empCode = empCodeRaw;
+  for (let attempt = 0; !employee; attempt++) {
+    if (!empCodeRaw) empCode = await nextEmpCode(hireDate);
+    try {
+      employee = await db.employee.create({ data: { ...data, empCode } });
+    } catch (err) {
+      if (!isUniqueViolation(err)) throw err;
+      if (empCodeRaw || attempt >= 4) throw new UserError("Nomor karyawan \"" + empCode + "\" sudah digunakan.");
+    }
+  }
 
   await db.auditLog.create({
     data: {

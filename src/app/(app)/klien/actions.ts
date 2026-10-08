@@ -6,13 +6,32 @@ import { requireAccess } from "@/lib/authz";
 import { MBP_OFFICE_DENY } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 import { baseSalary } from "@/lib/payroll";
-import { invoiceBjTotal } from "@/lib/finance";
+import { invoiceBjTotal, invoiceBjPpn } from "@/lib/finance";
+import { suggestNextAccountCode } from "@/lib/coa";
 import { assertPeriodOpen } from "@/lib/periodLock";
 
 // Invoice status only ever moves forward one step; lunas and dibatalkan are
 // terminal (a paid invoice is reversed with "Batalkan", never re-paid).
 const NEXT_INVOICE_STATUS: Record<string, "terkirim" | "lunas" | undefined> = { draft: "terkirim", terkirim: "lunas" };
 const STATUS_CHANGED_MESSAGE = "Status invoice ini sudah berubah (mungkin baru diproses orang lain) — muat ulang halaman.";
+
+const PPN_ACCOUNT_NAME = "Utang PPN Keluaran";
+const ppnDesc = (invoiceNo: string) => "PPN Keluaran " + invoiceNo;
+
+// The Kewajiban account PPN collected on invoices is parked in until it's
+// paid on to the tax office (a manual Kas "keluar" on the same account).
+// Created on first use with the next free 2xxx code, like other self-heal
+// COA labels in this app.
+async function ppnAccount() {
+  const existing = await db.account.findFirst({ where: { name: PPN_ACCOUNT_NAME, type: "kewajiban" } });
+  if (existing) return existing;
+  const accounts = await db.account.findMany({ select: { code: true } });
+  try {
+    return await db.account.create({ data: { code: suggestNextAccountCode(accounts, "kewajiban"), name: PPN_ACCOUNT_NAME, type: "kewajiban" } });
+  } catch {
+    return db.account.findFirst({ where: { name: PPN_ACCOUNT_NAME, type: "kewajiban" } });
+  }
+}
 
 export async function addClient(formData: FormData) {
   await requireAccess("/klien");
@@ -233,9 +252,10 @@ export async function advanceInvoiceBjStatus(id: string) {
   if (next === "lunas") await assertPeriodOpen();
 
   const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn);
-  const [account, cashAccount] = next === "lunas"
-    ? await Promise.all([db.account.findUnique({ where: { code: "4001" } }), db.cashAccount.findFirst({ where: { kind: "besar" } })])
-    : [null, null];
+  const ppn = invoiceBjPpn(inv.items, inv.discountPercent, inv.withPpn);
+  const [account, cashAccount, ppnAcc] = next === "lunas"
+    ? await Promise.all([db.account.findUnique({ where: { code: "4001" } }), db.cashAccount.findFirst({ where: { kind: "besar" } }), ppn > 0 ? ppnAccount() : null])
+    : [null, null, null];
   const keterangan = inv.client.name + (inv.jobTitle ? " — " + inv.jobTitle : "");
 
   await db.$transaction(async (tx) => {
@@ -250,10 +270,15 @@ export async function advanceInvoiceBjStatus(id: string) {
           accountCoaId: account.id,
           cashAccountId: cashAccount.id,
           desc: "Pembayaran " + inv.invoiceNo + " (" + keterangan + ")",
-          amount: total,
+          amount: ppnAcc ? total - ppn : total,
           type: "masuk",
         },
       });
+      if (ppnAcc) {
+        await tx.transaction.create({
+          data: { date: new Date(), accountCoaId: ppnAcc.id, cashAccountId: cashAccount.id, desc: ppnDesc(inv.invoiceNo), amount: ppn, type: "masuk" },
+        });
+      }
     }
   });
 
@@ -298,6 +323,9 @@ export async function cancelInvoiceBj(id: string) {
   const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn);
   const account = await db.account.findUnique({ where: { code: "4001" } });
   const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
+  // Reverse exactly what the payment posted: invoices paid before PPN was
+  // split out booked the whole total to 4001.
+  const ppnPosted = await db.transaction.findFirst({ where: { desc: ppnDesc(inv.invoiceNo), type: "masuk" } });
   const keterangan = inv.client.name + (inv.jobTitle ? " — " + inv.jobTitle : "");
   await db.$transaction(async (tx) => {
     const moved = await tx.invoiceBj.updateMany({ where: { id, status: "lunas" }, data: { status: "dibatalkan" } });
@@ -309,10 +337,15 @@ export async function cancelInvoiceBj(id: string) {
           accountCoaId: account.id,
           cashAccountId: cashAccount.id,
           desc: "Pembatalan invoice " + inv.invoiceNo + " (" + keterangan + ")",
-          amount: total,
+          amount: ppnPosted ? total - ppnPosted.amount : total,
           type: "keluar",
         },
       });
+      if (ppnPosted) {
+        await tx.transaction.create({
+          data: { date: new Date(), accountCoaId: ppnPosted.accountCoaId, cashAccountId: cashAccount.id, desc: "Pembatalan " + ppnDesc(inv.invoiceNo), amount: ppnPosted.amount, type: "keluar" },
+        });
+      }
     }
   });
 

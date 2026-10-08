@@ -3,9 +3,10 @@ import { AddCandidateDialog } from "@/components/AddCandidateDialog";
 import { RekrutmenTable } from "@/components/RekrutmenTable";
 
 export default async function RekrutmenPage() {
-  const [candidates, positions] = await Promise.all([
+  const [candidates, positions, sites] = await Promise.all([
     db.candidate.findMany({ orderBy: { createdAt: "desc" } }),
     db.position.findMany({ select: { id: true, name: true } }),
+    db.site.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   const counts = {
@@ -33,7 +34,7 @@ export default async function RekrutmenPage() {
         <AddCandidateDialog positions={positions} />
       </div>
 
-      <RekrutmenTable candidates={candidates} positions={positions} />
+      <RekrutmenTable candidates={candidates} positions={positions} sites={sites} />
     </div>
   );
 }

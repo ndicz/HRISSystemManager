@@ -319,7 +319,9 @@ img { display: block; max-width: 100%; }
   .grid-cols { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 @media (max-width: 560px) {
-  .grid-cols { grid-template-columns: 1fr !important; }
+  /* minmax(0,1fr), not 1fr: a plain 1fr track grows to fit a wide table, so
+     the whole page scrolled sideways on phones instead of just the table. */
+  .grid-cols { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
 /* Responsive: off-canvas sidebar + mobile topbar */

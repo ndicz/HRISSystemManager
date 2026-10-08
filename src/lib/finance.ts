@@ -36,6 +36,14 @@ export function invoiceBjTotal(items: { qty: number; price: number }[], discount
   return withPpn ? Math.round(afterDiscount * 1.11) : afterDiscount;
 }
 
+// The PPN 11% part of an invoice B&J total. It's collected on the state's
+// behalf (owed onward as Utang PPN), so it isn't the company's revenue —
+// payments book total − PPN to Pendapatan and the PPN to a Kewajiban account.
+export function invoiceBjPpn(items: { qty: number; price: number }[], discountPercent: number, withPpn: boolean): number {
+  const afterDiscount = invoiceBjSubtotal(items) - invoiceBjDiscountValue(items, discountPercent);
+  return invoiceBjTotal(items, discountPercent, withPpn) - afterDiscount;
+}
+
 // ── MBP (Material Budget Plan / penawaran) totals ───────────────────────
 
 export function mbpPpnValue(items: { qty: number; price: number }[], withPpn: boolean, ppnPercent: number): number {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { signOutAction } from "@/app/(app)/actions";
 import { navForRole, NAV_GROUP_ORDER, type NavGroup, type NavItem } from "@/lib/rbac";
 
@@ -189,29 +189,41 @@ function NavLink({ item, active, badge, onNavigate }: { item: NavItem; active: b
   );
 }
 
+// Sidebar group open/closed prefs. Storage can be unavailable (private
+// mode, blocked site data) — then every group just starts open.
+const GROUP_PREF_EVENT = "sidebar-group-pref";
+function readGroupPref(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function writeGroupPref(key: string, value: string) {
+  try { localStorage.setItem(key, value); } catch { /* not persisted */ }
+  window.dispatchEvent(new Event(GROUP_PREF_EVENT));
+}
+function subscribeGroupPrefs(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(GROUP_PREF_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(GROUP_PREF_EVENT, onChange);
+  };
+}
+
 function NavGroupSection({ group, items, pathname, badgeCounts, onNavigate }: { group: NavGroup; items: NavItem[]; pathname: string; badgeCounts?: Record<string, number>; onNavigate: () => void }) {
   const storageKey = "sidebar-group-" + group;
   const containsActive = items.some((i) => isActive(pathname, i.href));
-  const [expanded, setExpanded] = useState(true);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(storageKey);
-    if (stored !== null) setExpanded(stored === "1");
-    else if (containsActive) setExpanded(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (containsActive) setExpanded(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  // The remembered open/closed choice lives in localStorage, read through
+  // useSyncExternalStore (null on the server, so the first render matches
+  // SSR) instead of copied into state from an effect.
+  const stored = useSyncExternalStore(subscribeGroupPrefs, () => readGroupPref(storageKey), () => null);
+  // A closed group still opens when you land on one of its pages — unless
+  // you closed it while on that very page.
+  const [closedOnPath, setClosedOnPath] = useState<string | null>(null);
+  const expanded = stored !== "0" || (containsActive && closedOnPath !== pathname);
 
   function toggle() {
-    setExpanded((prev) => {
-      const next = !prev;
-      localStorage.setItem(storageKey, next ? "1" : "0");
-      return next;
-    });
+    const next = !expanded;
+    writeGroupPref(storageKey, next ? "1" : "0");
+    setClosedOnPath(next ? null : pathname);
   }
 
   return (
