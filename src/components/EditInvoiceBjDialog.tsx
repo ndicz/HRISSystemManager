@@ -6,6 +6,7 @@ import { updateInvoiceBj } from "@/app/(app)/klien/actions";
 import { InvoiceBjFormFields } from "@/components/InvoiceBjFormFields";
 import type { ClientOption } from "@/components/ClientCombobox";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type InvoiceRow = InvoiceBj & { items: InvoiceBjItem[] };
 
@@ -35,7 +36,7 @@ export function EditInvoiceBjDialog({ invoice, clients, siteNames }: { invoice: 
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" style={{ width: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit invoice {invoice.invoiceNo}</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <InvoiceBjFormFields
                 clients={clients}
                 siteNames={siteNames}

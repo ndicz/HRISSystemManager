@@ -1,3 +1,4 @@
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { monthKey } from "@/lib/finance";
 
@@ -9,5 +10,5 @@ import { monthKey } from "@/lib/finance";
 export async function assertPeriodOpen(date: Date = new Date()) {
   const period = monthKey(date);
   const closed = await db.closedPeriod.findUnique({ where: { period } });
-  if (closed) throw new Error(`Periode ${period} sudah ditutup — buka kembali periode tersebut dulu di Pengeluaran & Kas untuk mencatat transaksi baru.`);
+  if (closed) throw new UserError(`Periode ${period} sudah ditutup — buka kembali periode tersebut dulu di Pengeluaran & Kas untuk mencatat transaksi baru.`);
 }

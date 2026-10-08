@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateLeaveRequest, deleteLeaveRequest } from "@/app/(app)/cuti/actions";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type LeaveRow = { id: string; employeeName: string; type: string; startDate: Date; endDate: Date; reason: string };
 
@@ -47,7 +48,7 @@ export function EditLeaveRequestDialog({ request }: { request: LeaveRow }) {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit pengajuan cuti &mdash; {request.employeeName}</div>
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="edit-leave-type">Jenis cuti</label>
                 <select className="input" id="edit-leave-type" name="type" defaultValue={request.type}>

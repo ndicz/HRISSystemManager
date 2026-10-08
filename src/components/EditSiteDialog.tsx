@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateSite, deleteSite } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
 import { RupiahInput } from "@/components/RupiahInput";
+import { submitForm } from "@/lib/submitForm";
 
 type SiteRow = {
   id: string; name: string; address: string; supervisor: string; umr: number;
@@ -47,7 +48,7 @@ export function EditSiteDialog({ site }: { site: SiteRow }) {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" style={{ width: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit tempat kerja</div>
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="edit-site-name">Nama lokasi</label>
                 <input className="input" id="edit-site-name" name="name" required defaultValue={site.name} />

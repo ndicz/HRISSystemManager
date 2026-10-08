@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -14,7 +15,7 @@ export async function addLeaveRequest(formData: FormData) {
   const endDate = String(formData.get("endDate") ?? "");
   const reason = String(formData.get("reason") ?? "").trim() || "-";
 
-  if (!employeeId || !startDate || !endDate) throw new Error("Karyawan dan tanggal wajib diisi.");
+  if (!employeeId || !startDate || !endDate) throw new UserError("Karyawan dan tanggal wajib diisi.");
 
   await db.leaveRequest.create({
     data: { employeeId, type, startDate: new Date(startDate), endDate: new Date(endDate), reason },
@@ -47,7 +48,7 @@ export async function updateLeaveRequest(id: string, formData: FormData) {
   const startDate = String(formData.get("startDate") ?? "");
   const endDate = String(formData.get("endDate") ?? "");
   const reason = String(formData.get("reason") ?? "").trim() || "-";
-  if (!startDate || !endDate) throw new Error("Tanggal wajib diisi.");
+  if (!startDate || !endDate) throw new UserError("Tanggal wajib diisi.");
 
   await db.leaveRequest.update({
     where: { id },

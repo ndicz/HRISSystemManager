@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { findOrCreateClientByName } from "@/app/(app)/klien/actions";
+import { formatActionError } from "@/lib/errors";
 
 export type ClientOption = { id: string; name: string };
 
@@ -40,6 +41,7 @@ export function ClientCombobox({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [resolving, startTransition] = useTransition();
+  const [error, setError] = useState("");
   const [selectedName, setSelectedName] = useState(() => clients.find((c) => c.id === value)?.name ?? "");
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -67,12 +69,17 @@ export function ClientCombobox({
   }
 
   function selectByName(n: string) {
+    setError("");
     startTransition(async () => {
-      const res = await findOrCreateClientByName(n);
-      onChange(res.id, res.name);
-      setSelectedName(res.name);
-      setQuery("");
-      setOpen(false);
+      try {
+        const res = await findOrCreateClientByName(n);
+        onChange(res.id, res.name);
+        setSelectedName(res.name);
+        setQuery("");
+        setOpen(false);
+      } catch (err) {
+        setError(formatActionError(err));
+      }
     });
   }
 
@@ -125,6 +132,7 @@ export function ClientCombobox({
           )}
         </div>
       )}
+      {error && <div style={{ fontSize: 12, color: "var(--color-danger)", marginTop: 4 }}>{error}</div>}
     </div>
   );
 }

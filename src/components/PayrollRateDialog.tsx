@@ -5,6 +5,7 @@ import type { PayrollRate } from "@prisma/client";
 import { savePayrollRate, deletePayrollRate } from "@/app/(app)/penggajian/actions";
 import { formatActionError } from "@/lib/errors";
 import { RupiahInput } from "@/components/RupiahInput";
+import { submitForm } from "@/lib/submitForm";
 
 type Site = { id: string; name: string };
 
@@ -52,7 +53,7 @@ export function PayrollRateDialog({ period, sites, rates }: { period: string; si
               karyawan yang rate-nya memang beda, lebih mudah diisi manual lewat tombol &ldquo;Detail&rdquo; di baris karyawan
               itu pada tabel Gaji Bulanan — angka manual itu akan menggantikan tarif di sini khusus untuk orang tersebut.
             </p>
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-4)" }} key={siteId + current?.id}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-4)" }} key={siteId + current?.id}>
               <input type="hidden" name="period" value={period} />
               <div className="field" style={{ marginBottom: 0 }}>
                 <label htmlFor="rate-site">Berlaku untuk</label>

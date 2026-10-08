@@ -5,6 +5,7 @@ import { updateInventoryItem, deleteInventoryItem, restockItem } from "@/app/(ap
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatRp } from "@/lib/payroll";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type ItemRow = { id: string; name: string; unit: string; qty: number; price: number; category: string | null; trackStock: boolean; purpose: string };
 
@@ -78,7 +79,7 @@ export function EditInventoryItemDialog({ item }: { item: ItemRow }) {
               </div>
             )}
 
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="edit-inv-name">Nama barang</label>
                 <input className="input" id="edit-inv-name" name="name" required defaultValue={item.name} />

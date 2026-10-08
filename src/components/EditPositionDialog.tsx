@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { updatePosition, deletePosition } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
 import { RupiahInput } from "@/components/RupiahInput";
+import { submitForm } from "@/lib/submitForm";
 
 type Position = {
   id: string; name: string; salaryType: string; baseSalary: number;
@@ -51,7 +52,7 @@ export function EditPositionDialog({ position }: { position: Position }) {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" style={{ width: "min(560px, 100%)" }} onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit posisi</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <input type="hidden" name="positionId" value={position.id} />
               <div className="field">
                 <label htmlFor="edit-pos-name">Nama posisi</label>

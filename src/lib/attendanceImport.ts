@@ -1,3 +1,4 @@
+import { UserError } from "@/lib/userError";
 import { inflateRawSync } from "node:zlib";
 
 // Minimal, dependency-free .xlsx reader scoped to exactly what we need:
@@ -21,7 +22,7 @@ export function unzip(buf: Buffer): Record<string, string> {
       break;
     }
   }
-  if (eocd === -1) throw new Error("Bukan file .xlsx yang valid");
+  if (eocd === -1) throw new UserError("Bukan file .xlsx yang valid");
 
   const cdOffset = buf.readUInt32LE(eocd + 16);
   const cdCount = buf.readUInt16LE(eocd + 10);
@@ -502,7 +503,7 @@ function parseVerticalDaily(rows: Record<string, string>[]): AttendanceImportRow
 export function parseAttendanceXlsx(buf: Buffer): AttendanceImportResult {
   const files = unzip(buf);
   const sheetPath = Object.keys(files).find((k) => /xl\/worksheets\/sheet1\.xml/.test(k));
-  if (!sheetPath) throw new Error("Sheet absensi tidak ditemukan");
+  if (!sheetPath) throw new UserError("Sheet absensi tidak ditemukan");
 
   const strs = parseSharedStrings(files["xl/sharedStrings.xml"]);
   const rows = parseSheetRows(files[sheetPath], strs);
@@ -515,7 +516,7 @@ export function parseAttendanceXlsx(buf: Buffer): AttendanceImportResult {
   const results = parseRingkasanKehadiran(rows, periodMatch);
   const finalResults = results.length > 0 ? results : parseVerticalDaily(rows);
 
-  if (finalResults.length === 0) throw new Error("Tidak ada data personil yang terbaca dari file ini");
+  if (finalResults.length === 0) throw new UserError("Tidak ada data personil yang terbaca dari file ini");
 
   return { summary: { companyName, period: periodMatch || "-", count: finalResults.length }, rows: finalResults };
 }

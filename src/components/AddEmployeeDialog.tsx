@@ -2,6 +2,8 @@
 
 import { useState, useRef } from "react";
 import { addEmployee } from "@/app/(app)/karyawan/actions";
+import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type Option = { id: string; name: string };
 
@@ -22,14 +24,18 @@ export function AddEmployeeDialog({
   const [open, setOpen] = useState(false);
   const [contractType, setContractType] = useState("PKWT");
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
+    setError("");
     try {
       await addEmployee(formData);
       setOpen(false);
       formRef.current?.reset();
+    } catch (err) {
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -44,7 +50,7 @@ export function AddEmployeeDialog({
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Tambah karyawan</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="name">Nama</label>
                 <input className="input" id="name" name="name" required placeholder="Nama lengkap" />
@@ -119,6 +125,7 @@ export function AddEmployeeDialog({
                   <input className="input" id="contractEnd" name="contractEnd" type="date" />
                 </div>
               )}
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
                   Batal

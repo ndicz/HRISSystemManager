@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -11,7 +12,7 @@ import { assertPeriodOpen } from "@/lib/periodLock";
 export async function closePeriod(period: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!/^\d{4}-\d{2}$/.test(period)) throw new Error("Periode tidak valid.");
+  if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
 
   await db.closedPeriod.upsert({
     where: { period },
@@ -52,7 +53,7 @@ export async function addTransaction(formData: FormData) {
   const file = formData.get("attachment") as File | null;
 
   if (!accountCoaId || !cashAccountId || !amount) {
-    throw new Error("Akun, rekening, dan jumlah wajib diisi.");
+    throw new UserError("Akun, rekening, dan jumlah wajib diisi.");
   }
 
   let attachmentUrl: string | null = null;
@@ -82,11 +83,11 @@ export async function updateTransaction(id: string, formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const existing = await db.transaction.findUnique({ where: { id } });
-  if (!existing) throw new Error("Transaksi tidak ditemukan.");
+  if (!existing) throw new UserError("Transaksi tidak ditemukan.");
 
   const dateRaw = String(formData.get("date") ?? "");
   const date = dateRaw ? new Date(dateRaw) : existing.date;
-  if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
+  if (Number.isNaN(date.getTime())) throw new UserError("Tanggal tidak valid.");
 
   // A correction can move a transaction across periods — both the period it
   // used to belong to and the one it's moving into must still be open.
@@ -100,7 +101,7 @@ export async function updateTransaction(id: string, formData: FormData) {
   const type = String(formData.get("type") ?? "keluar");
 
   if (!accountCoaId || !cashAccountId || !amount) {
-    throw new Error("Akun, rekening, dan jumlah wajib diisi.");
+    throw new UserError("Akun, rekening, dan jumlah wajib diisi.");
   }
 
   await db.transaction.update({
@@ -123,14 +124,14 @@ export async function addAccount(formData: FormData) {
   const code = String(formData.get("code") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "beban");
-  if (!code || !name) throw new Error("Kode dan nama akun wajib diisi.");
+  if (!code || !name) throw new UserError("Kode dan nama akun wajib diisi.");
 
   // Nothing stopped two accounts sharing the same name before (only `code`
   // is unique) — caught a real duplicate "Gaji Karyawan" under two
   // different codes, silently splitting what should've been one account's
   // transactions across both.
   const nameConflict = await db.account.findFirst({ where: { name } });
-  if (nameConflict) throw new Error(`Sudah ada akun bernama "${name}" (kode ${nameConflict.code}).`);
+  if (nameConflict) throw new UserError(`Sudah ada akun bernama "${name}" (kode ${nameConflict.code}).`);
 
   await db.account.create({ data: { code, name, type } });
   revalidatePath("/kas");
@@ -148,8 +149,8 @@ export async function createCashAccount(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const kind = String(formData.get("kind") ?? "besar");
   const opening = Math.max(0, parseInt(String(formData.get("opening") ?? "0"), 10) || 0);
-  if (!name) throw new Error("Nama rekening wajib diisi.");
-  if (kind !== "kecil" && kind !== "besar") throw new Error("Jenis rekening tidak valid.");
+  if (!name) throw new UserError("Nama rekening wajib diisi.");
+  if (kind !== "kecil" && kind !== "besar") throw new UserError("Jenis rekening tidak valid.");
 
   await db.cashAccount.create({ data: { name, kind, opening } });
 
@@ -165,13 +166,13 @@ export async function updateCashAccount(id: string, formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const cashAccount = await db.cashAccount.findUnique({ where: { id } });
-  if (!cashAccount) throw new Error("Rekening tidak ditemukan.");
+  if (!cashAccount) throw new UserError("Rekening tidak ditemukan.");
 
   const name = String(formData.get("name") ?? "").trim();
   const kind = String(formData.get("kind") ?? cashAccount.kind);
   const opening = Math.max(0, parseInt(String(formData.get("opening") ?? "0"), 10) || 0);
-  if (!name) throw new Error("Nama rekening wajib diisi.");
-  if (kind !== "kecil" && kind !== "besar") throw new Error("Jenis rekening tidak valid.");
+  if (!name) throw new UserError("Nama rekening wajib diisi.");
+  if (kind !== "kecil" && kind !== "besar") throw new UserError("Jenis rekening tidak valid.");
 
   await db.cashAccount.update({ where: { id }, data: { name, kind, opening } });
 
@@ -190,7 +191,7 @@ export async function deleteCashAccount(id: string) {
   if (!cashAccount) return;
 
   if (cashAccount._count.transactions > 0) {
-    throw new Error(`Rekening tidak bisa dihapus — masih ada ${cashAccount._count.transactions} transaksi yang tercatat di rekening ini.`);
+    throw new UserError(`Rekening tidak bisa dihapus — masih ada ${cashAccount._count.transactions} transaksi yang tercatat di rekening ini.`);
   }
 
   await db.cashAccount.delete({ where: { id } });
@@ -223,17 +224,17 @@ export async function updateAccount(id: string, formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const account = await db.account.findUnique({ where: { id } });
-  if (!account) throw new Error("Akun tidak ditemukan.");
+  if (!account) throw new UserError("Akun tidak ditemukan.");
 
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? account.type);
-  if (!name) throw new Error("Nama akun wajib diisi.");
+  if (!name) throw new UserError("Nama akun wajib diisi.");
   if (PROTECTED_ACCOUNT_CODES.includes(account.code) && type !== account.type) {
-    throw new Error(`Akun ${account.code} dipakai otomatis oleh sistem — kategorinya tidak bisa diubah.`);
+    throw new UserError(`Akun ${account.code} dipakai otomatis oleh sistem — kategorinya tidak bisa diubah.`);
   }
 
   const nameConflict = await db.account.findFirst({ where: { name, id: { not: id } } });
-  if (nameConflict) throw new Error(`Sudah ada akun bernama "${name}" (kode ${nameConflict.code}).`);
+  if (nameConflict) throw new UserError(`Sudah ada akun bernama "${name}" (kode ${nameConflict.code}).`);
 
   await db.account.update({ where: { id }, data: { name, type } });
 
@@ -252,10 +253,10 @@ export async function deleteAccount(id: string) {
   if (!account) return;
 
   if (PROTECTED_ACCOUNT_CODES.includes(account.code)) {
-    throw new Error(`Akun ${account.code} · ${account.name} dipakai otomatis oleh sistem (gaji, THR, bonus, dll) dan tidak bisa dihapus.`);
+    throw new UserError(`Akun ${account.code} · ${account.name} dipakai otomatis oleh sistem (gaji, THR, bonus, dll) dan tidak bisa dihapus.`);
   }
   if (account._count.transactions > 0) {
-    throw new Error(`Akun tidak bisa dihapus — masih ada ${account._count.transactions} transaksi yang tercatat di akun ini.`);
+    throw new UserError(`Akun tidak bisa dihapus — masih ada ${account._count.transactions} transaksi yang tercatat di akun ini.`);
   }
 
   await db.account.delete({ where: { id } });
@@ -275,7 +276,7 @@ export async function addPayable(formData: FormData) {
   const desc = String(formData.get("desc") ?? "").trim() || "-";
   const amount = Math.max(0, parseInt(String(formData.get("amount") ?? "0"), 10) || 0);
   const dueDateRaw = String(formData.get("dueDate") ?? "");
-  if (!vendorName || !amount || !dueDateRaw) throw new Error("Vendor, jumlah, dan jatuh tempo wajib diisi.");
+  if (!vendorName || !amount || !dueDateRaw) throw new UserError("Vendor, jumlah, dan jatuh tempo wajib diisi.");
 
   await db.payable.create({ data: { vendorName, desc, amount, dueDate: new Date(dueDateRaw) } });
   revalidatePath("/kas");
@@ -316,7 +317,9 @@ export async function addTransfer(formData: FormData) {
   const fromId = String(formData.get("fromId") ?? "");
   const toId = String(formData.get("toId") ?? "");
   const amount = Math.max(0, parseInt(String(formData.get("amount") ?? "0"), 10) || 0);
-  if (!fromId || !toId || fromId === toId || !amount) throw new Error("Rekening dan jumlah tidak valid.");
+  if (!fromId || !toId) throw new UserError("Pilih rekening asal dan rekening tujuan.");
+  if (fromId === toId) throw new UserError("Rekening asal dan tujuan tidak boleh sama.");
+  if (!amount) throw new UserError("Jumlah transfer wajib diisi.");
 
   let transferAccount = await db.account.findFirst({ where: { name: "Transfer Antar Rekening" } });
   if (!transferAccount) {
@@ -334,7 +337,7 @@ export async function addTransfer(formData: FormData) {
     db.cashAccount.findUnique({ where: { id: fromId } }),
     db.cashAccount.findUnique({ where: { id: toId } }),
   ]);
-  if (!from || !to) throw new Error("Rekening tidak ditemukan.");
+  if (!from || !to) throw new UserError("Rekening tidak ditemukan.");
 
   await db.$transaction([
     db.transaction.create({

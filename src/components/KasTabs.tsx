@@ -18,6 +18,7 @@ import { BudgetEditButton } from "@/components/BudgetEditButton";
 import { DocHandoverDateInput } from "@/components/DocHandoverDateInput";
 import { closePeriod, reopenPeriod } from "@/app/(app)/kas/actions";
 import { BASE_PATH } from "@/lib/basePath";
+import { formatActionError } from "@/lib/errors";
 
 type Props = {
   accounts: Account[];
@@ -50,21 +51,32 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
   const [qTx, setQTx] = useState("");
   const [closedList, setClosedList] = useState(closedPeriods);
   const [periodPending, startPeriodTransition] = useTransition();
+  const [periodError, setPeriodError] = useState("");
 
   const isViewedPeriodClosed = closedList.includes(period);
   const isTodayPeriodClosed = closedList.includes(monthKey(new Date()));
 
   function handleClosePeriod() {
+    setPeriodError("");
     startPeriodTransition(async () => {
-      await closePeriod(period);
-      setClosedList((prev) => (prev.includes(period) ? prev : [...prev, period]));
+      try {
+        await closePeriod(period);
+        setClosedList((prev) => (prev.includes(period) ? prev : [...prev, period]));
+      } catch (err) {
+        setPeriodError(formatActionError(err));
+      }
     });
   }
 
   function handleReopenPeriod() {
+    setPeriodError("");
     startPeriodTransition(async () => {
-      await reopenPeriod(period);
-      setClosedList((prev) => prev.filter((p) => p !== period));
+      try {
+        await reopenPeriod(period);
+        setClosedList((prev) => prev.filter((p) => p !== period));
+      } catch (err) {
+        setPeriodError(formatActionError(err));
+      }
     });
   }
 
@@ -115,6 +127,8 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
           </button>
         )}
       </div>
+
+      {periodError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: "0 0 var(--space-3)", textAlign: "right" }}>{periodError}</p>}
 
       {isViewedPeriodClosed && (
         <div className="card" style={{ marginBottom: "var(--space-4)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>

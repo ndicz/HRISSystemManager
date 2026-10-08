@@ -6,6 +6,7 @@ import { updateEmployeeDetails, deleteEmployee } from "@/app/(app)/karyawan/acti
 import { formatRp, kasbonPerBulan } from "@/lib/payroll";
 import { formatActionError } from "@/lib/errors";
 import { RupiahInput } from "@/components/RupiahInput";
+import { submitForm } from "@/lib/submitForm";
 
 type Emp = {
   id: string;
@@ -70,7 +71,7 @@ export function EditEmployeeDialog({ employee, sites, positions }: { employee: E
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit karyawan &mdash; {employee.name}</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <input type="hidden" name="employeeId" value={employee.id} />
               <div className="field">
                 <label htmlFor="siteId">Tempat kerja</label>

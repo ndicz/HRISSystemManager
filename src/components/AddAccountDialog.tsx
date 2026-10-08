@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { addAccount } from "@/app/(app)/kas/actions";
 import { formatActionError } from "@/lib/errors";
 import { ACCOUNT_TYPES, suggestNextAccountCode, type AccountType } from "@/lib/coa";
+import { submitForm } from "@/lib/submitForm";
 
 type AccountOption = { code: string };
 
@@ -54,7 +55,7 @@ export function AddAccountDialog({ accounts }: { accounts: AccountOption[] }) {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" style={{ width: "min(480px, 100%)" }} onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Tambah akun (COA)</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="type">Kategori</label>
                 <select className="input" id="type" name="type" value={type} onChange={(e) => handleTypeChange(e.target.value as AccountType)}>

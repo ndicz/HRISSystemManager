@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
@@ -113,7 +114,7 @@ export async function parseAttendanceImport(formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const file = formData.get("file");
-  if (!(file instanceof File)) throw new Error("File tidak ditemukan.");
+  if (!(file instanceof File)) throw new UserError("File tidak ditemukan.");
 
   const buf = Buffer.from(await file.arrayBuffer());
   return parseAttendanceXlsx(buf);
@@ -122,15 +123,15 @@ export async function parseAttendanceImport(formData: FormData) {
 export async function applyAttendanceImport(rows: AttendanceImportRow[], siteId: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!siteId) throw new Error("Tempat kerja tujuan wajib dipilih.");
-  if (!rows || rows.length === 0) throw new Error("Tidak ada data untuk diterapkan.");
+  if (!siteId) throw new UserError("Tempat kerja tujuan wajib dipilih.");
+  if (!rows || rows.length === 0) throw new UserError("Tidak ada data untuk diterapkan.");
 
   const [employees, allCodeRows] = await Promise.all([
     db.employee.findMany({ where: { status: "aktif" } }),
     db.employee.findMany({ select: { empCode: true } }),
   ]);
   const position = (await db.position.findFirst({ where: { name: "Staff Admin" } })) ?? (await db.position.findFirst());
-  if (!position) throw new Error("Belum ada data posisi — tambahkan posisi terlebih dahulu.");
+  if (!position) throw new UserError("Belum ada data posisi — tambahkan posisi terlebih dahulu.");
 
   const empByName = new Map(employees.map((e) => [e.name.toLowerCase(), e]));
   const empByCode = new Map(employees.filter((e) => e.empCode.trim()).map((e) => [e.empCode.trim(), e]));
@@ -288,10 +289,10 @@ export async function fetchAttendanceRecap(employeeId: string) {
 export async function upsertAttendanceDay(employeeId: string, dateIso: string, status: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!["Hadir", "Izin", "Sakit", "Cuti", "Alpha", "Hari Libur"].includes(status)) throw new Error("Status tidak valid.");
+  if (!["Hadir", "Izin", "Sakit", "Cuti", "Alpha", "Hari Libur"].includes(status)) throw new UserError("Status tidak valid.");
 
   const date = new Date(dateIso + "T00:00:00");
-  if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
+  if (Number.isNaN(date.getTime())) throw new UserError("Tanggal tidak valid.");
 
   await db.$transaction(async (tx) => {
     await tx.attendanceRecord.upsert({

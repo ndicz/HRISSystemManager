@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -16,7 +17,7 @@ export async function addInventoryItem(formData: FormData) {
   const price = Math.max(0, parseInt(String(formData.get("price") ?? "0"), 10) || 0);
   const category = String(formData.get("category") ?? "").trim() || null;
   const purpose = formData.get("purpose") === "mbp" ? "mbp" : "stock";
-  if (!name) throw new Error("Nama barang wajib diisi.");
+  if (!name) throw new UserError("Nama barang wajib diisi.");
 
   const item = await db.inventoryItem.create({ data: { name, unit, qty, price, category, trackStock, purpose } });
 
@@ -37,7 +38,7 @@ export async function updateInventoryItem(id: string, formData: FormData) {
   const price = Math.max(0, parseInt(String(formData.get("price") ?? "0"), 10) || 0);
   const category = String(formData.get("category") ?? "").trim() || null;
   const purpose = formData.get("purpose") === "mbp" ? "mbp" : "stock";
-  if (!name) throw new Error("Nama barang wajib diisi.");
+  if (!name) throw new UserError("Nama barang wajib diisi.");
 
   // Switching a physically-tracked item to "beli sesuai permintaan" resets
   // its qty to 0 — the number stops meaning anything once stock isn't
@@ -66,7 +67,7 @@ export async function deleteInventoryItem(id: string) {
   const item = await db.inventoryItem.findUnique({ where: { id }, include: { _count: { select: { requests: true } } } });
   if (!item) return;
   if (item._count.requests > 0) {
-    throw new Error(`Barang tidak bisa dihapus — sudah ada ${item._count.requests} riwayat pengambilan untuk barang ini.`);
+    throw new UserError(`Barang tidak bisa dihapus — sudah ada ${item._count.requests} riwayat pengambilan untuk barang ini.`);
   }
 
   await db.inventoryItem.delete({ where: { id } });
@@ -102,11 +103,11 @@ export async function restockItem(id: string, formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const item = await db.inventoryItem.findUnique({ where: { id } });
-  if (!item) throw new Error("Barang tidak ditemukan.");
-  if (!item.trackStock) throw new Error("Barang \"beli sesuai permintaan\" tidak punya stok untuk ditambah — barang ini selalu bisa diambil tanpa batas stok.");
+  if (!item) throw new UserError("Barang tidak ditemukan.");
+  if (!item.trackStock) throw new UserError("Barang \"beli sesuai permintaan\" tidak punya stok untuk ditambah — barang ini selalu bisa diambil tanpa batas stok.");
 
   const addQty = Math.max(0, parseInt(String(formData.get("addQty") ?? "0"), 10) || 0);
-  if (addQty <= 0) throw new Error("Jumlah tambahan stok harus lebih dari 0.");
+  if (addQty <= 0) throw new UserError("Jumlah tambahan stok harus lebih dari 0.");
   const newPriceRaw = String(formData.get("newPrice") ?? "").trim();
 
   await db.inventoryItem.update({
@@ -141,11 +142,11 @@ export async function requestItem(formData: FormData) {
   const note = String(formData.get("note") ?? "").trim() || null;
   const targetDateRaw = String(formData.get("targetDate") ?? "").trim();
   const targetDate = targetDateRaw ? new Date(targetDateRaw) : null;
-  if (!itemId || !requesterName) throw new Error("Barang dan nama peminta wajib diisi.");
+  if (!itemId || !requesterName) throw new UserError("Barang dan nama peminta wajib diisi.");
 
   const item = await db.inventoryItem.findUnique({ where: { id: itemId } });
-  if (!item) throw new Error("Barang tidak ditemukan.");
-  if (!item.active) throw new Error(`Barang "${item.name}" sedang nonaktif dan tidak bisa diambil.`);
+  if (!item) throw new UserError("Barang tidak ditemukan.");
+  if (!item.active) throw new UserError(`Barang "${item.name}" sedang nonaktif dan tidak bisa diambil.`);
 
   const request = await db.inventoryRequest.create({
     data: {
@@ -179,11 +180,11 @@ export async function completeInventoryRequest(id: string) {
 
   const request = await db.inventoryRequest.findUnique({ where: { id }, include: { item: true } });
   if (!request) return;
-  if (request.status !== "berjalan") throw new Error("Hanya pengambilan berstatus \"Berjalan\" yang bisa diselesaikan.");
+  if (request.status !== "berjalan") throw new UserError("Hanya pengambilan berstatus \"Berjalan\" yang bisa diselesaikan.");
 
   const item = request.item;
   if (item.trackStock && request.qty > item.qty) {
-    throw new Error(`Stok tidak cukup — sisa stok ${item.name} hanya ${item.qty} ${item.unit}.`);
+    throw new UserError(`Stok tidak cukup — sisa stok ${item.name} hanya ${item.qty} ${item.unit}.`);
   }
 
   await assertPeriodOpen();
@@ -194,7 +195,7 @@ export async function completeInventoryRequest(id: string) {
     // Claim the request first so a double click can't take stock out (and
     // post to Kas) twice.
     const claimed = await tx.inventoryRequest.updateMany({ where: { id, status: "berjalan" }, data: { status: "selesai", completedAt: new Date() } });
-    if (claimed.count === 0) throw new Error("Pengambilan ini sudah diproses sebelumnya — muat ulang halaman.");
+    if (claimed.count === 0) throw new UserError("Pengambilan ini sudah diproses sebelumnya — muat ulang halaman.");
     if (item.trackStock) {
       await tx.inventoryItem.update({ where: { id: item.id }, data: { qty: { decrement: request.qty } } });
     }
@@ -236,7 +237,7 @@ export async function cancelInventoryRequest(id: string) {
 
   const request = await db.inventoryRequest.findUnique({ where: { id }, include: { item: true } });
   if (!request) return;
-  if (request.status === "dibatalkan") throw new Error("Pengambilan ini sudah dibatalkan sebelumnya.");
+  if (request.status === "dibatalkan") throw new UserError("Pengambilan ini sudah dibatalkan sebelumnya.");
 
   const wasCompleted = request.status === "selesai";
   if (wasCompleted && request.transactionId) await assertPeriodOpen();
@@ -245,7 +246,7 @@ export async function cancelInventoryRequest(id: string) {
 
   await db.$transaction(async (tx) => {
     const claimed = await tx.inventoryRequest.updateMany({ where: { id, status: request.status }, data: { status: "dibatalkan", cancelledAt: new Date() } });
-    if (claimed.count === 0) throw new Error("Pengambilan ini sudah diproses sebelumnya — muat ulang halaman.");
+    if (claimed.count === 0) throw new UserError("Pengambilan ini sudah diproses sebelumnya — muat ulang halaman.");
     if (wasCompleted && request.item.trackStock) {
       await tx.inventoryItem.update({ where: { id: request.itemId }, data: { qty: { increment: request.qty } } });
     }

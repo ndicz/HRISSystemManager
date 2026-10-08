@@ -12,20 +12,24 @@ import { Pagination, usePagedRows } from "@/components/Pagination";
 import { toggleInventoryItemActive, completeInventoryRequest } from "@/app/(app)/gudang/actions";
 import { BASE_PATH } from "@/lib/basePath";
 import { formatActionError } from "@/lib/errors";
+import { useActionRunner } from "@/lib/useActionRunner";
 
 function ActiveToggle({ id, active }: { id: string; active: boolean }) {
-  const [pending, startTransition] = useTransition();
+  const { pending, error, run } = useActionRunner();
   return (
-    <button
-      type="button"
-      className={active ? "tag tag-accent" : "tag tag-warning"}
-      style={{ border: "none", cursor: pending ? "default" : "pointer" }}
-      disabled={pending}
-      onClick={() => startTransition(() => toggleInventoryItemActive(id, !active))}
-      title={active ? "Klik untuk nonaktifkan" : "Klik untuk aktifkan"}
-    >
-      {pending ? "…" : active ? "Aktif" : "Nonaktif"}
-    </button>
+    <>
+      <button
+        type="button"
+        className={active ? "tag tag-accent" : "tag tag-warning"}
+        style={{ border: "none", cursor: pending ? "default" : "pointer" }}
+        disabled={pending}
+        onClick={() => run(() => toggleInventoryItemActive(id, !active))}
+        title={active ? "Klik untuk nonaktifkan" : "Klik untuk aktifkan"}
+      >
+        {pending ? "…" : active ? "Aktif" : "Nonaktif"}
+      </button>
+      {error && <div style={{ fontSize: 11, color: "var(--color-danger)" }}>{error}</div>}
+    </>
   );
 }
 

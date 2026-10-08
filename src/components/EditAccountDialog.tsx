@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateAccount, deleteAccount } from "@/app/(app)/kas/actions";
 import { formatActionError } from "@/lib/errors";
 import { ACCOUNT_TYPES, type AccountType } from "@/lib/coa";
+import { submitForm } from "@/lib/submitForm";
 
 type AccountRow = { id: string; code: string; name: string; type: string };
 
@@ -45,7 +46,7 @@ export function EditAccountDialog({ account }: { account: AccountRow }) {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit akun {account.code}</div>
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="edit-acc-name">Nama akun</label>
                 <input className="input" id="edit-acc-name" name="name" required defaultValue={account.name} />

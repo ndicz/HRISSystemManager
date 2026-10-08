@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -20,7 +21,7 @@ export async function addClient(formData: FormData) {
   const pic = String(formData.get("pic") ?? "").trim();
   const feeType = String(formData.get("feeType") ?? "percent");
   const feeValue = Math.max(0, parseInt(String(formData.get("feeValue") ?? "0"), 10) || 0);
-  if (!name) throw new Error("Nama klien wajib diisi.");
+  if (!name) throw new UserError("Nama klien wajib diisi.");
 
   const now = new Date();
   const nextYear = new Date(now);
@@ -43,7 +44,7 @@ export async function updateClient(id: string, formData: FormData) {
   const address = String(formData.get("address") ?? "").trim() || null;
   const feeType = String(formData.get("feeType") ?? "percent");
   const feeValue = Math.max(0, parseInt(String(formData.get("feeValue") ?? "0"), 10) || 0);
-  if (!name) throw new Error("Nama klien wajib diisi.");
+  if (!name) throw new UserError("Nama klien wajib diisi.");
 
   await db.client.update({
     where: { id },
@@ -78,7 +79,7 @@ export async function deleteClient(id: string) {
     if (employees > 0) parts.push(`${employees} karyawan`);
     if (invoices > 0) parts.push(`${invoices} invoice outsourcing`);
     if (invoicesBj > 0) parts.push(`${invoicesBj} invoice barang & jasa`);
-    throw new Error(`Klien tidak bisa dihapus — masih ada ${parts.join(", ")} yang terhubung. Pindahkan/hapus dulu sebelum menghapus klien ini.`);
+    throw new UserError(`Klien tidak bisa dihapus — masih ada ${parts.join(", ")} yang terhubung. Pindahkan/hapus dulu sebelum menghapus klien ini.`);
   }
 
   await db.client.delete({ where: { id } });
@@ -101,7 +102,7 @@ export async function findOrCreateClientByName(name: string): Promise<{ id: stri
   if (!session?.user) throw new Error("Unauthorized");
 
   const trimmed = name.trim();
-  if (!trimmed) throw new Error("Nama klien wajib diisi.");
+  if (!trimmed) throw new UserError("Nama klien wajib diisi.");
 
   const existing = await db.client.findFirst({ where: { name: { equals: trimmed, mode: "insensitive" } } });
   if (existing) return { id: existing.id, name: existing.name };
@@ -124,7 +125,7 @@ export async function addInvoiceBj(formData: FormData) {
 
   const clientId = String(formData.get("clientId") ?? "");
   const withPpn = formData.get("withPpn") === "on";
-  if (!clientId) throw new Error("Klien wajib dipilih.");
+  if (!clientId) throw new UserError("Klien wajib dipilih.");
 
   const items: { desc: string; qty: number; price: number }[] = [];
   for (let i = 1; formData.has(`desc${i}`); i++) {
@@ -134,7 +135,7 @@ export async function addInvoiceBj(formData: FormData) {
     const price = Math.max(0, parseInt(String(formData.get(`price${i}`) ?? "0"), 10) || 0);
     items.push({ desc, qty, price });
   }
-  if (items.length === 0) throw new Error("Minimal 1 item wajib diisi.");
+  if (items.length === 0) throw new UserError("Minimal 1 item wajib diisi.");
 
   const jobTitle = String(formData.get("jobTitle") ?? "").trim() || null;
   const discountDesc = String(formData.get("discountDesc") ?? "").trim() || null;
@@ -179,14 +180,14 @@ export async function updateInvoiceBj(id: string, formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const existing = await db.invoiceBj.findUnique({ where: { id } });
-  if (!existing) throw new Error("Invoice tidak ditemukan.");
+  if (!existing) throw new UserError("Invoice tidak ditemukan.");
   if (existing.status === "lunas" || existing.status === "dibatalkan") {
-    throw new Error("Invoice yang sudah lunas/dibatalkan tidak bisa diedit.");
+    throw new UserError("Invoice yang sudah lunas/dibatalkan tidak bisa diedit.");
   }
 
   const clientId = String(formData.get("clientId") ?? "");
   const withPpn = formData.get("withPpn") === "on";
-  if (!clientId) throw new Error("Klien wajib dipilih.");
+  if (!clientId) throw new UserError("Klien wajib dipilih.");
 
   const items: { desc: string; qty: number; price: number }[] = [];
   for (let i = 1; formData.has(`desc${i}`); i++) {
@@ -196,7 +197,7 @@ export async function updateInvoiceBj(id: string, formData: FormData) {
     const price = Math.max(0, parseInt(String(formData.get(`price${i}`) ?? "0"), 10) || 0);
     items.push({ desc, qty, price });
   }
-  if (items.length === 0) throw new Error("Minimal 1 item wajib diisi.");
+  if (items.length === 0) throw new UserError("Minimal 1 item wajib diisi.");
 
   const jobTitle = String(formData.get("jobTitle") ?? "").trim() || null;
   const discountDesc = String(formData.get("discountDesc") ?? "").trim() || null;
@@ -234,7 +235,7 @@ export async function advanceInvoiceBjStatus(id: string) {
   // one that's been cancelled — used to fall through to "lunas" again and
   // post the payment to Kas a second time.
   const next = NEXT_INVOICE_STATUS[inv.status];
-  if (!next) throw new Error(STATUS_CHANGED_MESSAGE);
+  if (!next) throw new UserError(STATUS_CHANGED_MESSAGE);
   if (next === "lunas") await assertPeriodOpen();
 
   const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn);
@@ -247,7 +248,7 @@ export async function advanceInvoiceBjStatus(id: string) {
     // Conditional on the status we just read, so of two concurrent clicks
     // only one wins the transition (and the Kas entry that comes with it).
     const moved = await tx.invoiceBj.updateMany({ where: { id, status: inv.status }, data: { status: next } });
-    if (moved.count === 0) throw new Error(STATUS_CHANGED_MESSAGE);
+    if (moved.count === 0) throw new UserError(STATUS_CHANGED_MESSAGE);
     if (account && cashAccount) {
       await tx.transaction.create({
         data: {
@@ -277,7 +278,7 @@ export async function deleteInvoiceBj(id: string) {
 
   const inv = await db.invoiceBj.findUnique({ where: { id } });
   if (!inv) return;
-  if (inv.status === "lunas") throw new Error("Invoice yang sudah lunas tidak bisa dihapus — gunakan \"Batalkan\" supaya Kas ikut dikoreksi.");
+  if (inv.status === "lunas") throw new UserError("Invoice yang sudah lunas tidak bisa dihapus — gunakan \"Batalkan\" supaya Kas ikut dikoreksi.");
 
   await db.invoiceBj.delete({ where: { id } });
 
@@ -299,7 +300,7 @@ export async function cancelInvoiceBj(id: string) {
 
   const inv = await db.invoiceBj.findUnique({ where: { id }, include: { items: true, client: true } });
   if (!inv) return;
-  if (inv.status !== "lunas") throw new Error("Invoice ini belum lunas — hapus langsung saja, tidak perlu dibatalkan.");
+  if (inv.status !== "lunas") throw new UserError("Invoice ini belum lunas — hapus langsung saja, tidak perlu dibatalkan.");
   await assertPeriodOpen();
 
   const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn);
@@ -308,7 +309,7 @@ export async function cancelInvoiceBj(id: string) {
   const keterangan = inv.client.name + (inv.jobTitle ? " — " + inv.jobTitle : "");
   await db.$transaction(async (tx) => {
     const moved = await tx.invoiceBj.updateMany({ where: { id, status: "lunas" }, data: { status: "dibatalkan" } });
-    if (moved.count === 0) throw new Error(STATUS_CHANGED_MESSAGE);
+    if (moved.count === 0) throw new UserError(STATUS_CHANGED_MESSAGE);
     if (account && cashAccount) {
       await tx.transaction.create({
         data: {
@@ -337,7 +338,7 @@ export async function cancelInvoiceBj(id: string) {
 export async function generateInvoices(period: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!/^\d{4}-\d{2}$/.test(period)) throw new Error("Periode tidak valid.");
+  if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
 
   const clients = await db.client.findMany({
     include: { employees: { where: { status: "aktif" }, include: { salaryComponents: true } } },
@@ -390,7 +391,7 @@ export async function advanceInvoiceStatus(id: string) {
   if (!inv) return;
   // Same forward-only, one-winner transition as advanceInvoiceBjStatus.
   const next = NEXT_INVOICE_STATUS[inv.status];
-  if (!next) throw new Error(STATUS_CHANGED_MESSAGE);
+  if (!next) throw new UserError(STATUS_CHANGED_MESSAGE);
   if (next === "lunas") await assertPeriodOpen();
   const now = new Date();
 
@@ -409,7 +410,7 @@ export async function advanceInvoiceStatus(id: string) {
         paidAt: next === "lunas" ? now : inv.paidAt,
       },
     });
-    if (moved.count === 0) throw new Error(STATUS_CHANGED_MESSAGE);
+    if (moved.count === 0) throw new UserError(STATUS_CHANGED_MESSAGE);
     if (account && cashAccount) {
       await tx.transaction.create({
         data: {
@@ -437,7 +438,7 @@ export async function setDocHandoverDate(type: "bj" | "outsourcing", id: string,
   if (!session?.user) throw new Error("Unauthorized");
 
   const date = dateRaw ? new Date(dateRaw) : null;
-  if (dateRaw && Number.isNaN(date?.getTime())) throw new Error("Tanggal tidak valid.");
+  if (dateRaw && Number.isNaN(date?.getTime())) throw new UserError("Tanggal tidak valid.");
 
   if (type === "bj") {
     await db.invoiceBj.update({ where: { id }, data: { docHandoverDate: date } });
@@ -457,7 +458,7 @@ export async function deleteInvoice(id: string) {
 
   const inv = await db.invoice.findUnique({ where: { id } });
   if (!inv) return;
-  if (inv.status === "lunas") throw new Error("Invoice yang sudah lunas tidak bisa dihapus — gunakan \"Batalkan\" supaya Kas ikut dikoreksi.");
+  if (inv.status === "lunas") throw new UserError("Invoice yang sudah lunas tidak bisa dihapus — gunakan \"Batalkan\" supaya Kas ikut dikoreksi.");
 
   await db.invoice.delete({ where: { id } });
 
@@ -475,7 +476,7 @@ export async function cancelInvoice(id: string) {
 
   const inv = await db.invoice.findUnique({ where: { id }, include: { client: true } });
   if (!inv) return;
-  if (inv.status !== "lunas") throw new Error("Invoice ini belum lunas — hapus langsung saja, tidak perlu dibatalkan.");
+  if (inv.status !== "lunas") throw new UserError("Invoice ini belum lunas — hapus langsung saja, tidak perlu dibatalkan.");
   await assertPeriodOpen();
 
   const account = await db.account.findUnique({ where: { code: "4001" } });
@@ -484,7 +485,7 @@ export async function cancelInvoice(id: string) {
   const keterangan = inv.client.name + " — Jasa Outsourcing " + periodLabel;
   await db.$transaction(async (tx) => {
     const moved = await tx.invoice.updateMany({ where: { id, status: "lunas" }, data: { status: "dibatalkan" } });
-    if (moved.count === 0) throw new Error(STATUS_CHANGED_MESSAGE);
+    if (moved.count === 0) throw new UserError(STATUS_CHANGED_MESSAGE);
     if (account && cashAccount) {
       await tx.transaction.create({
         data: {

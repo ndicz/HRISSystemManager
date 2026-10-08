@@ -1,3 +1,4 @@
+import { UserError } from "@/lib/userError";
 import { unzip, parseSharedStrings, parseSheetRows } from "@/lib/attendanceImport";
 
 // Handles two shapes:
@@ -91,7 +92,7 @@ export function parseBpjsXlsx(buf: Buffer): BpjsImportRow[] {
   const sheetPaths = Object.keys(files)
     .filter((k) => /^xl\/worksheets\/sheet\d+\.xml$/.test(k))
     .sort();
-  if (sheetPaths.length === 0) throw new Error("Sheet tidak ditemukan");
+  if (sheetPaths.length === 0) throw new UserError("Sheet tidak ditemukan");
 
   for (const path of sheetPaths) {
     const rows = parseSheetRows(files[path], strs);
@@ -99,5 +100,5 @@ export function parseBpjsXlsx(buf: Buffer): BpjsImportRow[] {
     if (parsed.length > 0) return parsed;
   }
 
-  throw new Error("Kolom ID Karyawan / BPJS Kesehatan / BPJS Ketenagakerjaan tidak ditemukan di file ini");
+  throw new UserError("Kolom ID Karyawan / BPJS Kesehatan / BPJS Ketenagakerjaan tidak ditemukan di file ini");
 }

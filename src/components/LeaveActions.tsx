@@ -1,18 +1,18 @@
 "use client";
 
-import { useTransition } from "react";
 import { setLeaveStatus } from "@/app/(app)/cuti/actions";
+import { useActionRunner } from "@/lib/useActionRunner";
 
 export function LeaveActions({ id, disabled }: { id: string; disabled: boolean }) {
-  const [pending, startTransition] = useTransition();
+  const { pending, error, run } = useActionRunner();
 
   return (
-    <div style={{ display: "flex", gap: 8 }}>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
       <button
         type="button"
         className="btn btn-ghost"
         disabled={disabled || pending}
-        onClick={() => startTransition(() => setLeaveStatus(id, "disetujui"))}
+        onClick={() => run(() => setLeaveStatus(id, "disetujui"))}
       >
         Setujui
       </button>
@@ -20,10 +20,11 @@ export function LeaveActions({ id, disabled }: { id: string; disabled: boolean }
         type="button"
         className="btn btn-ghost"
         disabled={disabled || pending}
-        onClick={() => startTransition(() => setLeaveStatus(id, "ditolak"))}
+        onClick={() => run(() => setLeaveStatus(id, "ditolak"))}
       >
         Tolak
       </button>
+      {error && <span style={{ fontSize: 11, color: "var(--color-danger)" }}>{error}</span>}
     </div>
   );
 }

@@ -3,6 +3,8 @@
 import { useState, useRef } from "react";
 import { addTransaction } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
+import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type Option = { id: string; name: string; type?: string };
 
@@ -10,6 +12,7 @@ export function AddTransactionDialog({ accounts, cashAccounts, disabled }: { acc
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("keluar");
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -22,11 +25,14 @@ export function AddTransactionDialog({ accounts, cashAccounts, disabled }: { acc
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
+    setError("");
     try {
       await addTransaction(formData);
       setOpen(false);
       formRef.current?.reset();
       setFormKey((k) => k + 1);
+    } catch (err) {
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -41,7 +47,7 @@ export function AddTransactionDialog({ accounts, cashAccounts, disabled }: { acc
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Catat transaksi kas</div>
-            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form key={formKey} ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label>Tipe</label>
                 <div className="seg" role="radiogroup">
@@ -83,6 +89,7 @@ export function AddTransactionDialog({ accounts, cashAccounts, disabled }: { acc
                 <label htmlFor="attachment">Lampiran bukti (opsional)</label>
                 <input className="input" id="attachment" name="attachment" type="file" accept="image/*,.pdf" />
               </div>
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
                 <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Menyimpan…" : "Simpan"}</button>

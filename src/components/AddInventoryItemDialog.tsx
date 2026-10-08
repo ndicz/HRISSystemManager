@@ -3,10 +3,13 @@
 import { useState, useRef } from "react";
 import { addInventoryItem } from "@/app/(app)/gudang/actions";
 import { RupiahInput } from "@/components/RupiahInput";
+import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 export function AddInventoryItemDialog() {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   const [formKey, setFormKey] = useState(0);
   const [trackStock, setTrackStock] = useState(true);
   const [purpose, setPurpose] = useState<"stock" | "mbp">("stock");
@@ -14,6 +17,7 @@ export function AddInventoryItemDialog() {
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
+    setError("");
     try {
       await addInventoryItem(formData);
       setOpen(false);
@@ -21,6 +25,8 @@ export function AddInventoryItemDialog() {
       setTrackStock(true);
       setPurpose("stock");
       setFormKey((k) => k + 1);
+    } catch (err) {
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -33,7 +39,7 @@ export function AddInventoryItemDialog() {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Tambah barang gudang</div>
-            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form key={formKey} ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="inv-name">Nama barang</label>
                 <input className="input" id="inv-name" name="name" required placeholder="mis. AC 1 PK" />
@@ -90,6 +96,7 @@ export function AddInventoryItemDialog() {
                   <RupiahInput id="inv-price" name="price" placeholder="0" />
                 </div>
               </div>
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
                 <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Menyimpan…" : "Simpan"}</button>

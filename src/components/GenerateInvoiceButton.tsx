@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { generateInvoices } from "@/app/(app)/klien/actions";
+import { formatActionError } from "@/lib/errors";
 
 function currentPeriod() {
   const d = new Date();
@@ -29,8 +30,12 @@ export function GenerateInvoiceButton() {
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const res = await generateInvoices(period);
-            setMsg(res.created > 0 ? `${res.created} tagihan dibuat` : "Tagihan sudah ada / diperbarui");
+            try {
+              const res = await generateInvoices(period);
+              setMsg(res.created > 0 ? `${res.created} tagihan dibuat` : "Tagihan sudah ada / diperbarui");
+            } catch (err) {
+              setMsg(formatActionError(err));
+            }
           })
         }
       >

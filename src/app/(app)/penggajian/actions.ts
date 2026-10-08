@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -90,8 +91,8 @@ export async function bayarThr(employeeId: string): Promise<{ error?: string }> 
 export async function bayarGaji(employeeIds: string[], period: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!employeeIds || employeeIds.length === 0) throw new Error("Tidak ada karyawan untuk dibayar.");
-  if (!/^\d{4}-\d{2}$/.test(period)) throw new Error("Periode tidak valid.");
+  if (!employeeIds || employeeIds.length === 0) throw new UserError("Tidak ada karyawan untuk dibayar.");
+  if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
 
   let paid = 0;
   let skipped = 0;
@@ -251,7 +252,7 @@ export async function savePayrollRate(formData: FormData) {
 
   const period = String(formData.get("period") ?? "");
   const siteId = String(formData.get("siteId") ?? "") || null;
-  if (!/^\d{4}-\d{2}$/.test(period)) throw new Error("Periode tidak valid.");
+  if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
 
   const int = (k: string) => Math.max(0, parseInt(String(formData.get(k) ?? "0"), 10) || 0);
   const data = {
@@ -306,7 +307,7 @@ export async function savePayrollEntry(formData: FormData) {
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const period = String(formData.get("period") ?? "");
-  if (!employeeId || !/^\d{4}-\d{2}$/.test(period)) throw new Error("Data tidak valid.");
+  if (!employeeId || !/^\d{4}-\d{2}$/.test(period)) throw new UserError("Data tidak valid.");
 
   const int = (k: string) => Math.max(0, parseInt(String(formData.get(k) ?? "0"), 10) || 0);
   // Blank = compute from attendance × rate as usual; a number = override
@@ -352,7 +353,7 @@ export async function updatePayrollAmounts(
 ) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!employeeId || !/^\d{4}-\d{2}$/.test(period)) throw new Error("Data tidak valid.");
+  if (!employeeId || !/^\d{4}-\d{2}$/.test(period)) throw new UserError("Data tidak valid.");
 
   const clamp = (n: number | null) => (n !== null ? Math.max(0, n) : null);
   const data = {
@@ -382,7 +383,7 @@ export async function updatePayrollAmounts(
 export async function updateBpjsOverride(employeeId: string, bpjsKesehatan: number | null, bpjsKetenagakerjaan: number | null) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!employeeId) throw new Error("Karyawan tidak ditemukan.");
+  if (!employeeId) throw new UserError("Karyawan tidak ditemukan.");
 
   await db.employee.update({
     where: { id: employeeId },
@@ -411,11 +412,11 @@ export async function addOvertimeDay(formData: FormData) {
   const dateRaw = String(formData.get("date") ?? "").trim();
   const type = String(formData.get("type") ?? "");
   const note = String(formData.get("note") ?? "").trim() || null;
-  if (!employeeId || !dateRaw) throw new Error("Tanggal wajib diisi.");
-  if (type !== "reguler" && type !== "merah") throw new Error("Jenis lembur tidak valid.");
+  if (!employeeId || !dateRaw) throw new UserError("Tanggal wajib diisi.");
+  if (type !== "reguler" && type !== "merah") throw new UserError("Jenis lembur tidak valid.");
 
   const date = new Date(dateRaw);
-  if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
+  if (Number.isNaN(date.getTime())) throw new UserError("Tanggal tidak valid.");
   const period = payrollPeriodKey(date);
 
   await db.overtimeDay.create({ data: { employeeId, period, date, type, note } });
@@ -433,7 +434,7 @@ export async function removeOvertimeDay(id: string) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const day = await db.overtimeDay.findUnique({ where: { id } });
-  if (!day) throw new Error("Data lembur tidak ditemukan.");
+  if (!day) throw new UserError("Data lembur tidak ditemukan.");
 
   await db.overtimeDay.delete({ where: { id } });
 
@@ -461,9 +462,9 @@ export async function removeOvertimeDay(id: string) {
 export async function setBonusBatch(period: string, rows: { employeeId: string; amount: number }[]) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!/^\d{4}-\d{2}$/.test(period)) throw new Error("Periode tidak valid.");
-  if (!rows || rows.length === 0) throw new Error("Tidak ada baris untuk disimpan.");
-  if (rows.some((r) => !r.employeeId || r.amount < 0)) throw new Error("Setiap baris wajib punya karyawan dan jumlah tidak boleh negatif.");
+  if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
+  if (!rows || rows.length === 0) throw new UserError("Tidak ada baris untuk disimpan.");
+  if (rows.some((r) => !r.employeeId || r.amount < 0)) throw new UserError("Setiap baris wajib punya karyawan dan jumlah tidak boleh negatif.");
 
   await mapLimit(rows, 8, async (row) => {
     await db.payrollEntry.upsert({
@@ -499,9 +500,9 @@ export async function saveLatenessBrackets(
 ) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (scope !== "global" && !refId) throw new Error("Target cakupan wajib dipilih.");
+  if (scope !== "global" && !refId) throw new UserError("Target cakupan wajib dipilih.");
   if (rows.some((r) => r.minMinutes < 0 || r.amount < 0 || (r.maxMinutes !== null && r.maxMinutes < r.minMinutes))) {
-    throw new Error("Rentang menit atau nominal tidak valid.");
+    throw new UserError("Rentang menit atau nominal tidak valid.");
   }
 
   const where = {

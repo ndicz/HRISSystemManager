@@ -5,6 +5,7 @@ import { requestItem } from "@/app/(app)/gudang/actions";
 import { formatRp } from "@/lib/payroll";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type ItemOption = { id: string; name: string; unit: string; qty: number; price: number; trackStock: boolean };
 
@@ -66,7 +67,7 @@ export function RequestItemDialog({ items, employees, siteNames }: { items: Item
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Ambil barang gudang</div>
-            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form key={formKey} ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="req-itemId">Barang</label>
                 <select className="input" id="req-itemId" name="itemId" required value={itemId} onChange={(e) => { setItemId(e.target.value); setError(""); }}>

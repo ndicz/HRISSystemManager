@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateAssignment, deleteAssignment } from "@/app/(app)/karyawan/actions";
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type AssignmentRow = { id: string; employeeName: string; title: string; mandays: number; cost: number; period: string | null };
 
@@ -44,7 +45,7 @@ export function EditAssignmentDialog({ assignment }: { assignment: AssignmentRow
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit penugasan &mdash; {assignment.employeeName}</div>
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="edit-assign-title">Judul penugasan</label>
                 <input className="input" id="edit-assign-title" name="title" required defaultValue={assignment.title} />

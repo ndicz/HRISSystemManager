@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateCashAccount, deleteCashAccount } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type CashAccountRow = { id: string; name: string; kind: string; opening: number };
 
@@ -45,7 +46,7 @@ export function EditCashAccountDialog({ cashAccount }: { cashAccount: CashAccoun
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit rekening</div>
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="edit-cashacc-name">Nama rekening</label>
                 <input className="input" id="edit-cashacc-name" name="name" required defaultValue={cashAccount.name} />

@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { createCashAccount } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 export function AddCashAccountDialog() {
   const [open, setOpen] = useState(false);
@@ -32,7 +33,7 @@ export function AddCashAccountDialog() {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Tambah rekening</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="cashacc-name">Nama rekening</label>
                 <input className="input" id="cashacc-name" name="name" required placeholder="mis. BCA Operasional, Kas Kecil Kantor" />
