@@ -3,7 +3,7 @@
 import { UserError } from "@/lib/userError";
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { parseAttendanceXlsx, type AttendanceImportRow, type AttendanceImportDay } from "@/lib/attendanceImport";
@@ -110,8 +110,7 @@ async function bulkUpsertAttendanceDays(entries: { employeeId: string; day: Atte
 }
 
 export async function parseAttendanceImport(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/absensi");
 
   const file = formData.get("file");
   if (!(file instanceof File)) throw new UserError("File tidak ditemukan.");
@@ -121,8 +120,7 @@ export async function parseAttendanceImport(formData: FormData) {
 }
 
 export async function applyAttendanceImport(rows: AttendanceImportRow[], siteId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/absensi");
   if (!siteId) throw new UserError("Tempat kerja tujuan wajib dipilih.");
   if (!rows || rows.length === 0) throw new UserError("Tidak ada data untuk diterapkan.");
 
@@ -278,8 +276,7 @@ async function attendanceRecap(employeeId: string) {
 }
 
 export async function fetchAttendanceRecap(employeeId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess(["/absensi", "/penggajian"]);
   return attendanceRecap(employeeId);
 }
 
@@ -287,8 +284,7 @@ export async function fetchAttendanceRecap(employeeId: string) {
 // dialog. Recomputes that month's aggregate (which feeds computePayroll's
 // absence-based deduction) after the write.
 export async function upsertAttendanceDay(employeeId: string, dateIso: string, status: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess(["/absensi", "/penggajian"]);
   if (!["Hadir", "Izin", "Sakit", "Cuti", "Alpha", "Hari Libur"].includes(status)) throw new UserError("Status tidak valid.");
 
   const date = new Date(dateIso + "T00:00:00");

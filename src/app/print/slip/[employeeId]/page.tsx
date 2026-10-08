@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { requirePageAccess } from "@/lib/authz";
 import { bestPayrollPeriod, computeMonthlyPayroll, formatRp, payrollPeriodKey, payrollPeriodLabel, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments } from "@/lib/payroll";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
@@ -10,6 +11,7 @@ export default async function SlipPrintPage({
   params: Promise<{ employeeId: string }>;
   searchParams: Promise<{ period?: string }>;
 }) {
+  await requirePageAccess("/print/slip/");
   const { employeeId } = await params;
   const { period: periodParam } = await searchParams;
   const [emp, payrollRates, latenessBrackets] = await Promise.all([

@@ -2,7 +2,7 @@
 
 import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 import { computeThr, computeMonthlyPayroll, resolvePayrollRate, resolveOvertimeDays, resolveAssignments, payrollPeriodKey, payrollPeriodRange } from "@/lib/payroll";
 import { mapLimit } from "@/lib/concurrency";
@@ -24,8 +24,7 @@ async function logAudit(args: Parameters<typeof db.auditLog.create>[0]) {
 // Returns { error } instead of throwing: Next.js redacts thrown messages in
 // production, and these are reasons the person clicking needs to read.
 export async function bayarThr(employeeId: string): Promise<{ error?: string }> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
 
   try {
     const year = new Date().getFullYear();
@@ -89,8 +88,7 @@ export async function bayarThr(employeeId: string): Promise<{ error?: string }> 
 // period is silently skipped, so re-clicking "Bayar Gaji" for a site that's
 // partially paid only pays the remainder.
 export async function bayarGaji(employeeIds: string[], period: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
   if (!employeeIds || employeeIds.length === 0) throw new UserError("Tidak ada karyawan untuk dibayar.");
   if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
 
@@ -247,8 +245,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
 }
 
 export async function savePayrollRate(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
 
   const period = String(formData.get("period") ?? "");
   const siteId = String(formData.get("siteId") ?? "") || null;
@@ -285,8 +282,7 @@ export async function savePayrollRate(formData: FormData) {
 // falls back to "no rate configured" (proportional deduction math) again,
 // same as before it was ever set.
 export async function deletePayrollRate(period: string, siteId: string | null) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
 
   const existing = await db.payrollRate.findFirst({ where: { period, siteId } });
   if (!existing) return;
@@ -302,8 +298,7 @@ export async function deletePayrollRate(period: string, siteId: string | null) {
 }
 
 export async function savePayrollEntry(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const period = String(formData.get("period") ?? "");
@@ -351,8 +346,7 @@ export async function updatePayrollAmounts(
   period: string,
   amounts: { gajiPokokOverride: number | null; potonganAbsensiOverride: number | null; penugasanTambahanOverride: number | null; kasbonOverride: number | null },
 ) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
   if (!employeeId || !/^\d{4}-\d{2}$/.test(period)) throw new UserError("Data tidak valid.");
 
   const clamp = (n: number | null) => (n !== null ? Math.max(0, n) : null);
@@ -381,8 +375,7 @@ export async function updatePayrollAmounts(
 // instead of navigating to Karyawan — same override semantics as
 // EditEmployeeDialog's BPJS fields (null = pakai rumus otomatis).
 export async function updateBpjsOverride(employeeId: string, bpjsKesehatan: number | null, bpjsKetenagakerjaan: number | null) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
   if (!employeeId) throw new UserError("Karyawan tidak ditemukan.");
 
   await db.employee.update({
@@ -405,8 +398,7 @@ export async function updateBpjsOverride(employeeId: string, bpjsKesehatan: numb
 // lembur line in payroll is priced by counting these per type, rather than
 // a manually typed total, so HR records the actual dates worked.
 export async function addOvertimeDay(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const dateRaw = String(formData.get("date") ?? "").trim();
@@ -430,8 +422,7 @@ export async function addOvertimeDay(formData: FormData) {
 }
 
 export async function removeOvertimeDay(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
 
   const day = await db.overtimeDay.findUnique({ where: { id } });
   if (!day) throw new UserError("Data lembur tidak ditemukan.");
@@ -460,8 +451,7 @@ export async function removeOvertimeDay(id: string) {
 // Cairs together with everyone else's pay the next time "Bayar Gaji" runs
 // for that period, not immediately.
 export async function setBonusBatch(period: string, rows: { employeeId: string; amount: number }[]) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
   if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
   if (!rows || rows.length === 0) throw new UserError("Tidak ada baris untuk disimpan.");
   if (rows.some((r) => !r.employeeId || r.amount < 0)) throw new UserError("Setiap baris wajib punya karyawan dan jumlah tidak boleh negatif.");
@@ -498,8 +488,7 @@ export async function saveLatenessBrackets(
   refId: string | null,
   rows: LatenessBracketRow[],
 ) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
   if (scope !== "global" && !refId) throw new UserError("Target cakupan wajib dipilih.");
   if (rows.some((r) => r.minMinutes < 0 || r.amount < 0 || (r.maxMinutes !== null && r.maxMinutes < r.minMinutes))) {
     throw new UserError("Rentang menit atau nominal tidak valid.");
@@ -527,8 +516,7 @@ export async function saveLatenessBrackets(
 }
 
 export async function deleteLatenessBrackets(scope: "global" | "site" | "position" | "employee", refId: string | null) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/penggajian");
 
   await db.latenessBracket.deleteMany({
     where: {
