@@ -341,10 +341,16 @@ model AttendanceRecord {
   lateMin           Int      @default(0)
   overtimeHours     Int      @default(0)
   location          String?
+  // Set when the day was filled in automatically from an approved
+  // LeaveRequest — so rejecting/editing/deleting that request removes
+  // exactly the days it added, never ones imported or typed by hand.
+  leaveRequestId    String?
+  leaveRequest      LeaveRequest? @relation(fields: [leaveRequestId], references: [id], onDelete: SetNull)
   createdAt         DateTime @default(now())
 
   @@unique([employeeId, date])
   @@index([date])
+  @@index([leaveRequestId])
 }
 
 model LeaveRequest {
@@ -357,6 +363,7 @@ model LeaveRequest {
   reason     String
   status     String   @default("menunggu") // "menunggu" | "disetujui" | "ditolak"
   createdAt  DateTime @default(now())
+  attendance AttendanceRecord[]
 
   @@index([employeeId])
   @@index([status])
