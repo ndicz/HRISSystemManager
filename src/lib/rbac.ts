@@ -36,9 +36,29 @@ export const NAV_ITEMS: NavItem[] = [
 // management stays admin-only no matter what — neither belongs in the picklist.
 export const ASSIGNABLE_NAV_ITEMS = NAV_ITEMS.filter((i) => i.href !== "/" && i.href !== "/pengguna");
 
-// Routes that don't map to a single nav item but should still be reachable
-// by anyone who can already see the page that links to them.
-const OPEN_AUTHENTICATED_PREFIXES = ["/print/", "/akses-ditolak"];
+// Routes that don't map to a nav item and are fine for any logged-in user.
+const OPEN_AUTHENTICATED_PREFIXES = ["/akses-ditolak"];
+
+// Print pages carry the same data as the page that links to them (a slip
+// is someone's gaji, an invoice is client billing), so each is reachable
+// exactly by whoever can open one of those pages — never "any logged-in
+// user", which let a field EMPLOYEE read every slip gaji by editing the ID
+// in the URL.
+const PRINT_SOURCES: { prefix: string; pages: string[]; denyRoles?: Role[] }[] = [
+  { prefix: "/print/slip-batch", pages: ["/penggajian"] },
+  { prefix: "/print/slip/", pages: ["/penggajian"] },
+  { prefix: "/print/final-settlement/", pages: ["/penggajian", "/karyawan"] },
+  { prefix: "/print/invoice-outsourcing/", pages: ["/klien"] },
+  { prefix: "/print/invoice-bj/", pages: ["/klien"] },
+  // EMPLOYEE gets /mbp only for their own permintaan barang, never the
+  // MBP/penawaran documents themselves.
+  { prefix: "/print/mbp/", pages: ["/mbp"], denyRoles: ["EMPLOYEE"] },
+  { prefix: "/print/inventory-request/", pages: ["/gudang"] },
+];
+
+// The office side of /mbp (MBP/penawaran, approving requests) — EMPLOYEE
+// logins share the route but only for submitting their own requests.
+export const MBP_OFFICE_DENY: Role[] = ["EMPLOYEE"];
 
 // EMPLOYEE (field-request-only, see /mbp's restricted view) and MARKETING
 // (CRM-only) are single-module logins — they deliberately don't get the
@@ -54,6 +74,11 @@ export function canAccess(role: string, pathname: string, pageAccess?: string[])
   // any per-user override.
   if (pathname.startsWith("/pengguna")) return false;
   if (OPEN_AUTHENTICATED_PREFIXES.some((p) => pathname.startsWith(p))) return true;
+  if (pathname.startsWith("/print/")) {
+    const rule = PRINT_SOURCES.find((r) => pathname.startsWith(r.prefix));
+    if (!rule || rule.denyRoles?.includes(role as Role)) return false;
+    return rule.pages.some((page) => canAccess(role, page, pageAccess));
+  }
   if (pathname === "/") return dashboardAllowed(role);
 
   const item = NAV_ITEMS

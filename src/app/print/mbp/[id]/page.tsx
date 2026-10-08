@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { requirePageAccess } from "@/lib/authz";
 import { formatRp } from "@/lib/payroll";
 import { terbilang, invoiceBjSubtotal, mbpPpnValue, mbpTotal } from "@/lib/finance";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
 export default async function MbpPrintPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePageAccess("/print/mbp/");
   const { id } = await params;
   const mbp = await db.mbp.findUnique({ where: { id }, include: { client: true, items: true } });
   if (!mbp) notFound();

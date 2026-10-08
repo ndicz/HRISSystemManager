@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { requirePageAccess } from "@/lib/authz";
 import { computeFinalSettlement, formatRp } from "@/lib/payroll";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
@@ -15,6 +16,7 @@ export default async function FinalSettlementPrintPage({
 }: {
   params: Promise<{ employeeId: string }>;
 }) {
+  await requirePageAccess("/print/final-settlement/");
   const { employeeId } = await params;
   const emp = await db.employee.findUnique({
     where: { id: employeeId },

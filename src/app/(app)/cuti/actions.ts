@@ -2,12 +2,11 @@
 
 import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 
 export async function addLeaveRequest(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/cuti");
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const type = String(formData.get("type") ?? "Cuti Tahunan");
@@ -25,8 +24,7 @@ export async function addLeaveRequest(formData: FormData) {
 }
 
 export async function setLeaveStatus(id: string, status: "disetujui" | "ditolak") {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/cuti");
 
   await db.leaveRequest.update({ where: { id }, data: { status } });
   await db.auditLog.create({
@@ -41,8 +39,7 @@ export async function setLeaveStatus(id: string, status: "disetujui" | "ditolak"
 // deleting one, even an already-approved one, safely and automatically
 // recalculates the quota with no orphaned record left behind.
 export async function updateLeaveRequest(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/cuti");
 
   const type = String(formData.get("type") ?? "Cuti Tahunan");
   const startDate = String(formData.get("startDate") ?? "");
@@ -63,8 +60,7 @@ export async function updateLeaveRequest(id: string, formData: FormData) {
 }
 
 export async function deleteLeaveRequest(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/cuti");
 
   await db.leaveRequest.delete({ where: { id } });
 

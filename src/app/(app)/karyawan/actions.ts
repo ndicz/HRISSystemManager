@@ -2,15 +2,14 @@
 
 import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 import { parseBpjsXlsx, type BpjsImportRow } from "@/lib/bpjsImport";
 import { mapLimit } from "@/lib/concurrency";
 import { assertPeriodOpen } from "@/lib/periodLock";
 
 export async function addEmployee(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const name = String(formData.get("name") ?? "").trim();
   const siteId = String(formData.get("siteId") ?? "");
@@ -73,8 +72,7 @@ export async function addEmployee(formData: FormData) {
 }
 
 export async function resignEmployee(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const resignDateRaw = String(formData.get("resignDate") ?? "");
@@ -107,8 +105,7 @@ export async function resignEmployee(formData: FormData) {
 // (SalaryComponent/Certificate/LeaveRequest/Assignment/OvertimeDay) are
 // harmless to lose for an employee with no activity yet.
 export async function deleteEmployee(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess(["/karyawan", "/absensi"]);
 
   const emp = await db.employee.findUnique({
     where: { id },
@@ -136,8 +133,7 @@ export async function deleteEmployee(id: string) {
 }
 
 export async function updateEmployeeDetails(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess(["/karyawan", "/absensi"]);
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const siteId = String(formData.get("siteId") ?? "");
@@ -208,8 +204,7 @@ export async function updateEmployeeDetails(formData: FormData) {
 }
 
 export async function addSalaryComponent(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess(["/karyawan", "/absensi"]);
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -235,8 +230,7 @@ export async function addSalaryComponent(formData: FormData) {
 }
 
 export async function updateSalaryComponent(componentId: string, name: string, amount: number) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess(["/karyawan", "/absensi"]);
 
   const trimmedName = name.trim();
   if (!trimmedName) throw new UserError("Nama komponen wajib diisi.");
@@ -263,8 +257,7 @@ export async function updateSalaryComponent(componentId: string, name: string, a
 }
 
 export async function removeSalaryComponent(componentId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess(["/karyawan", "/absensi"]);
 
   const comp = await db.salaryComponent.findUnique({ where: { id: componentId } });
   if (!comp) throw new UserError("Komponen tidak ditemukan.");
@@ -285,14 +278,12 @@ export async function removeSalaryComponent(componentId: string) {
 }
 
 export async function fetchSalaryComponents(employeeId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess(["/karyawan", "/absensi"]);
   return db.salaryComponent.findMany({ where: { employeeId }, orderBy: { id: "asc" } });
 }
 
 export async function updateEmployeeProfile(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const employeeId = String(formData.get("employeeId") ?? "");
   if (!employeeId) throw new UserError("Karyawan tidak ditemukan.");
@@ -328,8 +319,7 @@ export async function updateEmployeeProfile(formData: FormData) {
 }
 
 export async function addCertificate(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -355,8 +345,7 @@ export async function addCertificate(formData: FormData) {
 }
 
 export async function removeCertificate(certificateId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const cert = await db.certificate.findUnique({ where: { id: certificateId } });
   if (!cert) throw new UserError("Sertifikat tidak ditemukan.");
@@ -372,14 +361,12 @@ export async function removeCertificate(certificateId: string) {
 }
 
 export async function fetchCertificates(employeeId: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/karyawan");
   return db.certificate.findMany({ where: { employeeId }, orderBy: { id: "asc" } });
 }
 
 export async function addSite(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const name = String(formData.get("name") ?? "").trim();
   const address = String(formData.get("address") ?? "").trim();
@@ -400,8 +387,7 @@ export async function addSite(formData: FormData) {
 }
 
 export async function updateSite(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const name = String(formData.get("name") ?? "").trim();
   const address = String(formData.get("address") ?? "").trim();
@@ -434,8 +420,7 @@ export async function updateSite(id: string, formData: FormData) {
 // first (PayrollRate rows referencing this site are safe: onDelete:SetNull
 // just drops back to "no rate configured" for that period/site).
 export async function deleteSite(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const site = await db.site.findUnique({ where: { id }, include: { _count: { select: { employees: true } } } });
   if (!site) return;
@@ -453,8 +438,7 @@ export async function deleteSite(id: string) {
 }
 
 export async function addPosition(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const name = String(formData.get("name") ?? "").trim();
   const salaryType = String(formData.get("salaryType") ?? "bulanan");
@@ -479,8 +463,7 @@ export async function addPosition(formData: FormData) {
 }
 
 export async function updatePosition(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const positionId = String(formData.get("positionId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -513,8 +496,7 @@ export async function updatePosition(formData: FormData) {
 // Blocked while any employee still holds this position — reassign them
 // first (mirrors deleteSite's guard).
 export async function deletePosition(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const position = await db.position.findUnique({ where: { id }, include: { _count: { select: { employees: true } } } });
   if (!position) return;
@@ -534,8 +516,7 @@ export async function deletePosition(id: string) {
 }
 
 export async function addAssignment(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const employeeId = String(formData.get("employeeId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
@@ -555,8 +536,7 @@ export async function addAssignment(formData: FormData) {
 }
 
 export async function completeAssignment(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const assignment = await db.assignment.findUnique({ where: { id }, include: { employee: true } });
   if (!assignment || assignment.status === "selesai") return;
@@ -608,8 +588,7 @@ export async function completeAssignment(id: string) {
 // silently desync from what was actually recorded as paid. Same guard
 // rail as invoices/payables elsewhere in this app.
 export async function updateAssignment(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const existing = await db.assignment.findUnique({ where: { id } });
   if (!existing) throw new UserError("Penugasan tidak ditemukan.");
@@ -632,8 +611,7 @@ export async function updateAssignment(id: string, formData: FormData) {
 }
 
 export async function deleteAssignment(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
 
   const assignment = await db.assignment.findUnique({ where: { id } });
   if (!assignment) return;
@@ -651,8 +629,7 @@ export async function deleteAssignment(id: string) {
 // ── BPJS bulk import ──────────────────────────────────────────────────
 
 export async function parseBpjsImport(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/karyawan");
 
   const file = formData.get("file");
   if (!(file instanceof File)) throw new UserError("File tidak ditemukan.");
@@ -662,8 +639,7 @@ export async function parseBpjsImport(formData: FormData) {
 }
 
 export async function applyBpjsImport(rows: BpjsImportRow[]) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/karyawan");
   if (!rows || rows.length === 0) throw new UserError("Tidak ada data untuk diterapkan.");
 
   // Normalize away whitespace differences before matching — the source

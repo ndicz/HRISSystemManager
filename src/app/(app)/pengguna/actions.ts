@@ -3,7 +3,7 @@
 import { UserError } from "@/lib/userError";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { auth, forgetCachedAccount } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { ASSIGNABLE_NAV_ITEMS, type Role } from "@/lib/rbac";
 
@@ -103,6 +103,8 @@ export async function updateUser(formData: FormData) {
     where: { id: userId },
     data: { name, username, email, role, active, employeeId, pageAccess },
   });
+  // Deactivation / role changes apply to sessions already logged in.
+  forgetCachedAccount(userId);
 
   await db.auditLog.create({
     data: {
@@ -128,6 +130,7 @@ export async function deleteUser(formData: FormData) {
   if (!target) throw new UserError("Pengguna tidak ditemukan.");
 
   await db.user.delete({ where: { id: userId } });
+  forgetCachedAccount(userId);
 
   await db.auditLog.create({
     data: {

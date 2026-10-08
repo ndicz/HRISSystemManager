@@ -2,13 +2,12 @@
 
 import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 import { assertPeriodOpen } from "@/lib/periodLock";
 
 export async function addInventoryItem(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/gudang");
 
   const name = String(formData.get("name") ?? "").trim();
   const unit = String(formData.get("unit") ?? "").trim() || "unit";
@@ -29,8 +28,7 @@ export async function addInventoryItem(formData: FormData) {
 }
 
 export async function updateInventoryItem(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/gudang");
 
   const name = String(formData.get("name") ?? "").trim();
   const unit = String(formData.get("unit") ?? "").trim() || "unit";
@@ -61,8 +59,7 @@ export async function updateInventoryItem(id: string, formData: FormData) {
 // but itemId itself would still dangle. Reference/master data otherwise,
 // so freely deletable while unused.
 export async function deleteInventoryItem(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/gudang");
 
   const item = await db.inventoryItem.findUnique({ where: { id }, include: { _count: { select: { requests: true } } } });
   if (!item) return;
@@ -83,8 +80,7 @@ export async function deleteInventoryItem(id: string) {
 // lagi bisa diambil (lihat requestItem), tapi riwayat pengambilannya yang
 // lama tetap utuh, dan bisa diaktifkan lagi kapan saja.
 export async function toggleInventoryItemActive(id: string, active: boolean) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/gudang");
 
   await db.inventoryItem.update({ where: { id }, data: { active } });
 
@@ -99,8 +95,7 @@ export async function toggleInventoryItemActive(id: string, active: boolean) {
 // updateInventoryItem so editing the item's name/category can't
 // accidentally also change the stock count.
 export async function restockItem(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/gudang");
 
   const item = await db.inventoryItem.findUnique({ where: { id } });
   if (!item) throw new UserError("Barang tidak ditemukan.");
@@ -132,8 +127,7 @@ export async function restockItem(id: string, formData: FormData) {
 // deferred-completion pattern as Assignment (addAssignment vs
 // completeAssignment) elsewhere in this app.
 export async function requestItem(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/gudang");
 
   const itemId = String(formData.get("itemId") ?? "");
   const qty = Math.max(1, parseInt(String(formData.get("qty") ?? "1"), 10) || 1);
@@ -175,8 +169,7 @@ export async function requestItem(formData: FormData) {
 // re-checking stock here (not at request time) since other requests may
 // have used it up in the meantime.
 export async function completeInventoryRequest(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/gudang");
 
   const request = await db.inventoryRequest.findUnique({ where: { id }, include: { item: true } });
   if (!request) return;
@@ -232,8 +225,7 @@ export async function completeInventoryRequest(id: string) {
 // (if trackStock) and posts a reversing Kas entry — same
 // cancel-with-reversing-entry pattern as cancelInvoiceBj/cancelInvoice.
 export async function cancelInventoryRequest(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/gudang");
 
   const request = await db.inventoryRequest.findUnique({ where: { id }, include: { item: true } });
   if (!request) return;

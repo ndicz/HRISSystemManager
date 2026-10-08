@@ -2,12 +2,11 @@
 
 import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 
 export async function addCandidate(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/rekrutmen");
 
   const name = String(formData.get("name") ?? "").trim();
   const position = String(formData.get("position") ?? "");
@@ -18,8 +17,7 @@ export async function addCandidate(formData: FormData) {
 }
 
 export async function advanceCandidate(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/rekrutmen");
 
   const c = await db.candidate.findUnique({ where: { id } });
   if (!c) return;
@@ -62,16 +60,14 @@ export async function advanceCandidate(id: string) {
 }
 
 export async function rejectCandidate(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/rekrutmen");
 
   await db.candidate.update({ where: { id }, data: { status: "ditolak" } });
   revalidatePath("/rekrutmen");
 }
 
 export async function updateCandidate(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/rekrutmen");
 
   const name = String(formData.get("name") ?? "").trim();
   const position = String(formData.get("position") ?? "");
@@ -90,8 +86,7 @@ export async function updateCandidate(id: string, formData: FormData) {
 // data into a brand-new Employee row rather than linking back), so this is
 // a plain, unguarded delete.
 export async function deleteCandidate(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/rekrutmen");
 
   const c = await db.candidate.findUnique({ where: { id } });
   if (!c) return;

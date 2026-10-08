@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { requirePageAccess } from "@/lib/authz";
 import { bestPayrollPeriod, computeMonthlyPayroll, formatRp, payrollPeriodKey, payrollPeriodLabel, resolvePayrollRate, resolvePayrollEntry, resolveOvertimeDays, resolveAssignments } from "@/lib/payroll";
 import { PRINT_CSS, PrintDocumentInner } from "@/components/print/PrintDocument";
 import { AutoPrint } from "@/components/print/AutoPrint";
@@ -15,6 +16,7 @@ export default async function SlipBatchPrintPage({
 }: {
   searchParams: Promise<{ ids?: string; period?: string }>;
 }) {
+  await requirePageAccess("/print/slip-batch");
   const { ids: idsParam, period: periodParam } = await searchParams;
   const ids = (idsParam ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   if (ids.length === 0) notFound();

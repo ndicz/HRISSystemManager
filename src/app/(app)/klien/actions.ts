@@ -2,7 +2,8 @@
 
 import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
+import { MBP_OFFICE_DENY } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 import { baseSalary } from "@/lib/payroll";
 import { invoiceBjTotal } from "@/lib/finance";
@@ -14,8 +15,7 @@ const NEXT_INVOICE_STATUS: Record<string, "terkirim" | "lunas" | undefined> = { 
 const STATUS_CHANGED_MESSAGE = "Status invoice ini sudah berubah (mungkin baru diproses orang lain) — muat ulang halaman.";
 
 export async function addClient(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/klien");
 
   const name = String(formData.get("name") ?? "").trim();
   const pic = String(formData.get("pic") ?? "").trim();
@@ -35,8 +35,7 @@ export async function addClient(formData: FormData) {
 }
 
 export async function updateClient(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/klien");
 
   const name = String(formData.get("name") ?? "").trim();
   const pic = String(formData.get("pic") ?? "").trim();
@@ -64,8 +63,7 @@ export async function updateClient(id: string, formData: FormData) {
 // Reassign/remove those first, same guard rail used for invoices/payables
 // throughout this module.
 export async function deleteClient(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/klien");
 
   const client = await db.client.findUnique({
     where: { id },
@@ -98,8 +96,7 @@ export async function deleteClient(id: string) {
 // editable later from the Klien page) so invoicing never blocks on having
 // set that up first.
 export async function findOrCreateClientByName(name: string): Promise<{ id: string; name: string }> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess(["/klien", "/mbp"], { denyRoles: MBP_OFFICE_DENY });
 
   const trimmed = name.trim();
   if (!trimmed) throw new UserError("Nama klien wajib diisi.");
@@ -120,8 +117,7 @@ export async function findOrCreateClientByName(name: string): Promise<{ id: stri
 }
 
 export async function addInvoiceBj(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/klien");
 
   const clientId = String(formData.get("clientId") ?? "");
   const withPpn = formData.get("withPpn") === "on";
@@ -176,8 +172,7 @@ export async function addInvoiceBj(formData: FormData) {
 // once "lunas", the amount is already posted to Kas, so changing items here
 // would silently desync from what was actually recorded as paid.
 export async function updateInvoiceBj(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/klien");
 
   const existing = await db.invoiceBj.findUnique({ where: { id } });
   if (!existing) throw new UserError("Invoice tidak ditemukan.");
@@ -225,8 +220,7 @@ export async function updateInvoiceBj(id: string, formData: FormData) {
 }
 
 export async function advanceInvoiceBjStatus(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/klien");
 
   const inv = await db.invoiceBj.findUnique({ where: { id }, include: { items: true, client: true } });
   if (!inv) return;
@@ -273,8 +267,7 @@ export async function advanceInvoiceBjStatus(id: string) {
 // that revenue entry orphaned/unexplained. Use cancelInvoiceBj instead for
 // a paid invoice, which reverses the Kas entry properly.
 export async function deleteInvoiceBj(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/klien");
 
   const inv = await db.invoiceBj.findUnique({ where: { id } });
   if (!inv) return;
@@ -295,8 +288,7 @@ export async function deleteInvoiceBj(id: string) {
 // aging and the Kirim/Tandai-lunas actions, but stays visible in the list
 // (unlike delete) since real money already moved for it.
 export async function cancelInvoiceBj(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/klien");
 
   const inv = await db.invoiceBj.findUnique({ where: { id }, include: { items: true, client: true } });
   if (!inv) return;
@@ -336,8 +328,7 @@ export async function cancelInvoiceBj(id: string) {
 // ── Monthly outsourcing-fee invoices (per client, per period) ─────────
 
 export async function generateInvoices(period: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/klien");
   if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
 
   const clients = await db.client.findMany({
@@ -384,8 +375,7 @@ export async function generateInvoices(period: string) {
 }
 
 export async function advanceInvoiceStatus(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/klien");
 
   const inv = await db.invoice.findUnique({ where: { id }, include: { client: true } });
   if (!inv) return;
@@ -434,8 +424,7 @@ export async function advanceInvoiceStatus(id: string) {
 // jatuh tempo supaya aging piutang bisa membedakan "belum diserahkan" dari
 // "sudah diserahkan tapi belum dibayar".
 export async function setDocHandoverDate(type: "bj" | "outsourcing", id: string, dateRaw: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess(["/klien", "/kas"]);
 
   const date = dateRaw ? new Date(dateRaw) : null;
   if (dateRaw && Number.isNaN(date?.getTime())) throw new UserError("Tanggal tidak valid.");
@@ -453,8 +442,7 @@ export async function setDocHandoverDate(type: "bj" | "outsourcing", id: string,
 // Same delete rule as deleteInvoiceBj — draft/terkirim only, since "lunas"
 // already posted a Transaction to Kas. Use cancelInvoice for a paid one.
 export async function deleteInvoice(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/klien");
 
   const inv = await db.invoice.findUnique({ where: { id } });
   if (!inv) return;
@@ -471,8 +459,7 @@ export async function deleteInvoice(id: string) {
 
 // Same reversing-entry pattern as cancelInvoiceBj.
 export async function cancelInvoice(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/klien");
 
   const inv = await db.invoice.findUnique({ where: { id }, include: { client: true } });
   if (!inv) return;

@@ -2,7 +2,7 @@
 
 import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -10,8 +10,7 @@ import { assertPeriodOpen } from "@/lib/periodLock";
 
 
 export async function closePeriod(period: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/kas");
   if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
 
   await db.closedPeriod.upsert({
@@ -28,8 +27,7 @@ export async function closePeriod(period: string) {
 }
 
 export async function reopenPeriod(period: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/kas");
 
   await db.closedPeriod.deleteMany({ where: { period } });
 
@@ -41,8 +39,7 @@ export async function reopenPeriod(period: string) {
 }
 
 export async function addTransaction(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/kas");
   await assertPeriodOpen(new Date());
 
   const accountCoaId = String(formData.get("accountCoaId") ?? "");
@@ -79,8 +76,7 @@ export async function addTransaction(formData: FormData) {
 }
 
 export async function updateTransaction(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/kas");
 
   const existing = await db.transaction.findUnique({ where: { id } });
   if (!existing) throw new UserError("Transaksi tidak ditemukan.");
@@ -118,8 +114,7 @@ export async function updateTransaction(id: string, formData: FormData) {
 }
 
 export async function addAccount(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/kas");
 
   const code = String(formData.get("code") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
@@ -143,8 +138,7 @@ export async function addAccount(formData: FormData) {
 // With none yet, both Transfer's dropdowns and the running balances on the
 // Rekening tab have nothing to show.
 export async function createCashAccount(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/kas");
 
   const name = String(formData.get("name") ?? "").trim();
   const kind = String(formData.get("kind") ?? "besar");
@@ -162,8 +156,7 @@ export async function createCashAccount(formData: FormData) {
 }
 
 export async function updateCashAccount(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/kas");
 
   const cashAccount = await db.cashAccount.findUnique({ where: { id } });
   if (!cashAccount) throw new UserError("Rekening tidak ditemukan.");
@@ -184,8 +177,7 @@ export async function updateCashAccount(id: string, formData: FormData) {
 }
 
 export async function deleteCashAccount(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/kas");
 
   const cashAccount = await db.cashAccount.findUnique({ where: { id }, include: { _count: { select: { transactions: true } } } });
   if (!cashAccount) return;
@@ -204,8 +196,7 @@ export async function deleteCashAccount(id: string) {
 }
 
 export async function setBudget(accountId: string, budget: number) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/kas");
 
   await db.account.update({ where: { id: accountId }, data: { budget } });
   revalidatePath("/kas");
@@ -220,8 +211,7 @@ export async function setBudget(accountId: string, budget: number) {
 const PROTECTED_ACCOUNT_CODES = ["4001", "5001", "5007", "5008", "5009", "5010", "5011", "9001"];
 
 export async function updateAccount(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/kas");
 
   const account = await db.account.findUnique({ where: { id } });
   if (!account) throw new UserError("Akun tidak ditemukan.");
@@ -246,8 +236,7 @@ export async function updateAccount(id: string, formData: FormData) {
 }
 
 export async function deleteAccount(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/kas");
 
   const account = await db.account.findUnique({ where: { id }, include: { _count: { select: { transactions: true } } } });
   if (!account) return;
@@ -269,8 +258,7 @@ export async function deleteAccount(id: string) {
 }
 
 export async function addPayable(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/kas");
 
   const vendorName = String(formData.get("vendorName") ?? "").trim();
   const desc = String(formData.get("desc") ?? "").trim() || "-";
@@ -283,8 +271,7 @@ export async function addPayable(formData: FormData) {
 }
 
 export async function payPayable(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/kas");
   await assertPeriodOpen(new Date());
 
   const payable = await db.payable.findUnique({ where: { id } });
@@ -310,8 +297,7 @@ export async function payPayable(id: string) {
 }
 
 export async function addTransfer(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/kas");
   await assertPeriodOpen(new Date());
 
   const fromId = String(formData.get("fromId") ?? "");

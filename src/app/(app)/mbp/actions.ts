@@ -2,7 +2,8 @@
 
 import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
+import { MBP_OFFICE_DENY } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 import { findOrCreateClientByName } from "@/app/(app)/klien/actions";
 
@@ -10,8 +11,7 @@ import { findOrCreateClientByName } from "@/app/(app)/klien/actions";
 // touch anything else yet (no Mbp created here); same reasoning as
 // Gudang's requestItem: this only records that someone asked.
 export async function addMbpRequest(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/mbp");
 
   const itemId = String(formData.get("itemId") ?? "").trim() || null;
   const qty = Math.max(1, parseInt(String(formData.get("qty") ?? "1"), 10) || 1);
@@ -59,8 +59,7 @@ export async function addMbpRequest(formData: FormData) {
 }
 
 export async function decideMbpRequest(id: string, decision: "disetujui" | "ditolak", note?: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
   const request = await db.mbpRequest.findUnique({ where: { id } });
   if (!request) return;
@@ -106,8 +105,7 @@ async function nextMbpNo(): Promise<string> {
 }
 
 export async function createMbp(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
   const clientId = String(formData.get("clientId") ?? "").trim() || null;
   const clientNameManual = String(formData.get("clientNameManual") ?? "").trim() || null;
@@ -155,8 +153,7 @@ export async function createMbp(formData: FormData) {
 }
 
 export async function updateMbp(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
   const existing = await db.mbp.findUnique({ where: { id } });
   if (!existing) throw new UserError("MBP tidak ditemukan.");
@@ -213,8 +210,7 @@ const STATUS_FLOW: Record<string, string> = { draft: "terkirim", terkirim: "dise
 // Kas; the only downstream side effect happens later, in
 // convertMbpToInvoice, once the client has actually said yes.
 export async function advanceMbpStatus(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
   const mbp = await db.mbp.findUnique({ where: { id } });
   if (!mbp) return;
@@ -231,8 +227,7 @@ export async function advanceMbpStatus(id: string) {
 }
 
 export async function rejectMbpByClient(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
   const mbp = await db.mbp.findUnique({ where: { id } });
   if (!mbp) return;
@@ -258,8 +253,7 @@ export async function rejectMbpByClient(id: string) {
 }
 
 export async function cancelMbp(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
   const mbp = await db.mbp.findUnique({ where: { id } });
   if (!mbp) return;
@@ -287,8 +281,7 @@ export async function cancelMbp(id: string) {
 // linked to a manual client name (no real Client record yet), resolves/
 // creates one via findOrCreateClientByName — reused as-is, not duplicated.
 export async function convertMbpToInvoice(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
   const mbp = await db.mbp.findUnique({ where: { id }, include: { items: true } });
   if (!mbp) throw new UserError("MBP tidak ditemukan.");
@@ -342,8 +335,7 @@ export async function convertMbpToInvoice(id: string) {
 // so it's not just hidden in the UI but never actually reaches their
 // browser — pricing/markup is office business, not the requester's.
 export async function fetchMbpRequests() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/mbp");
 
   const isEmployee = session.user.role === "EMPLOYEE";
   const where = isEmployee ? { createdById: session.user.id } : {};
@@ -352,8 +344,7 @@ export async function fetchMbpRequests() {
 }
 
 export async function fetchMbps() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
   const mbpsRaw = await db.mbp.findMany({ include: { items: true, client: true }, orderBy: { createdAt: "desc" } });
   return mbpsRaw.map((m) => ({

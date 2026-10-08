@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { requirePageAccess } from "@/lib/authz";
 import { formatRp } from "@/lib/payroll";
 import { terbilang } from "@/lib/finance";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
 export default async function InventoryRequestPrintPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePageAccess("/print/inventory-request/");
   const { id } = await params;
   const req = await db.inventoryRequest.findUnique({ where: { id } });
   if (!req) notFound();

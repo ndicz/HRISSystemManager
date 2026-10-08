@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { requirePageAccess } from "@/lib/authz";
 import { baseSalary, formatRp } from "@/lib/payroll";
 import { terbilang } from "@/lib/finance";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
 export default async function InvoiceOutsourcingPrintPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePageAccess("/print/invoice-outsourcing/");
   const { id } = await params;
   const inv = await db.invoice.findUnique({ where: { id }, include: { client: true } });
   if (!inv) notFound();

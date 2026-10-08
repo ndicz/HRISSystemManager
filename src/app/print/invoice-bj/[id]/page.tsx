@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { requirePageAccess } from "@/lib/authz";
 import { formatRp } from "@/lib/payroll";
 import { terbilang, invoiceBjSubtotal, invoiceBjDiscountValue } from "@/lib/finance";
 import { PrintDocument } from "@/components/print/PrintDocument";
 
 export default async function InvoiceBjPrintPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePageAccess("/print/invoice-bj/");
   const { id } = await params;
   const inv = await db.invoiceBj.findUnique({ where: { id }, include: { client: true, items: true } });
   if (!inv) notFound();

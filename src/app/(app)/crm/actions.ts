@@ -2,14 +2,13 @@
 
 import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
 
 const ACTIVE_STAGES = ["kontak_awal", "penawaran", "negosiasi", "deal"];
 
 export async function addLead(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/crm");
 
   const companyName = String(formData.get("companyName") ?? "").trim();
   const picName = String(formData.get("picName") ?? "").trim() || null;
@@ -31,8 +30,7 @@ export async function addLead(formData: FormData) {
 }
 
 export async function updateLead(id: string, formData: FormData) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/crm");
 
   const existing = await db.lead.findUnique({ where: { id } });
   if (!existing) throw new UserError("Prospek tidak ditemukan.");
@@ -59,8 +57,7 @@ export async function updateLead(id: string, formData: FormData) {
 }
 
 export async function addLeadActivity(leadId: string, note: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/crm");
 
   const trimmed = note.trim();
   if (!trimmed) throw new UserError("Catatan tidak boleh kosong.");
@@ -75,8 +72,7 @@ export async function addLeadActivity(leadId: string, note: string) {
 // valid target here on purpose — see markLeadLost for that, which captures
 // a reason the same way MBP's rejectMbpByClient does.
 export async function setLeadStage(id: string, stage: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/crm");
   if (!ACTIVE_STAGES.includes(stage)) throw new UserError("Tahap tidak valid.");
 
   const lead = await db.lead.findUnique({ where: { id } });
@@ -93,8 +89,7 @@ export async function setLeadStage(id: string, stage: string) {
 }
 
 export async function markLeadLost(id: string, reason: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/crm");
 
   const lead = await db.lead.findUnique({ where: { id } });
   if (!lead) return;
@@ -113,8 +108,7 @@ export async function markLeadLost(id: string, reason: string) {
 // destroy the audit trail" reasoning used everywhere else in this app
 // (e.g. InventoryRequest's cancel-with-reversing-entry keeps the original).
 export async function reopenLead(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/crm");
 
   const lead = await db.lead.findUnique({ where: { id } });
   if (!lead) return;
@@ -134,8 +128,7 @@ export async function reopenLead(id: string) {
 // signature, so not reused directly) — same 1-year-placeholder contract
 // window convention used there.
 export async function convertLeadToClient(id: string) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAccess("/crm");
 
   const lead = await db.lead.findUnique({ where: { id } });
   if (!lead) throw new UserError("Prospek tidak ditemukan.");
@@ -174,8 +167,7 @@ export async function convertLeadToClient(id: string) {
 // Action normally triggers doesn't reliably reach an already-mounted
 // client tree here.
 export async function fetchLeads() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAccess("/crm");
 
   return db.lead.findMany({
     include: { activities: { orderBy: { createdAt: "desc" } } },
