@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireAccess } from "@/lib/authz";
 import { MBP_OFFICE_DENY } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
+import { nextMbpNo, nextInvoiceBjNo, retryOnDuplicateNumber } from "@/lib/docNumber";
 import { findOrCreateClientByName } from "@/app/(app)/klien/actions";
 
 // Field request for an item — pending office approval. Deliberately doesn't
@@ -97,13 +98,6 @@ function parseMbpItems(formData: FormData): MbpItemInput[] {
   return items;
 }
 
-async function nextMbpNo(): Promise<string> {
-  const count = await db.mbp.count();
-  const seq = String(count + 1).padStart(4, "0");
-  const mmYY = String(new Date().getMonth() + 1).padStart(2, "0") + String(new Date().getFullYear()).slice(-2);
-  return `${seq}-MBP-WSP-${mmYY}`;
-}
-
 export async function createMbp(formData: FormData) {
   const session = await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
@@ -118,11 +112,10 @@ export async function createMbp(formData: FormData) {
   const signerName = String(formData.get("signerName") ?? "").trim() || null;
   const withPpn = formData.get("withPpn") === "on";
   const ppnPercent = Math.max(0, parseInt(String(formData.get("ppnPercent") ?? "11"), 10) || 0);
-  const mbpNo = await nextMbpNo();
 
-  const mbp = await db.mbp.create({
+  const mbp = await retryOnDuplicateNumber(async () => db.mbp.create({
     data: {
-      mbpNo,
+      mbpNo: await nextMbpNo(),
       clientId,
       clientNameManual: clientId ? null : clientNameManual,
       jobTitle,
@@ -131,7 +124,7 @@ export async function createMbp(formData: FormData) {
       ppnPercent,
       items: { create: items.map(({ desc, qty, cost, price }) => ({ desc, qty, cost, price })) },
     },
-  });
+  }));
 
   // Pulling a pending request into an Mbp *is* the ACC now — there's no
   // separate approve step in the Permintaan tab anymore. A request that
@@ -146,7 +139,7 @@ export async function createMbp(formData: FormData) {
   }
 
   await db.auditLog.create({
-    data: { userId: session.user.id, action: "mbp.create", entity: "Mbp", entityId: mbp.id, detail: mbpNo },
+    data: { userId: session.user.id, action: "mbp.create", entity: "Mbp", entityId: mbp.id, detail: mbp.mbpNo },
   });
 
   revalidatePath("/mbp");
@@ -205,19 +198,26 @@ export async function updateMbp(id: string, formData: FormData) {
 }
 
 const STATUS_FLOW: Record<string, string> = { draft: "terkirim", terkirim: "disetujui_klien" };
+const MBP_STATUS_CHANGED = "Status MBP ini sudah berubah (mungkin baru diproses orang lain) — muat ulang halaman.";
 
 // Pure status cycle — unlike InvoiceBj's "lunas" step, MBP never touches
 // Kas; the only downstream side effect happens later, in
 // convertMbpToInvoice, once the client has actually said yes.
-export async function advanceMbpStatus(id: string) {
+export async function advanceMbpStatus(id: string, fromStatus: string) {
   const session = await requireAccess("/mbp", { denyRoles: MBP_OFFICE_DENY });
 
   const mbp = await db.mbp.findUnique({ where: { id } });
   if (!mbp) return;
+  // Same stale-tab rule as invoices: advance only from the status the
+  // person actually saw.
+  if (mbp.status !== fromStatus) throw new UserError(MBP_STATUS_CHANGED);
   const next = STATUS_FLOW[mbp.status];
   if (!next) throw new UserError("Status MBP ini tidak bisa dilanjutkan lagi.");
 
-  await db.mbp.update({ where: { id }, data: { status: next } });
+  // Conditional on the status just read: a stale tab clicking "Kirim ke
+  // klien" again must not push the MBP one more step to "disetujui".
+  const moved = await db.mbp.updateMany({ where: { id, status: mbp.status }, data: { status: next } });
+  if (moved.count === 0) throw new UserError(MBP_STATUS_CHANGED);
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "mbp.advance", entity: "Mbp", entityId: id, detail: next },
@@ -240,10 +240,11 @@ export async function rejectMbpByClient(id: string) {
   // Since pulling a request into an MBP is also what ACCs it now, undoing
   // that has to undo the ACC too — back to "menunggu", not left "disetujui"
   // with nothing attached.
-  await db.$transaction([
-    db.mbp.update({ where: { id }, data: { status: "ditolak_klien" } }),
-    db.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null, status: "menunggu", decidedAt: null, decisionNote: null } }),
-  ]);
+  await db.$transaction(async (tx) => {
+    const moved = await tx.mbp.updateMany({ where: { id, status: "terkirim" }, data: { status: "ditolak_klien" } });
+    if (moved.count === 0) throw new UserError(MBP_STATUS_CHANGED);
+    await tx.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null, status: "menunggu", decidedAt: null, decisionNote: null } });
+  });
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "mbp.rejectByClient", entity: "Mbp", entityId: id },
@@ -263,10 +264,11 @@ export async function cancelMbp(id: string) {
   // Same reasoning as rejectMbpByClient — cancelling shouldn't permanently
   // lock the requests this MBP had pulled in, and undoing the pull undoes
   // the ACC too.
-  await db.$transaction([
-    db.mbp.update({ where: { id }, data: { status: "dibatalkan" } }),
-    db.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null, status: "menunggu", decidedAt: null, decisionNote: null } }),
-  ]);
+  await db.$transaction(async (tx) => {
+    const moved = await tx.mbp.updateMany({ where: { id, status: mbp.status, invoiceBjId: null }, data: { status: "dibatalkan" } });
+    if (moved.count === 0) throw new UserError(MBP_STATUS_CHANGED);
+    await tx.mbpRequest.updateMany({ where: { mbpId: id }, data: { mbpId: null, status: "menunggu", decidedAt: null, decisionNote: null } });
+  });
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "mbp.cancel", entity: "Mbp", entityId: id, detail: mbp.mbpNo },
@@ -296,27 +298,33 @@ export async function convertMbpToInvoice(id: string) {
     clientId = client.id;
   }
 
-  const count = await db.invoiceBj.count();
-  const seq = String(count + 1).padStart(4, "0");
-  const mmYY = String(new Date().getMonth() + 1).padStart(2, "0") + String(new Date().getFullYear()).slice(-2);
-  const invoiceNo = `${seq}-INV-WSP-${mmYY}`;
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 14);
 
-  const invoice = await db.invoiceBj.create({
-    data: {
-      invoiceNo,
-      clientId,
-      date: new Date(),
-      dueDate,
-      withPpn: mbp.withPpn,
-      jobTitle: mbp.jobTitle,
-      signerName: mbp.signerName,
-      items: { create: mbp.items.map((i) => ({ desc: i.desc, qty: i.qty, price: i.price })) },
-    },
+  // The invoice and the MBP's link to it land together, and only if no
+  // other click converted this MBP in the meantime — otherwise a double
+  // click made two invoices for the same MBP.
+  const invoice = await retryOnDuplicateNumber(async () => {
+    const invoiceNo = await nextInvoiceBjNo();
+    return db.$transaction(async (tx) => {
+      const created = await tx.invoiceBj.create({
+        data: {
+          invoiceNo,
+          clientId,
+          date: new Date(),
+          dueDate,
+          withPpn: mbp.withPpn,
+          jobTitle: mbp.jobTitle,
+          signerName: mbp.signerName,
+          items: { create: mbp.items.map((i) => ({ desc: i.desc, qty: i.qty, price: i.price })) },
+        },
+      });
+      const linked = await tx.mbp.updateMany({ where: { id, invoiceBjId: null, status: "disetujui_klien" }, data: { clientId, invoiceBjId: created.id } });
+      if (linked.count === 0) throw new UserError("MBP ini sudah pernah dikonversi jadi invoice.");
+      return created;
+    });
   });
-
-  await db.mbp.update({ where: { id }, data: { clientId, invoiceBjId: invoice.id } });
+  const invoiceNo = invoice.invoiceNo;
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "mbp.convertToInvoice", entity: "Mbp", entityId: id, detail: JSON.stringify({ mbpNo: mbp.mbpNo, invoiceNo }) },

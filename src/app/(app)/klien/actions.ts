@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { baseSalary } from "@/lib/payroll";
 import { invoiceBjTotal, invoiceBjPpn } from "@/lib/finance";
 import { suggestNextAccountCode } from "@/lib/coa";
+import { nextInvoiceBjNo, lastOutsourcingInvoiceSeq, retryOnDuplicateNumber } from "@/lib/docNumber";
 import { assertPeriodOpen } from "@/lib/periodLock";
 
 // Invoice status only ever moves forward one step; lunas and dibatalkan are
@@ -157,17 +158,12 @@ export async function addInvoiceBj(formData: FormData) {
   const discountPercent = Math.min(100, Math.max(0, parseInt(String(formData.get("discountPercent") ?? "0"), 10) || 0));
   const signerName = String(formData.get("signerName") ?? "").trim() || null;
 
-  const count = await db.invoiceBj.count();
-  const seq = String(count + 1).padStart(4, "0");
-  const mmYY = String(new Date().getMonth() + 1).padStart(2, "0") + String(new Date().getFullYear()).slice(-2);
-  const invoiceNo = `${seq}-INV-WSP-${mmYY}`;
-
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 14);
 
-  await db.invoiceBj.create({
+  const { invoiceNo } = await retryOnDuplicateNumber(async () => db.invoiceBj.create({
     data: {
-      invoiceNo,
+      invoiceNo: await nextInvoiceBjNo(),
       clientId,
       date: new Date(),
       dueDate,
@@ -178,7 +174,7 @@ export async function addInvoiceBj(formData: FormData) {
       signerName,
       items: { create: items },
     },
-  });
+  }));
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "invoiceBj.create", entity: "InvoiceBj", entityId: invoiceNo },
@@ -238,7 +234,7 @@ export async function updateInvoiceBj(id: string, formData: FormData) {
   revalidatePath("/klien");
 }
 
-export async function advanceInvoiceBjStatus(id: string) {
+export async function advanceInvoiceBjStatus(id: string, fromStatus: string) {
   await requireAccess("/klien");
 
   const inv = await db.invoiceBj.findUnique({ where: { id }, include: { items: true, client: true } });
@@ -247,6 +243,9 @@ export async function advanceInvoiceBjStatus(id: string) {
   // person) clicking "Tandai lunas" on an invoice that's already lunas — or
   // one that's been cancelled — used to fall through to "lunas" again and
   // post the payment to Kas a second time.
+  // fromStatus is what the person was looking at: a stale tab that still
+  // shows "Kirim tagihan" must not turn an already-sent invoice into lunas.
+  if (inv.status !== fromStatus) throw new UserError(STATUS_CHANGED_MESSAGE);
   const next = NEXT_INVOICE_STATUS[inv.status];
   if (!next) throw new UserError(STATUS_CHANGED_MESSAGE);
   if (next === "lunas") await assertPeriodOpen();
@@ -297,6 +296,9 @@ export async function deleteInvoiceBj(id: string) {
   const inv = await db.invoiceBj.findUnique({ where: { id } });
   if (!inv) return;
   if (inv.status === "lunas") throw new UserError("Invoice yang sudah lunas tidak bisa dihapus — gunakan \"Batalkan\" supaya Kas ikut dikoreksi.");
+  // A cancelled invoice still has its payment + reversal in Kas, so it stays
+  // on record too (the list only offers Hapus for draft/terkirim).
+  if (inv.status === "dibatalkan") throw new UserError("Invoice yang sudah dibatalkan tetap disimpan sebagai catatan karena sudah ada transaksinya di Kas.");
 
   await db.invoiceBj.delete({ where: { id } });
 
@@ -368,8 +370,7 @@ export async function generateInvoices(period: string) {
     include: { employees: { where: { status: "aktif" }, include: { salaryComponents: true } } },
   });
 
-  const existingCount = await db.invoice.count();
-  let seq = existingCount;
+  let seq = await lastOutsourcingInvoiceSeq();
   let created = 0;
 
   for (const client of clients) {
@@ -407,12 +408,15 @@ export async function generateInvoices(period: string) {
   return { created };
 }
 
-export async function advanceInvoiceStatus(id: string) {
+export async function advanceInvoiceStatus(id: string, fromStatus: string) {
   await requireAccess("/klien");
 
   const inv = await db.invoice.findUnique({ where: { id }, include: { client: true } });
   if (!inv) return;
   // Same forward-only, one-winner transition as advanceInvoiceBjStatus.
+  // fromStatus is what the person was looking at: a stale tab that still
+  // shows "Kirim tagihan" must not turn an already-sent invoice into lunas.
+  if (inv.status !== fromStatus) throw new UserError(STATUS_CHANGED_MESSAGE);
   const next = NEXT_INVOICE_STATUS[inv.status];
   if (!next) throw new UserError(STATUS_CHANGED_MESSAGE);
   if (next === "lunas") await assertPeriodOpen();
@@ -480,6 +484,9 @@ export async function deleteInvoice(id: string) {
   const inv = await db.invoice.findUnique({ where: { id } });
   if (!inv) return;
   if (inv.status === "lunas") throw new UserError("Invoice yang sudah lunas tidak bisa dihapus — gunakan \"Batalkan\" supaya Kas ikut dikoreksi.");
+  // A cancelled invoice still has its payment + reversal in Kas, so it stays
+  // on record too (the list only offers Hapus for draft/terkirim).
+  if (inv.status === "dibatalkan") throw new UserError("Invoice yang sudah dibatalkan tetap disimpan sebagai catatan karena sudah ada transaksinya di Kas.");
 
   await db.invoice.delete({ where: { id } });
 

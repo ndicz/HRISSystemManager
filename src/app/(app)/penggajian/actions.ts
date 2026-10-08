@@ -23,6 +23,15 @@ async function logAudit(args: Parameters<typeof db.auditLog.create>[0]) {
 
 // Returns { error } instead of throwing: Next.js redacts thrown messages in
 // production, and these are reasons the person clicking needs to read.
+// Once a period's gaji is paid its figures are frozen (paidSnapshot) — the
+// detail dialog already locks, and this is the server-side half: a stale
+// tab or a direct call can't change lembur/bonus/potongan any more, which
+// would either be silently ignored (never paid) or rewrite history.
+async function assertPayrollNotPaid(employeeId: string, period: string) {
+  const entry = await db.payrollEntry.findUnique({ where: { employeeId_period: { employeeId, period } }, select: { paid: true } });
+  if (entry?.paid) throw new UserError(`Gaji periode ${period} untuk karyawan ini sudah dibayar — datanya dikunci dan tidak bisa diubah lagi.`);
+}
+
 export async function bayarThr(employeeId: string): Promise<{ error?: string }> {
   const session = await requireAccess("/penggajian");
 
@@ -191,6 +200,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
               // keeps changing after this, and the paid slip must not.
               kasbonOverride: p.kasbonBulanIni,
               penugasanTambahanOverride: p.penugasanTambahan,
+              paidSnapshot: p,
             },
           });
           if (claim.count === 0) return false;
@@ -303,6 +313,7 @@ export async function savePayrollEntry(formData: FormData) {
   const employeeId = String(formData.get("employeeId") ?? "");
   const period = String(formData.get("period") ?? "");
   if (!employeeId || !/^\d{4}-\d{2}$/.test(period)) throw new UserError("Data tidak valid.");
+  await assertPayrollNotPaid(employeeId, period);
 
   const int = (k: string) => Math.max(0, parseInt(String(formData.get(k) ?? "0"), 10) || 0);
   // Blank = compute from attendance × rate as usual; a number = override
@@ -348,6 +359,7 @@ export async function updatePayrollAmounts(
 ) {
   const session = await requireAccess("/penggajian");
   if (!employeeId || !/^\d{4}-\d{2}$/.test(period)) throw new UserError("Data tidak valid.");
+  await assertPayrollNotPaid(employeeId, period);
 
   const clamp = (n: number | null) => (n !== null ? Math.max(0, n) : null);
   const data = {
@@ -410,6 +422,7 @@ export async function addOvertimeDay(formData: FormData) {
   const date = new Date(dateRaw);
   if (Number.isNaN(date.getTime())) throw new UserError("Tanggal tidak valid.");
   const period = payrollPeriodKey(date);
+  await assertPayrollNotPaid(employeeId, period);
 
   await db.overtimeDay.create({ data: { employeeId, period, date, type, note } });
 
@@ -426,6 +439,7 @@ export async function removeOvertimeDay(id: string) {
 
   const day = await db.overtimeDay.findUnique({ where: { id } });
   if (!day) throw new UserError("Data lembur tidak ditemukan.");
+  await assertPayrollNotPaid(day.employeeId, day.period);
 
   await db.overtimeDay.delete({ where: { id } });
 
@@ -455,6 +469,19 @@ export async function setBonusBatch(period: string, rows: { employeeId: string; 
   if (!/^\d{4}-\d{2}$/.test(period)) throw new UserError("Periode tidak valid.");
   if (!rows || rows.length === 0) throw new UserError("Tidak ada baris untuk disimpan.");
   if (rows.some((r) => !r.employeeId || r.amount < 0)) throw new UserError("Setiap baris wajib punya karyawan dan jumlah tidak boleh negatif.");
+  // A paid period is frozen: the dialog sends back every row it shows, so
+  // paid employees whose bonus didn't change are just left alone; only an
+  // actual change for a paid employee is refused.
+  const paidEntries = await db.payrollEntry.findMany({
+    where: { period, paid: true, employeeId: { in: rows.map((r) => r.employeeId) } },
+    select: { employeeId: true, allowance: true, employee: { select: { name: true } } },
+  });
+  const paidById = new Map(paidEntries.map((e) => [e.employeeId, e]));
+  const changedPaid = rows.filter((r) => paidById.has(r.employeeId) && paidById.get(r.employeeId)!.allowance !== r.amount);
+  if (changedPaid.length > 0) {
+    throw new UserError(`Gaji periode ${period} sudah dibayar untuk ${changedPaid.map((r) => paidById.get(r.employeeId)!.employee.name).join(", ")} — bonusnya tidak bisa diubah lagi.`);
+  }
+  rows = rows.filter((r) => !paidById.has(r.employeeId));
 
   await mapLimit(rows, 8, async (row) => {
     await db.payrollEntry.upsert({
