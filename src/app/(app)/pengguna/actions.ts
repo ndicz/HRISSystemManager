@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
@@ -12,7 +13,7 @@ const ASSIGNABLE_HREFS = new Set(ASSIGNABLE_NAV_ITEMS.map((i) => i.href));
 async function requireAdmin() {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (session.user.role !== "ADMIN") throw new Error("Hanya admin yang bisa mengelola pengguna.");
+  if (session.user.role !== "ADMIN") throw new UserError("Hanya admin yang bisa mengelola pengguna.");
   return session;
 }
 
@@ -35,16 +36,16 @@ export async function createUser(formData: FormData) {
   const employeeId = String(formData.get("employeeId") ?? "") || null;
   const pageAccess = parsePageAccess(formData);
 
-  if (!name || !username || !email || !password) throw new Error("Nama, ID login, email, dan password wajib diisi.");
-  if (password.length < 6) throw new Error("Password minimal 6 karakter.");
-  if (!ROLES.includes(role as Role)) throw new Error("Peran tidak valid.");
+  if (!name || !username || !email || !password) throw new UserError("Nama, ID login, email, dan password wajib diisi.");
+  if (password.length < 6) throw new UserError("Password minimal 6 karakter.");
+  if (!ROLES.includes(role as Role)) throw new UserError("Peran tidak valid.");
 
   const [existingEmail, existingUsername] = await Promise.all([
     db.user.findUnique({ where: { email } }),
     db.user.findUnique({ where: { username } }),
   ]);
-  if (existingEmail) throw new Error("Email ini sudah dipakai pengguna lain.");
-  if (existingUsername) throw new Error("ID login ini sudah dipakai pengguna lain.");
+  if (existingEmail) throw new UserError("Email ini sudah dipakai pengguna lain.");
+  if (existingUsername) throw new UserError("ID login ini sudah dipakai pengguna lain.");
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await db.user.create({
@@ -76,26 +77,26 @@ export async function updateUser(formData: FormData) {
   const employeeId = String(formData.get("employeeId") ?? "") || null;
   const pageAccess = parsePageAccess(formData);
 
-  if (!userId) throw new Error("Pengguna tidak ditemukan.");
-  if (!name || !username || !email) throw new Error("Nama, ID login, dan email wajib diisi.");
-  if (!ROLES.includes(role as Role)) throw new Error("Peran tidak valid.");
+  if (!userId) throw new UserError("Pengguna tidak ditemukan.");
+  if (!name || !username || !email) throw new UserError("Nama, ID login, dan email wajib diisi.");
+  if (!ROLES.includes(role as Role)) throw new UserError("Peran tidak valid.");
 
   const target = await db.user.findUnique({ where: { id: userId } });
-  if (!target) throw new Error("Pengguna tidak ditemukan.");
+  if (!target) throw new UserError("Pengguna tidak ditemukan.");
   if (target.id === session.user.id && !active) {
-    throw new Error("Tidak bisa menonaktifkan akun sendiri.");
+    throw new UserError("Tidak bisa menonaktifkan akun sendiri.");
   }
   if (target.id === session.user.id && role !== "ADMIN") {
-    throw new Error("Tidak bisa mengubah peran akun sendiri dari Admin.");
+    throw new UserError("Tidak bisa mengubah peran akun sendiri dari Admin.");
   }
 
   if (email !== target.email) {
     const existing = await db.user.findUnique({ where: { email } });
-    if (existing) throw new Error("Email ini sudah dipakai pengguna lain.");
+    if (existing) throw new UserError("Email ini sudah dipakai pengguna lain.");
   }
   if (username !== target.username) {
     const existing = await db.user.findUnique({ where: { username } });
-    if (existing) throw new Error("ID login ini sudah dipakai pengguna lain.");
+    if (existing) throw new UserError("ID login ini sudah dipakai pengguna lain.");
   }
 
   await db.user.update({
@@ -120,11 +121,11 @@ export async function deleteUser(formData: FormData) {
   const session = await requireAdmin();
 
   const userId = String(formData.get("userId") ?? "");
-  if (!userId) throw new Error("Pengguna tidak ditemukan.");
-  if (userId === session.user.id) throw new Error("Tidak bisa menghapus akun sendiri.");
+  if (!userId) throw new UserError("Pengguna tidak ditemukan.");
+  if (userId === session.user.id) throw new UserError("Tidak bisa menghapus akun sendiri.");
 
   const target = await db.user.findUnique({ where: { id: userId } });
-  if (!target) throw new Error("Pengguna tidak ditemukan.");
+  if (!target) throw new UserError("Pengguna tidak ditemukan.");
 
   await db.user.delete({ where: { id: userId } });
 
@@ -146,8 +147,8 @@ export async function resetUserPassword(formData: FormData) {
 
   const userId = String(formData.get("userId") ?? "");
   const password = String(formData.get("password") ?? "");
-  if (!userId) throw new Error("Pengguna tidak ditemukan.");
-  if (password.length < 6) throw new Error("Password minimal 6 karakter.");
+  if (!userId) throw new UserError("Pengguna tidak ditemukan.");
+  if (password.length < 6) throw new UserError("Password minimal 6 karakter.");
 
   const passwordHash = await bcrypt.hash(password, 10);
   await db.user.update({ where: { id: userId }, data: { passwordHash } });
@@ -167,7 +168,7 @@ export async function resetUserTotp(formData: FormData) {
   const session = await requireAdmin();
 
   const userId = String(formData.get("userId") ?? "");
-  if (!userId) throw new Error("Pengguna tidak ditemukan.");
+  if (!userId) throw new UserError("Pengguna tidak ditemukan.");
 
   await db.user.update({ where: { id: userId }, data: { totpEnabled: false, totpSecret: null } });
 

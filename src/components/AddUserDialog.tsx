@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { createUser } from "@/app/(app)/pengguna/actions";
 import type { NavItem } from "@/lib/rbac";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",
@@ -53,7 +54,7 @@ export function AddUserDialog({
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Tambah pengguna</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="user-name">Nama</label>
                 <input className="input" id="user-name" name="name" required />

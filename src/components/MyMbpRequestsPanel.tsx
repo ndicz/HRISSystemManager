@@ -25,7 +25,7 @@ export function MyMbpRequestsPanel({
   // fetchMbpRequests() is scoped to the caller's own requests server-side
   // for an EMPLOYEE session, so this refetch never leaks anyone else's data.
   async function refresh() {
-    setRequests(await fetchMbpRequests());
+    try { setRequests(await fetchMbpRequests()); } catch (err) { console.error(err); }
   }
 
   return (

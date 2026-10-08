@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateUser, resetUserPassword, resetUserTotp, deleteUser } from "@/app/(app)/pengguna/actions";
 import type { NavItem } from "@/lib/rbac";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",
@@ -121,7 +122,7 @@ export function EditUserDialog({
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit pengguna &mdash; {user.name}</div>
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <input type="hidden" name="userId" value={user.id} />
               <div className="field">
                 <label htmlFor={`edit-name-${user.id}`}>Nama</label>
@@ -229,7 +230,7 @@ export function EditUserDialog({
             )}
 
             {pwOpen && (
-              <form action={handleResetPassword} style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-4)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--color-neutral-200)" }}>
+              <form onSubmit={(e) => submitForm(e, handleResetPassword)} style={{ display: "grid", gap: "var(--space-2)", marginTop: "var(--space-4)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--color-neutral-200)" }}>
                 <input type="hidden" name="userId" value={user.id} />
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor={`pw-${user.id}`}>Password baru</label>

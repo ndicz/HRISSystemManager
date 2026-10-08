@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -21,17 +22,17 @@ export async function addEmployee(formData: FormData) {
   const contractEndRaw = String(formData.get("contractEnd") ?? "");
 
   if (!name || !siteId || !positionId) {
-    throw new Error("Nama, tempat kerja, dan posisi wajib diisi.");
+    throw new UserError("Nama, tempat kerja, dan posisi wajib diisi.");
   }
 
   const position = await db.position.findUnique({ where: { id: positionId } });
-  if (!position) throw new Error("Posisi tidak ditemukan.");
+  if (!position) throw new UserError("Posisi tidak ditemukan.");
 
   const empCodeRaw = String(formData.get("empCode") ?? "").trim();
   let empCode: string;
   if (empCodeRaw) {
     const taken = await db.employee.findUnique({ where: { empCode: empCodeRaw } });
-    if (taken) throw new Error("Nomor karyawan \"" + empCodeRaw + "\" sudah digunakan.");
+    if (taken) throw new UserError("Nomor karyawan \"" + empCodeRaw + "\" sudah digunakan.");
     empCode = empCodeRaw;
   } else {
     // "WSP" + running number + bulan masuk + tahun masuk (2 digit) — the
@@ -78,7 +79,7 @@ export async function resignEmployee(formData: FormData) {
   const employeeId = String(formData.get("employeeId") ?? "");
   const resignDateRaw = String(formData.get("resignDate") ?? "");
   const resignReason = String(formData.get("resignReason") ?? "").trim();
-  if (!employeeId || !resignDateRaw) throw new Error("Tanggal resign wajib diisi.");
+  if (!employeeId || !resignDateRaw) throw new UserError("Tanggal resign wajib diisi.");
 
   await db.employee.update({
     where: { id: employeeId },
@@ -116,11 +117,11 @@ export async function deleteEmployee(id: string) {
   if (!emp) return;
 
   if (emp.user) {
-    throw new Error("Karyawan ini punya akun login terhubung — hapus/lepas akunnya dulu di halaman Pengguna sebelum menghapus data karyawan.");
+    throw new UserError("Karyawan ini punya akun login terhubung — hapus/lepas akunnya dulu di halaman Pengguna sebelum menghapus data karyawan.");
   }
   const { attendance, payrollEntries, allowancePayments } = emp._count;
   if (attendance > 0 || payrollEntries > 0 || allowancePayments > 0) {
-    throw new Error("Karyawan ini sudah punya riwayat absensi/gaji — gunakan \"Resign\" untuk menonaktifkan, bukan hapus, supaya riwayatnya tetap tersimpan.");
+    throw new UserError("Karyawan ini sudah punya riwayat absensi/gaji — gunakan \"Resign\" untuk menonaktifkan, bukan hapus, supaya riwayatnya tetap tersimpan.");
   }
 
   await db.employee.delete({ where: { id } });
@@ -152,22 +153,22 @@ export async function updateEmployeeDetails(formData: FormData) {
   const bpjsKetenagakerjaanRaw = String(formData.get("bpjsKetenagakerjaanOverride") ?? "").trim();
   const bpjsKesehatanOverride = bpjsKesehatanRaw ? Math.max(0, parseInt(bpjsKesehatanRaw, 10) || 0) : null;
   const bpjsKetenagakerjaanOverride = bpjsKetenagakerjaanRaw ? Math.max(0, parseInt(bpjsKetenagakerjaanRaw, 10) || 0) : null;
-  if (!employeeId) throw new Error("Karyawan tidak ditemukan.");
+  if (!employeeId) throw new UserError("Karyawan tidak ditemukan.");
 
   const existing = await db.employee.findUnique({ where: { id: employeeId }, include: { site: true, position: true } });
-  if (!existing) throw new Error("Karyawan tidak ditemukan.");
+  if (!existing) throw new UserError("Karyawan tidak ditemukan.");
 
   let transferLog: string | null = null;
   if (siteId && siteId !== existing.siteId) {
     const newSite = await db.site.findUnique({ where: { id: siteId } });
-    if (!newSite) throw new Error("Tempat kerja tidak ditemukan.");
+    if (!newSite) throw new UserError("Tempat kerja tidak ditemukan.");
     transferLog = JSON.stringify({ from: existing.site.name, to: newSite.name });
   }
 
   let positionChangeLog: string | null = null;
   if (positionId && positionId !== existing.positionId) {
     const newPosition = await db.position.findUnique({ where: { id: positionId } });
-    if (!newPosition) throw new Error("Posisi tidak ditemukan.");
+    if (!newPosition) throw new UserError("Posisi tidak ditemukan.");
     positionChangeLog = JSON.stringify({ from: existing.position.name, to: newPosition.name });
   }
 
@@ -213,7 +214,7 @@ export async function addSalaryComponent(formData: FormData) {
   const employeeId = String(formData.get("employeeId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10) || 0;
-  if (!employeeId || !name) throw new Error("Nama komponen wajib diisi.");
+  if (!employeeId || !name) throw new UserError("Nama komponen wajib diisi.");
 
   await db.salaryComponent.create({ data: { employeeId, name, amount } });
 
@@ -238,10 +239,10 @@ export async function updateSalaryComponent(componentId: string, name: string, a
   if (!session?.user) throw new Error("Unauthorized");
 
   const trimmedName = name.trim();
-  if (!trimmedName) throw new Error("Nama komponen wajib diisi.");
+  if (!trimmedName) throw new UserError("Nama komponen wajib diisi.");
 
   const comp = await db.salaryComponent.findUnique({ where: { id: componentId } });
-  if (!comp) throw new Error("Komponen tidak ditemukan.");
+  if (!comp) throw new UserError("Komponen tidak ditemukan.");
 
   await db.salaryComponent.update({ where: { id: componentId }, data: { name: trimmedName, amount } });
 
@@ -266,10 +267,10 @@ export async function removeSalaryComponent(componentId: string) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const comp = await db.salaryComponent.findUnique({ where: { id: componentId } });
-  if (!comp) throw new Error("Komponen tidak ditemukan.");
+  if (!comp) throw new UserError("Komponen tidak ditemukan.");
 
   const count = await db.salaryComponent.count({ where: { employeeId: comp.employeeId } });
-  if (count <= 1) throw new Error("Minimal harus ada 1 komponen gaji.");
+  if (count <= 1) throw new UserError("Minimal harus ada 1 komponen gaji.");
 
   await db.salaryComponent.delete({ where: { id: componentId } });
 
@@ -294,7 +295,7 @@ export async function updateEmployeeProfile(formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const employeeId = String(formData.get("employeeId") ?? "");
-  if (!employeeId) throw new Error("Karyawan tidak ditemukan.");
+  if (!employeeId) throw new UserError("Karyawan tidak ditemukan.");
 
   const str = (k: string) => String(formData.get(k) ?? "").trim() || null;
   const dateOrNull = (k: string) => {
@@ -334,7 +335,7 @@ export async function addCertificate(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const validFromRaw = String(formData.get("validFrom") ?? "").trim();
   const validUntilRaw = String(formData.get("validUntil") ?? "").trim();
-  if (!employeeId || !name) throw new Error("Nama sertifikat wajib diisi.");
+  if (!employeeId || !name) throw new UserError("Nama sertifikat wajib diisi.");
 
   await db.certificate.create({
     data: {
@@ -358,7 +359,7 @@ export async function removeCertificate(certificateId: string) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const cert = await db.certificate.findUnique({ where: { id: certificateId } });
-  if (!cert) throw new Error("Sertifikat tidak ditemukan.");
+  if (!cert) throw new UserError("Sertifikat tidak ditemukan.");
 
   await db.certificate.delete({ where: { id: certificateId } });
 
@@ -385,7 +386,7 @@ export async function addSite(formData: FormData) {
   const supervisor = String(formData.get("supervisor") ?? "").trim();
   const umr = Math.max(0, parseInt(String(formData.get("umr") ?? "0"), 10) || 0);
 
-  if (!name) throw new Error("Nama tempat kerja wajib diisi.");
+  if (!name) throw new UserError("Nama tempat kerja wajib diisi.");
 
   const site = await db.site.create({
     data: { name, address: address || "-", supervisor: supervisor || "-", umr },
@@ -406,7 +407,7 @@ export async function updateSite(id: string, formData: FormData) {
   const address = String(formData.get("address") ?? "").trim();
   const supervisor = String(formData.get("supervisor") ?? "").trim();
   const umr = Math.max(0, parseInt(String(formData.get("umr") ?? "0"), 10) || 0);
-  if (!name) throw new Error("Nama tempat kerja wajib diisi.");
+  if (!name) throw new UserError("Nama tempat kerja wajib diisi.");
 
   const intOrNull = (k: string) => {
     const raw = String(formData.get(k) ?? "").trim();
@@ -439,7 +440,7 @@ export async function deleteSite(id: string) {
   const site = await db.site.findUnique({ where: { id }, include: { _count: { select: { employees: true } } } });
   if (!site) return;
   if (site._count.employees > 0) {
-    throw new Error(`Tempat kerja tidak bisa dihapus — masih ada ${site._count.employees} karyawan yang ditempatkan di sini. Pindahkan dulu sebelum menghapus.`);
+    throw new UserError(`Tempat kerja tidak bisa dihapus — masih ada ${site._count.employees} karyawan yang ditempatkan di sini. Pindahkan dulu sebelum menghapus.`);
   }
 
   await db.site.delete({ where: { id } });
@@ -459,10 +460,10 @@ export async function addPosition(formData: FormData) {
   const salaryType = String(formData.get("salaryType") ?? "bulanan");
   const baseSalary = Math.max(0, parseInt(String(formData.get("baseSalary") ?? "0"), 10) || 0);
 
-  if (!name) throw new Error("Nama posisi wajib diisi.");
+  if (!name) throw new UserError("Nama posisi wajib diisi.");
 
   const existing = await db.position.findUnique({ where: { name } });
-  if (existing) throw new Error("Posisi dengan nama ini sudah ada.");
+  if (existing) throw new UserError("Posisi dengan nama ini sudah ada.");
 
   const position = await db.position.create({
     data: { name, salaryType, baseSalary },
@@ -485,7 +486,7 @@ export async function updatePosition(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const salaryType = String(formData.get("salaryType") ?? "bulanan");
   const baseSalary = Math.max(0, parseInt(String(formData.get("baseSalary") ?? "0"), 10) || 0);
-  if (!positionId || !name) throw new Error("Nama posisi wajib diisi.");
+  if (!positionId || !name) throw new UserError("Nama posisi wajib diisi.");
 
   const intOrNull = (k: string) => {
     const raw = String(formData.get(k) ?? "").trim();
@@ -495,7 +496,7 @@ export async function updatePosition(formData: FormData) {
   const bpjsKetenagakerjaanOverride = intOrNull("bpjsKetenagakerjaanOverride");
 
   const conflict = await db.position.findUnique({ where: { name } });
-  if (conflict && conflict.id !== positionId) throw new Error("Posisi dengan nama ini sudah ada.");
+  if (conflict && conflict.id !== positionId) throw new UserError("Posisi dengan nama ini sudah ada.");
 
   await db.position.update({ where: { id: positionId }, data: { name, salaryType, baseSalary, bpjsKesehatanOverride, bpjsKetenagakerjaanOverride } });
 
@@ -518,7 +519,7 @@ export async function deletePosition(id: string) {
   const position = await db.position.findUnique({ where: { id }, include: { _count: { select: { employees: true } } } });
   if (!position) return;
   if (position._count.employees > 0) {
-    throw new Error(`Posisi tidak bisa dihapus — masih ada ${position._count.employees} karyawan dengan posisi ini. Ubah posisi mereka dulu sebelum menghapus.`);
+    throw new UserError(`Posisi tidak bisa dihapus — masih ada ${position._count.employees} karyawan dengan posisi ini. Ubah posisi mereka dulu sebelum menghapus.`);
   }
 
   await db.position.delete({ where: { id } });
@@ -542,7 +543,7 @@ export async function addAssignment(formData: FormData) {
   const cost = Math.max(0, parseInt(String(formData.get("cost") ?? "0"), 10) || 0);
   const periodRaw = String(formData.get("period") ?? "").trim();
   const period = /^\d{4}-\d{2}$/.test(periodRaw) ? periodRaw : null;
-  if (!employeeId || !title) throw new Error("Karyawan dan judul penugasan wajib diisi.");
+  if (!employeeId || !title) throw new UserError("Karyawan dan judul penugasan wajib diisi.");
 
   const assignment = await db.assignment.create({ data: { employeeId, title, mandays, cost, period } });
 
@@ -611,15 +612,15 @@ export async function updateAssignment(id: string, formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const existing = await db.assignment.findUnique({ where: { id } });
-  if (!existing) throw new Error("Penugasan tidak ditemukan.");
-  if (existing.status === "selesai") throw new Error("Penugasan yang sudah selesai tidak bisa diedit — biayanya sudah tercatat di Kas.");
+  if (!existing) throw new UserError("Penugasan tidak ditemukan.");
+  if (existing.status === "selesai") throw new UserError("Penugasan yang sudah selesai tidak bisa diedit — biayanya sudah tercatat di Kas.");
 
   const title = String(formData.get("title") ?? "").trim();
   const mandays = Math.max(0, parseInt(String(formData.get("mandays") ?? "0"), 10) || 0);
   const cost = Math.max(0, parseInt(String(formData.get("cost") ?? "0"), 10) || 0);
   const periodRaw = String(formData.get("period") ?? "").trim();
   const period = /^\d{4}-\d{2}$/.test(periodRaw) ? periodRaw : null;
-  if (!title) throw new Error("Judul penugasan wajib diisi.");
+  if (!title) throw new UserError("Judul penugasan wajib diisi.");
 
   await db.assignment.update({ where: { id }, data: { title, mandays, cost, period } });
 
@@ -636,7 +637,7 @@ export async function deleteAssignment(id: string) {
 
   const assignment = await db.assignment.findUnique({ where: { id } });
   if (!assignment) return;
-  if (assignment.status === "selesai") throw new Error("Penugasan yang sudah selesai tidak bisa dihapus — biayanya sudah tercatat di Kas.");
+  if (assignment.status === "selesai") throw new UserError("Penugasan yang sudah selesai tidak bisa dihapus — biayanya sudah tercatat di Kas.");
 
   await db.assignment.delete({ where: { id } });
 
@@ -654,7 +655,7 @@ export async function parseBpjsImport(formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const file = formData.get("file");
-  if (!(file instanceof File)) throw new Error("File tidak ditemukan.");
+  if (!(file instanceof File)) throw new UserError("File tidak ditemukan.");
 
   const buf = Buffer.from(await file.arrayBuffer());
   return parseBpjsXlsx(buf);
@@ -663,7 +664,7 @@ export async function parseBpjsImport(formData: FormData) {
 export async function applyBpjsImport(rows: BpjsImportRow[]) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!rows || rows.length === 0) throw new Error("Tidak ada data untuk diterapkan.");
+  if (!rows || rows.length === 0) throw new UserError("Tidak ada data untuk diterapkan.");
 
   // Normalize away whitespace differences before matching — the source
   // spreadsheet isn't always consistent about the space in "WSP 1930725"

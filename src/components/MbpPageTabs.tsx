@@ -45,9 +45,15 @@ export function MbpPageTabs({
   // mbpId), so a change on either side refreshes both lists together —
   // simpler and always-correct versus tracking which mutation touched what.
   async function refreshAll() {
-    const [freshRequests, freshMbps] = await Promise.all([fetchMbpRequests(), fetchMbps()]);
-    setRequests(freshRequests);
-    setMbps(freshMbps);
+    try {
+      const [freshRequests, freshMbps] = await Promise.all([fetchMbpRequests(), fetchMbps()]);
+      setRequests(freshRequests);
+      setMbps(freshMbps);
+    } catch (err) {
+      // A failed refetch keeps the lists as they were; the mutation that
+      // triggered it already reported its own result.
+      console.error(err);
+    }
   }
 
   const pendingCount = requests.filter((r) => r.status === "menunggu").length;

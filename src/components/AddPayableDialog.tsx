@@ -3,20 +3,26 @@
 import { useState, useRef } from "react";
 import { addPayable } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
+import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 export function AddPayableDialog() {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   const [formKey, setFormKey] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
+    setError("");
     try {
       await addPayable(formData);
       setOpen(false);
       formRef.current?.reset();
       setFormKey((k) => k + 1);
+    } catch (err) {
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -29,7 +35,7 @@ export function AddPayableDialog() {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Catat hutang usaha</div>
-            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form key={formKey} ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="vendorName">Nama vendor</label>
                 <input className="input" id="vendorName" name="vendorName" required placeholder="Nama perusahaan/supplier" />
@@ -48,6 +54,7 @@ export function AddPayableDialog() {
                   <input className="input" id="dueDate" name="dueDate" type="date" required />
                 </div>
               </div>
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
                 <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Menyimpan…" : "Simpan"}</button>

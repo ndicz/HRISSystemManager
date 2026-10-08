@@ -7,6 +7,7 @@ import { formatRp } from "@/lib/payroll";
 import { RupiahInput } from "@/components/RupiahInput";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type ItemOption = { id: string; name: string; unit: string; price: number };
 
@@ -90,7 +91,7 @@ export function MbpRequestForm({
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Permintaan barang MBP</div>
-            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form key={formKey} ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field" style={{ marginBottom: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <label style={{ marginBottom: 0 }}>Barang</label>

@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { updateTransaction } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type Option = { id: string; name: string; type?: string };
 type Tx = { id: string; date: Date; accountCoaId: string; cashAccountId: string; desc: string; amount: number; type: string };
@@ -46,7 +47,7 @@ export function EditTransactionDialog({ tx, accounts, cashAccounts, disabled }: 
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit transaksi kas</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label>Tipe</label>
                 <div className="seg" role="radiogroup">

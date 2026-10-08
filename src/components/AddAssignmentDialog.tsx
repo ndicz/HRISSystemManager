@@ -5,24 +5,30 @@ import { addAssignment } from "@/app/(app)/karyawan/actions";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
 import { payrollPeriodKey, payrollPeriodOptions } from "@/lib/payroll";
 import { RupiahInput } from "@/components/RupiahInput";
+import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 const monthOptions = payrollPeriodOptions;
 
 export function AddAssignmentDialog({ employees }: { employees: EmployeeOption[] }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [period, setPeriod] = useState(() => payrollPeriodKey(new Date()));
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
+    setError("");
     try {
       await addAssignment(formData);
       setOpen(false);
       formRef.current?.reset();
       setEmployeeId("");
       setPeriod(payrollPeriodKey(new Date()));
+    } catch (err) {
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -37,7 +43,7 @@ export function AddAssignmentDialog({ employees }: { employees: EmployeeOption[]
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Ajukan penugasan tambahan</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="assign-employeeId">Karyawan</label>
                 <EmployeeCombobox employees={employees} name="employeeId" id="assign-employeeId" value={employeeId} onChange={setEmployeeId} />
@@ -65,6 +71,7 @@ export function AddAssignmentDialog({ employees }: { employees: EmployeeOption[]
                   Biaya penugasan ini akan tampil di slip gaji bulan yang dipilih, setelah ditandai selesai.
                 </p>
               </div>
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
                   Batal

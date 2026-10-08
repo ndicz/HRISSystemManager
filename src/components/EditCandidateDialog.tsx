@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateCandidate, deleteCandidate } from "@/app/(app)/rekrutmen/actions";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type CandidateRow = { id: string; name: string; position: string };
 type Option = { id: string; name: string };
@@ -44,7 +45,7 @@ export function EditCandidateDialog({ candidate, positions }: { candidate: Candi
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit kandidat</div>
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="edit-cand-name">Nama</label>
                 <input className="input" id="edit-cand-name" name="name" required defaultValue={candidate.name} />

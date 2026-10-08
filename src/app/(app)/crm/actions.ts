@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -16,7 +17,7 @@ export async function addLead(formData: FormData) {
   const picEmail = String(formData.get("picEmail") ?? "").trim() || null;
   const address = String(formData.get("address") ?? "").trim() || null;
   const estimatedValue = Math.max(0, parseInt(String(formData.get("estimatedValue") ?? "0"), 10) || 0);
-  if (!companyName) throw new Error("Nama perusahaan wajib diisi.");
+  if (!companyName) throw new UserError("Nama perusahaan wajib diisi.");
 
   const lead = await db.lead.create({
     data: { companyName, picName, picPhone, picEmail, address, estimatedValue, createdById: session.user.id },
@@ -34,8 +35,8 @@ export async function updateLead(id: string, formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const existing = await db.lead.findUnique({ where: { id } });
-  if (!existing) throw new Error("Prospek tidak ditemukan.");
-  if (existing.clientId) throw new Error("Prospek yang sudah jadi klien tidak bisa diedit lagi.");
+  if (!existing) throw new UserError("Prospek tidak ditemukan.");
+  if (existing.clientId) throw new UserError("Prospek yang sudah jadi klien tidak bisa diedit lagi.");
 
   const companyName = String(formData.get("companyName") ?? "").trim();
   const picName = String(formData.get("picName") ?? "").trim() || null;
@@ -43,7 +44,7 @@ export async function updateLead(id: string, formData: FormData) {
   const picEmail = String(formData.get("picEmail") ?? "").trim() || null;
   const address = String(formData.get("address") ?? "").trim() || null;
   const estimatedValue = Math.max(0, parseInt(String(formData.get("estimatedValue") ?? "0"), 10) || 0);
-  if (!companyName) throw new Error("Nama perusahaan wajib diisi.");
+  if (!companyName) throw new UserError("Nama perusahaan wajib diisi.");
 
   await db.lead.update({
     where: { id },
@@ -62,7 +63,7 @@ export async function addLeadActivity(leadId: string, note: string) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const trimmed = note.trim();
-  if (!trimmed) throw new Error("Catatan tidak boleh kosong.");
+  if (!trimmed) throw new UserError("Catatan tidak boleh kosong.");
 
   await db.leadActivity.create({ data: { leadId, note: trimmed, createdById: session.user.id } });
 
@@ -76,11 +77,11 @@ export async function addLeadActivity(leadId: string, note: string) {
 export async function setLeadStage(id: string, stage: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (!ACTIVE_STAGES.includes(stage)) throw new Error("Tahap tidak valid.");
+  if (!ACTIVE_STAGES.includes(stage)) throw new UserError("Tahap tidak valid.");
 
   const lead = await db.lead.findUnique({ where: { id } });
   if (!lead) return;
-  if (lead.clientId) throw new Error("Prospek yang sudah jadi klien tidak bisa diubah tahapnya lagi.");
+  if (lead.clientId) throw new UserError("Prospek yang sudah jadi klien tidak bisa diubah tahapnya lagi.");
 
   await db.lead.update({ where: { id }, data: { stage } });
 
@@ -97,7 +98,7 @@ export async function markLeadLost(id: string, reason: string) {
 
   const lead = await db.lead.findUnique({ where: { id } });
   if (!lead) return;
-  if (lead.clientId) throw new Error("Prospek yang sudah jadi klien tidak bisa ditandai batal.");
+  if (lead.clientId) throw new UserError("Prospek yang sudah jadi klien tidak bisa ditandai batal.");
 
   await db.lead.update({ where: { id }, data: { stage: "batal", lostReason: reason.trim() || null } });
 
@@ -117,7 +118,7 @@ export async function reopenLead(id: string) {
 
   const lead = await db.lead.findUnique({ where: { id } });
   if (!lead) return;
-  if (lead.stage !== "batal") throw new Error("Hanya prospek berstatus \"Batal\" yang bisa dibuka lagi.");
+  if (lead.stage !== "batal") throw new UserError("Hanya prospek berstatus \"Batal\" yang bisa dibuka lagi.");
 
   await db.lead.update({ where: { id }, data: { stage: "kontak_awal" } });
 
@@ -137,9 +138,9 @@ export async function convertLeadToClient(id: string) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const lead = await db.lead.findUnique({ where: { id } });
-  if (!lead) throw new Error("Prospek tidak ditemukan.");
-  if (lead.stage !== "deal") throw new Error("Hanya prospek berstatus \"Deal\" yang bisa dijadikan klien.");
-  if (lead.clientId) throw new Error("Prospek ini sudah pernah dijadikan klien.");
+  if (!lead) throw new UserError("Prospek tidak ditemukan.");
+  if (lead.stage !== "deal") throw new UserError("Hanya prospek berstatus \"Deal\" yang bisa dijadikan klien.");
+  if (lead.clientId) throw new UserError("Prospek ini sudah pernah dijadikan klien.");
 
   const now = new Date();
   const nextYear = new Date(now);

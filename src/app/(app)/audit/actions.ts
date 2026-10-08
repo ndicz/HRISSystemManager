@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { generateTotpSecret, totpAuthUri, verifyTotp } from "@/lib/totp";
@@ -27,8 +28,8 @@ export async function confirmTotpSetup(code: string) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const user = await db.user.findUniqueOrThrow({ where: { id: session.user.id } });
-  if (!user.totpSecret) throw new Error("Belum ada setup 2FA yang berjalan — mulai lagi dari awal.");
-  if (!verifyTotp(user.totpSecret, code)) throw new Error("Kode salah. Coba lagi.");
+  if (!user.totpSecret) throw new UserError("Belum ada setup 2FA yang berjalan — mulai lagi dari awal.");
+  if (!verifyTotp(user.totpSecret, code)) throw new UserError("Kode salah. Coba lagi.");
 
   await db.user.update({ where: { id: session.user.id }, data: { totpEnabled: true } });
   await db.auditLog.create({
@@ -54,8 +55,8 @@ export async function disableTotp() {
 export async function resetAllData(confirmText: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  if (session.user.role !== "ADMIN") throw new Error("Hanya admin yang bisa mereset data.");
-  if (confirmText !== CONFIRM_PHRASE) throw new Error(`Teks konfirmasi tidak cocok. Ketik persis: ${CONFIRM_PHRASE}`);
+  if (session.user.role !== "ADMIN") throw new UserError("Hanya admin yang bisa mereset data.");
+  if (confirmText !== CONFIRM_PHRASE) throw new UserError(`Teks konfirmasi tidak cocok. Ketik persis: ${CONFIRM_PHRASE}`);
 
   await db.$transaction([
     // Break the optional Employee link first so deleting employees below

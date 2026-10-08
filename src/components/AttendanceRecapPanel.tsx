@@ -8,6 +8,7 @@ import {
 } from "@/lib/payroll";
 import { monthKey, monthKeyOptions } from "@/lib/finance";
 import { downloadXlsx } from "@/lib/xlsx-writer";
+import { formatActionError } from "@/lib/errors";
 
 // "Izin", "Sakit", and "Cuti" are all treated as paid/no-deduction days by
 // payroll (see isLeaveStatus in lib/payroll) — kept as separate options
@@ -90,10 +91,17 @@ export function AttendanceRecapPanel({
   const [newStatus, setNewStatus] = useState("Hadir");
   const [period, setPeriod] = useState(() => initialPeriod ?? (mode === "payroll" ? payrollPeriodKey(new Date()) : monthKey(new Date())));
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
 
   useEffect(() => {
     startTransition(async () => {
-      const data = await fetchAttendanceRecap(employeeId);
+      let data: Awaited<ReturnType<typeof fetchAttendanceRecap>>;
+      try {
+        data = await fetchAttendanceRecap(employeeId);
+      } catch (err) {
+        setError(formatActionError(err));
+        return;
+      }
       setRecap(data);
       // PayrollDetailDialog already knows exactly which period it's showing
       // gaji for — use that directly instead of guessing, so the recap
@@ -116,10 +124,16 @@ export function AttendanceRecapPanel({
 
   function correctDay(dateIso: string, status: string) {
     setSavingDate(dateIso);
+    setError("");
     startTransition(async () => {
-      const data = await upsertAttendanceDay(employeeId, dateIso, status);
-      setRecap(data);
-      setSavingDate(null);
+      try {
+        const data = await upsertAttendanceDay(employeeId, dateIso, status);
+        setRecap(data);
+      } catch (err) {
+        setError(formatActionError(err));
+      } finally {
+        setSavingDate(null);
+      }
     });
   }
 
@@ -228,6 +242,7 @@ export function AttendanceRecapPanel({
           Tambah / koreksi
         </button>
       </div>
+      {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: "0 0 var(--space-3)" }}>{error}</p>}
 
       {monthRecords.length === 0 ? (
         <p style={{ fontSize: 13, opacity: 0.6 }}>Belum ada catatan harian untuk {mode === "payroll" ? "periode ini" : "bulan ini"}.</p>

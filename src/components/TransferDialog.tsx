@@ -3,20 +3,26 @@
 import { useState, useRef } from "react";
 import { addTransfer } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
+import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type Option = { id: string; name: string };
 
 export function TransferDialog({ cashAccounts, disabled }: { cashAccounts: Option[]; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
+    setError("");
     try {
       await addTransfer(formData);
       setOpen(false);
       formRef.current?.reset();
+    } catch (err) {
+      setError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -37,7 +43,7 @@ export function TransferDialog({ cashAccounts, disabled }: { cashAccounts: Optio
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Transfer antar rekening</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field">
                   <label htmlFor="fromId">Dari rekening</label>
@@ -56,6 +62,7 @@ export function TransferDialog({ cashAccounts, disabled }: { cashAccounts: Optio
                 <label htmlFor="amount">Jumlah (Rp)</label>
                 <RupiahInput id="amount" name="amount" placeholder="0" />
               </div>
+              {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
               <div className="dialog-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Batal</button>
                 <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Memproses…" : "Transfer"}</button>

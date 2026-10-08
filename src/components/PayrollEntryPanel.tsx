@@ -7,6 +7,7 @@ import { savePayrollEntry, addOvertimeDay, removeOvertimeDay } from "@/app/(app)
 import { formatActionError } from "@/lib/errors";
 import { formatRp } from "@/lib/payroll";
 import { RupiahInput } from "@/components/RupiahInput";
+import { submitForm } from "@/lib/submitForm";
 
 function todayInputValue() {
   const d = new Date();
@@ -32,6 +33,7 @@ export function PayrollEntryPanel({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [saved, setSaved] = useState(false);
 
   const [newDate, setNewDate] = useState(todayInputValue());
@@ -41,11 +43,14 @@ export function PayrollEntryPanel({
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
+    setSubmitError("");
     setSaved(false);
     try {
       await savePayrollEntry(formData);
       setSaved(true);
       router.refresh();
+    } catch (err) {
+      setSubmitError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -177,7 +182,7 @@ export function PayrollEntryPanel({
           )}
         </div>
       ) : (
-        <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-4)" }}>
+        <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-4)" }}>
           <input type="hidden" name="employeeId" value={employeeId} />
           <input type="hidden" name="period" value={period} />
 
@@ -219,6 +224,7 @@ export function PayrollEntryPanel({
 
           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "var(--space-2)" }}>
             {saved && !pending && <span style={{ fontSize: 12, color: "var(--color-accent)" }}>Tersimpan.</span>}
+            {submitError && <span style={{ fontSize: 12, color: "var(--color-danger)" }}>{submitError}</span>}
             <button type="submit" className="btn btn-primary" disabled={pending}>
               {pending ? "Menyimpan…" : "Simpan"}
             </button>

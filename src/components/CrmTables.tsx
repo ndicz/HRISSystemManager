@@ -53,7 +53,9 @@ export function CrmTables({ leads: initialLeads }: { leads: LeadRow[] }) {
   const [filter, setFilter] = useState<Filter>("semua");
 
   async function refresh() {
-    setLeads(await fetchLeads());
+    // A failed refetch just keeps the list as it was; the mutation itself
+    // already succeeded and reported its own result.
+    try { setLeads(await fetchLeads()); } catch (err) { console.error(err); }
   }
 
   const totalPipelineValue = leads

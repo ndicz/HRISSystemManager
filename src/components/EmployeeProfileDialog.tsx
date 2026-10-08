@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateEmployeeProfile, fetchCertificates, addCertificate, removeCertificate } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type Emp = {
   id: string;
@@ -33,6 +34,7 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
   const [open, setOpen] = useState(false);
   const [gender, setGender] = useState(employee.gender ?? "");
   const [pending, setPending] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const [certs, setCerts] = useState<Cert[] | null>(null);
   const [certName, setCertName] = useState("");
@@ -52,8 +54,11 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
 
   async function handleSubmit(formData: FormData) {
     setPending(true);
+    setSubmitError("");
     try {
       await updateEmployeeProfile(formData);
+    } catch (err) {
+      setSubmitError(formatActionError(err));
     } finally {
       setPending(false);
     }
@@ -102,7 +107,7 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
           <div className="dialog" style={{ maxWidth: 680, width: "92vw" }} onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Profil Karyawan &mdash; {employee.name}</div>
             <div className="dialog-body" style={{ maxHeight: "65vh", overflowY: "auto" }}>
-              <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+              <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
                 <input type="hidden" name="employeeId" value={employee.id} />
 
                 <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
@@ -178,6 +183,7 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
                   </div>
                 </div>
 
+                {submitError && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{submitError}</p>}
                 <div className="dialog-actions" style={{ paddingTop: 0 }}>
                   <button type="submit" className="btn btn-primary" disabled={pending}>
                     {pending ? "Menyimpan…" : "Simpan profil"}

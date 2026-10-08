@@ -1,5 +1,6 @@
 "use server";
 
+import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -24,10 +25,10 @@ export async function addMbpRequest(formData: FormData) {
   // with (the UI already hides/locks it, this is the actual enforcement).
   if (session.user.role === "EMPLOYEE") {
     const me = await db.user.findUnique({ where: { id: session.user.id }, select: { employee: { select: { name: true } } } });
-    if (!me?.employee) throw new Error("Akun Anda belum terhubung ke data karyawan.");
+    if (!me?.employee) throw new UserError("Akun Anda belum terhubung ke data karyawan.");
     requesterName = me.employee.name;
   }
-  if (!requesterName) throw new Error("Nama peminta wajib diisi.");
+  if (!requesterName) throw new UserError("Nama peminta wajib diisi.");
 
   let itemName: string;
   let unit: string;
@@ -35,7 +36,7 @@ export async function addMbpRequest(formData: FormData) {
 
   if (itemId) {
     const item = await db.inventoryItem.findUnique({ where: { id: itemId } });
-    if (!item) throw new Error("Barang tidak ditemukan.");
+    if (!item) throw new UserError("Barang tidak ditemukan.");
     itemName = item.name;
     unit = item.unit;
     cost = item.price;
@@ -43,7 +44,7 @@ export async function addMbpRequest(formData: FormData) {
     itemName = String(formData.get("itemName") ?? "").trim();
     unit = String(formData.get("unit") ?? "").trim() || "unit";
     cost = Math.max(0, parseInt(String(formData.get("cost") ?? "0"), 10) || 0);
-    if (!itemName) throw new Error("Nama barang wajib diisi.");
+    if (!itemName) throw new UserError("Nama barang wajib diisi.");
   }
 
   const request = await db.mbpRequest.create({
@@ -63,7 +64,7 @@ export async function decideMbpRequest(id: string, decision: "disetujui" | "dito
 
   const request = await db.mbpRequest.findUnique({ where: { id } });
   if (!request) return;
-  if (request.status !== "menunggu") throw new Error("Permintaan ini sudah diputuskan sebelumnya.");
+  if (request.status !== "menunggu") throw new UserError("Permintaan ini sudah diputuskan sebelumnya.");
 
   await db.mbpRequest.update({
     where: { id },
@@ -110,10 +111,10 @@ export async function createMbp(formData: FormData) {
 
   const clientId = String(formData.get("clientId") ?? "").trim() || null;
   const clientNameManual = String(formData.get("clientNameManual") ?? "").trim() || null;
-  if (!clientId && !clientNameManual) throw new Error("Klien wajib dipilih atau diisi manual.");
+  if (!clientId && !clientNameManual) throw new UserError("Klien wajib dipilih atau diisi manual.");
 
   const items = parseMbpItems(formData);
-  if (items.length === 0) throw new Error("Minimal 1 item wajib diisi.");
+  if (items.length === 0) throw new UserError("Minimal 1 item wajib diisi.");
 
   const jobTitle = String(formData.get("jobTitle") ?? "").trim() || null;
   const signerName = String(formData.get("signerName") ?? "").trim() || null;
@@ -158,17 +159,17 @@ export async function updateMbp(id: string, formData: FormData) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const existing = await db.mbp.findUnique({ where: { id } });
-  if (!existing) throw new Error("MBP tidak ditemukan.");
+  if (!existing) throw new UserError("MBP tidak ditemukan.");
   if (existing.status === "dibatalkan" || existing.invoiceBjId) {
-    throw new Error("MBP yang sudah dibatalkan/dikonversi jadi invoice tidak bisa diedit.");
+    throw new UserError("MBP yang sudah dibatalkan/dikonversi jadi invoice tidak bisa diedit.");
   }
 
   const clientId = String(formData.get("clientId") ?? "").trim() || null;
   const clientNameManual = String(formData.get("clientNameManual") ?? "").trim() || null;
-  if (!clientId && !clientNameManual) throw new Error("Klien wajib dipilih atau diisi manual.");
+  if (!clientId && !clientNameManual) throw new UserError("Klien wajib dipilih atau diisi manual.");
 
   const items = parseMbpItems(formData);
-  if (items.length === 0) throw new Error("Minimal 1 item wajib diisi.");
+  if (items.length === 0) throw new UserError("Minimal 1 item wajib diisi.");
 
   const jobTitle = String(formData.get("jobTitle") ?? "").trim() || null;
   const signerName = String(formData.get("signerName") ?? "").trim() || null;
@@ -218,7 +219,7 @@ export async function advanceMbpStatus(id: string) {
   const mbp = await db.mbp.findUnique({ where: { id } });
   if (!mbp) return;
   const next = STATUS_FLOW[mbp.status];
-  if (!next) throw new Error("Status MBP ini tidak bisa dilanjutkan lagi.");
+  if (!next) throw new UserError("Status MBP ini tidak bisa dilanjutkan lagi.");
 
   await db.mbp.update({ where: { id }, data: { status: next } });
 
@@ -235,7 +236,7 @@ export async function rejectMbpByClient(id: string) {
 
   const mbp = await db.mbp.findUnique({ where: { id } });
   if (!mbp) return;
-  if (mbp.status !== "terkirim") throw new Error("Hanya MBP yang sudah terkirim yang bisa ditandai ditolak klien.");
+  if (mbp.status !== "terkirim") throw new UserError("Hanya MBP yang sudah terkirim yang bisa ditandai ditolak klien.");
 
   // A rejected MBP is a dead end — the requests it pulled in should go
   // back to the pending pool so they're available for a fresh MBP
@@ -262,8 +263,8 @@ export async function cancelMbp(id: string) {
 
   const mbp = await db.mbp.findUnique({ where: { id } });
   if (!mbp) return;
-  if (mbp.status === "dibatalkan") throw new Error("MBP ini sudah dibatalkan sebelumnya.");
-  if (mbp.invoiceBjId) throw new Error("MBP ini sudah dikonversi jadi invoice — tidak bisa dibatalkan dari sini.");
+  if (mbp.status === "dibatalkan") throw new UserError("MBP ini sudah dibatalkan sebelumnya.");
+  if (mbp.invoiceBjId) throw new UserError("MBP ini sudah dikonversi jadi invoice — tidak bisa dibatalkan dari sini.");
 
   // Same reasoning as rejectMbpByClient — cancelling shouldn't permanently
   // lock the requests this MBP had pulled in, and undoing the pull undoes
@@ -290,14 +291,14 @@ export async function convertMbpToInvoice(id: string) {
   if (!session?.user) throw new Error("Unauthorized");
 
   const mbp = await db.mbp.findUnique({ where: { id }, include: { items: true } });
-  if (!mbp) throw new Error("MBP tidak ditemukan.");
-  if (mbp.status !== "disetujui_klien") throw new Error("Hanya MBP yang sudah disetujui klien yang bisa dijadikan invoice.");
-  if (mbp.invoiceBjId) throw new Error("MBP ini sudah pernah dikonversi jadi invoice.");
-  if (mbp.items.length === 0) throw new Error("MBP ini tidak punya item.");
+  if (!mbp) throw new UserError("MBP tidak ditemukan.");
+  if (mbp.status !== "disetujui_klien") throw new UserError("Hanya MBP yang sudah disetujui klien yang bisa dijadikan invoice.");
+  if (mbp.invoiceBjId) throw new UserError("MBP ini sudah pernah dikonversi jadi invoice.");
+  if (mbp.items.length === 0) throw new UserError("MBP ini tidak punya item.");
 
   let clientId = mbp.clientId;
   if (!clientId) {
-    if (!mbp.clientNameManual) throw new Error("MBP ini belum punya klien — lengkapi dulu sebelum dikonversi.");
+    if (!mbp.clientNameManual) throw new UserError("MBP ini belum punya klien — lengkapi dulu sebelum dikonversi.");
     const client = await findOrCreateClientByName(mbp.clientNameManual);
     clientId = client.id;
   }

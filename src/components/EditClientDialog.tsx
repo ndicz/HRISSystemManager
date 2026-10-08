@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateClient, deleteClient } from "@/app/(app)/klien/actions";
 import { formatActionError } from "@/lib/errors";
 import { RupiahInput } from "@/components/RupiahInput";
+import { submitForm } from "@/lib/submitForm";
 
 type ClientRow = {
   id: string;
@@ -53,7 +54,7 @@ export function EditClientDialog({ client }: { client: ClientRow }) {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Edit klien</div>
-            <form action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="edit-client-name">Nama klien</label>
                 <input className="input" id="edit-client-name" name="name" required defaultValue={client.name} />

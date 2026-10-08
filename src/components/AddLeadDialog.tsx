@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { addLead } from "@/app/(app)/crm/actions";
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 export function AddLeadDialog({ onSuccess }: { onSuccess?: () => void }) {
   const [open, setOpen] = useState(false);
@@ -35,7 +36,7 @@ export function AddLeadDialog({ onSuccess }: { onSuccess?: () => void }) {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Prospek baru</div>
-            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form key={formKey} ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="lead-companyName">Nama perusahaan</label>
                 <input className="input" id="lead-companyName" name="companyName" required placeholder="mis. RS Contoh Sehat" />

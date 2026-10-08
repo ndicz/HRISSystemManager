@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { addPosition } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
 import { RupiahInput } from "@/components/RupiahInput";
+import { submitForm } from "@/lib/submitForm";
 
 export function AddPositionDialog() {
   const [open, setOpen] = useState(false);
@@ -36,7 +37,7 @@ export function AddPositionDialog() {
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Tambah posisi</div>
-            <form ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="pos-name">Nama posisi</label>
                 <input className="input" id="pos-name" name="name" required placeholder="mis. Staff Admin" />

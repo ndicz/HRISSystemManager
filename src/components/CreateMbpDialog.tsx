@@ -8,6 +8,7 @@ import { mbpPpnValue } from "@/lib/finance";
 import { RupiahInput } from "@/components/RupiahInput";
 import { ClientCombobox, type ClientOption } from "@/components/ClientCombobox";
 import { formatActionError } from "@/lib/errors";
+import { submitForm } from "@/lib/submitForm";
 
 type PendingRequest = { id: string; itemName: string; unit: string; qty: number; cost: number; requesterName: string };
 
@@ -109,7 +110,7 @@ export function CreateMbpDialog({
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" style={{ width: "min(640px, 100%)" }} onClick={(e) => e.stopPropagation()}>
             <div className="dialog-title">Buat MBP (Material Budget Plan)</div>
-            <form key={formKey} ref={formRef} action={handleSubmit} style={{ display: "grid", gap: "var(--space-3)" }}>
+            <form key={formKey} ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <div className="field">
                 <label htmlFor="mbp-clientId">Klien</label>
                 <ClientCombobox clients={clients} siteNames={siteNames} name="clientId" id="mbp-clientId" value={clientId} onChange={(id) => setClientId(id)} />
