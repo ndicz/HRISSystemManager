@@ -124,7 +124,6 @@ model Employee {
   kasbon                      Int       @default(0) // total outstanding balance
   kasbonCicilan               Int       @default(1) // over how many months to deduct it (1 = full amount at once)
   status                      String    @default("aktif") // "aktif" | "resign"
-  thrPaid                     Boolean   @default(false)
   thrOverride                 Int?
   // null = use the standard formula (computeBpjsKesehatan / computeBpjsKetenagakerjaanKaryawan);
   // set = deduct this exact amount instead, for cases the formula doesn't match reality.
@@ -157,6 +156,7 @@ model Employee {
   certificates      Certificate[]
   payrollEntries    PayrollEntry[]
   allowancePayments AllowancePayment[]
+  thrPayments       ThrPayment[]
   overtimeDays      OvertimeDay[]
   latenessBrackets  LatenessBracket[]
   user              User?
@@ -294,6 +294,21 @@ model OvertimeDay {
 // Off-cycle bonus/incentive payment — deliberately separate from
 // PayrollEntry.allowance (which is folded into the monthly gaji-tgl-1 run):
 // this is payable on any date, its own cash Transaction, own history.
+// THR is paid once per year (Lebaran), so "sudah dibayar" is per employee
+// per calendar year — a lifetime flag would lock THR forever after the
+// first payout. @@unique also stops a double click from paying twice.
+model ThrPayment {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  year          Int
+  amount        Int
+  transactionId String?
+  createdAt     DateTime @default(now())
+
+  @@unique([employeeId, year])
+}
+
 model AllowancePayment {
   id            String   @id @default(cuid())
   employeeId    String

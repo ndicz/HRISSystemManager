@@ -166,9 +166,12 @@ export function payrollAttendanceTally(records: Pick<AttendanceRecord, "date" | 
   const periodRecords = records.filter((r) => r.date >= start && r.date <= end);
   const presentDays = periodRecords.filter((r) => r.status === "Hadir").length;
   const leaveDays = periodRecords.filter((r) => isLeaveStatus(r.status)).length;
+  // Only plain "Izin" is billed at izinRate in flat-rate mode — Sakit and
+  // Cuti sit in leaveDays (paid days) but never carry a per-day deduction.
+  const izinDays = periodRecords.filter((r) => r.status === "Izin").length;
   const alphaDays = periodRecords.filter((r) => r.status === "Alpha").length;
   const lateCount = periodRecords.filter((r) => r.lateMin > 0).length;
-  return { presentDays, leaveDays, alphaDays, lateCount, workDays: presentDays + leaveDays + alphaDays };
+  return { presentDays, leaveDays, izinDays, alphaDays, lateCount, workDays: presentDays + leaveDays + alphaDays };
 }
 
 // Same idea as bestAttendanceMonth, grouped by payroll period instead of
@@ -329,7 +332,7 @@ export function computeMonthlyPayroll(
   // A per-employee-per-period override (set via the "Lembur & Allowance"
   // dialog) replaces the attendance×rate calculation entirely for that one
   // category, for cases HR needs to correct by hand.
-  const potonganIzin = entry?.potonganIzinOverride ?? tally.leaveDays * rate.izinRate;
+  const potonganIzin = entry?.potonganIzinOverride ?? tally.izinDays * rate.izinRate;
   const potonganAlpha = entry?.potonganAlphaOverride ?? tally.alphaDays * rate.alphaRate;
   // A configured bracket table (minutes late -> Rp) takes over from the
   // flat per-occurrence terlambatRate entirely once any bracket exists

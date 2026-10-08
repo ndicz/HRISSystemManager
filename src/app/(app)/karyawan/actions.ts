@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { parseBpjsXlsx, type BpjsImportRow } from "@/lib/bpjsImport";
 import { mapLimit } from "@/lib/concurrency";
+import { assertPeriodOpen } from "@/lib/periodLock";
 
 export async function addEmployee(formData: FormData) {
   const session = await auth();
@@ -559,33 +560,50 @@ export async function completeAssignment(id: string) {
   const assignment = await db.assignment.findUnique({ where: { id }, include: { employee: true } });
   if (!assignment || assignment.status === "selesai") return;
 
-  const account = await db.account.findFirst({ where: { code: "5007" } });
-  const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
-  if (account && cashAccount) {
-    await db.transaction.create({
-      data: {
-        date: new Date(),
-        accountCoaId: account.id,
-        cashAccountId: cashAccount.id,
-        desc: "Biaya Penugasan Tambahan — " + assignment.title + " (" + assignment.employee.name + ")",
-        amount: assignment.cost,
-        type: "keluar",
-      },
-    });
-  }
+  // A penugasan tied to a payroll period is paid out as "Penugasan
+  // tambahan" inside that period's gaji (resolveAssignments), so bayarGaji's
+  // Kas entry already carries its cost — posting it here as well counted
+  // the same money twice. Only post separately when it can't ride along
+  // with a gaji payment: no period set, or that period's gaji was already
+  // paid before this was marked selesai.
+  const payrollEntry = assignment.period
+    ? await db.payrollEntry.findUnique({ where: { employeeId_period: { employeeId: assignment.employeeId, period: assignment.period } }, select: { paid: true } })
+    : null;
+  const paidViaPayroll = assignment.period != null && !payrollEntry?.paid;
+  if (!paidViaPayroll && assignment.cost > 0) await assertPeriodOpen();
 
-  await db.assignment.update({ where: { id }, data: { status: "selesai" } });
+  const [account, cashAccount] = paidViaPayroll
+    ? [null, null]
+    : await Promise.all([db.account.findFirst({ where: { code: "5007" } }), db.cashAccount.findFirst({ where: { kind: "besar" } })]);
+
+  await db.$transaction(async (tx) => {
+    const moved = await tx.assignment.updateMany({ where: { id, status: { not: "selesai" } }, data: { status: "selesai" } });
+    if (moved.count === 0) return;
+    if (account && cashAccount && assignment.cost > 0) {
+      await tx.transaction.create({
+        data: {
+          date: new Date(),
+          accountCoaId: account.id,
+          cashAccountId: cashAccount.id,
+          desc: "Biaya Penugasan Tambahan — " + assignment.title + " (" + assignment.employee.name + ")",
+          amount: assignment.cost,
+          type: "keluar",
+        },
+      });
+    }
+  });
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "assignment.complete", entity: "Assignment", entityId: id },
   });
 
   revalidatePath("/karyawan");
+  revalidatePath("/penggajian");
   revalidatePath("/kas");
 }
 
-// Only while "berjalan" — once "selesai" it's already posted a Transaction
-// to Kas (above), so editing the cost or deleting it afterward would
+// Only while "berjalan" — once "selesai" its cost is (or will be) paid
+// out, through gaji or a Kas entry of its own (above), so editing the cost or deleting it afterward would
 // silently desync from what was actually recorded as paid. Same guard
 // rail as invoices/payables elsewhere in this app.
 export async function updateAssignment(id: string, formData: FormData) {

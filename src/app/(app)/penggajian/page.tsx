@@ -34,6 +34,7 @@ export default async function PenggajianPage() {
         attendance: { where: { date: { gte: attendanceWindowStart() } }, select: { date: true, status: true, lateMin: true } },
         overtimeDays: { orderBy: { date: "asc" } },
         assignments: { select: { cost: true, status: true, period: true } },
+        thrPayments: { where: { year: new Date().getFullYear() }, select: { amount: true } },
       },
       orderBy: { name: "asc" },
     }),

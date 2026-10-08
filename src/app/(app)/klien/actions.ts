@@ -5,6 +5,12 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { baseSalary } from "@/lib/payroll";
 import { invoiceBjTotal } from "@/lib/finance";
+import { assertPeriodOpen } from "@/lib/periodLock";
+
+// Invoice status only ever moves forward one step; lunas and dibatalkan are
+// terminal (a paid invoice is reversed with "Batalkan", never re-paid).
+const NEXT_INVOICE_STATUS: Record<string, "terkirim" | "lunas" | undefined> = { draft: "terkirim", terkirim: "lunas" };
+const STATUS_CHANGED_MESSAGE = "Status invoice ini sudah berubah (mungkin baru diproses orang lain) — muat ulang halaman.";
 
 export async function addClient(formData: FormData) {
   const session = await auth();
@@ -223,16 +229,27 @@ export async function advanceInvoiceBjStatus(id: string) {
 
   const inv = await db.invoiceBj.findUnique({ where: { id }, include: { items: true, client: true } });
   if (!inv) return;
+  // Only draft → terkirim → lunas moves forward. A stale tab (or a second
+  // person) clicking "Tandai lunas" on an invoice that's already lunas — or
+  // one that's been cancelled — used to fall through to "lunas" again and
+  // post the payment to Kas a second time.
+  const next = NEXT_INVOICE_STATUS[inv.status];
+  if (!next) throw new Error(STATUS_CHANGED_MESSAGE);
+  if (next === "lunas") await assertPeriodOpen();
 
-  const next = inv.status === "draft" ? "terkirim" : "lunas";
+  const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn);
+  const [account, cashAccount] = next === "lunas"
+    ? await Promise.all([db.account.findUnique({ where: { code: "4001" } }), db.cashAccount.findFirst({ where: { kind: "besar" } })])
+    : [null, null];
+  const keterangan = inv.client.name + (inv.jobTitle ? " — " + inv.jobTitle : "");
 
-  if (next === "lunas") {
-    const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn);
-    const account = await db.account.findUnique({ where: { code: "4001" } });
-    const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
-    const keterangan = inv.client.name + (inv.jobTitle ? " — " + inv.jobTitle : "");
+  await db.$transaction(async (tx) => {
+    // Conditional on the status we just read, so of two concurrent clicks
+    // only one wins the transition (and the Kas entry that comes with it).
+    const moved = await tx.invoiceBj.updateMany({ where: { id, status: inv.status }, data: { status: next } });
+    if (moved.count === 0) throw new Error(STATUS_CHANGED_MESSAGE);
     if (account && cashAccount) {
-      await db.transaction.create({
+      await tx.transaction.create({
         data: {
           date: new Date(),
           accountCoaId: account.id,
@@ -243,9 +260,8 @@ export async function advanceInvoiceBjStatus(id: string) {
         },
       });
     }
-  }
+  });
 
-  await db.invoiceBj.update({ where: { id }, data: { status: next } });
   revalidatePath("/klien");
   revalidatePath("/kas");
   revalidatePath("/");
@@ -284,25 +300,28 @@ export async function cancelInvoiceBj(id: string) {
   const inv = await db.invoiceBj.findUnique({ where: { id }, include: { items: true, client: true } });
   if (!inv) return;
   if (inv.status !== "lunas") throw new Error("Invoice ini belum lunas — hapus langsung saja, tidak perlu dibatalkan.");
+  await assertPeriodOpen();
 
   const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn);
   const account = await db.account.findUnique({ where: { code: "4001" } });
   const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
   const keterangan = inv.client.name + (inv.jobTitle ? " — " + inv.jobTitle : "");
-  if (account && cashAccount) {
-    await db.transaction.create({
-      data: {
-        date: new Date(),
-        accountCoaId: account.id,
-        cashAccountId: cashAccount.id,
-        desc: "Pembatalan invoice " + inv.invoiceNo + " (" + keterangan + ")",
-        amount: total,
-        type: "keluar",
-      },
-    });
-  }
-
-  await db.invoiceBj.update({ where: { id }, data: { status: "dibatalkan" } });
+  await db.$transaction(async (tx) => {
+    const moved = await tx.invoiceBj.updateMany({ where: { id, status: "lunas" }, data: { status: "dibatalkan" } });
+    if (moved.count === 0) throw new Error(STATUS_CHANGED_MESSAGE);
+    if (account && cashAccount) {
+      await tx.transaction.create({
+        data: {
+          date: new Date(),
+          accountCoaId: account.id,
+          cashAccountId: cashAccount.id,
+          desc: "Pembatalan invoice " + inv.invoiceNo + " (" + keterangan + ")",
+          amount: total,
+          type: "keluar",
+        },
+      });
+    }
+  });
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "invoiceBj.cancel", entity: "InvoiceBj", entityId: inv.invoiceNo },
@@ -369,17 +388,30 @@ export async function advanceInvoiceStatus(id: string) {
 
   const inv = await db.invoice.findUnique({ where: { id }, include: { client: true } });
   if (!inv) return;
-
-  const next = inv.status === "draft" ? "terkirim" : "lunas";
+  // Same forward-only, one-winner transition as advanceInvoiceBjStatus.
+  const next = NEXT_INVOICE_STATUS[inv.status];
+  if (!next) throw new Error(STATUS_CHANGED_MESSAGE);
+  if (next === "lunas") await assertPeriodOpen();
   const now = new Date();
 
-  if (next === "lunas") {
-    const account = await db.account.findUnique({ where: { code: "4001" } });
-    const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
-    const periodLabel = new Date(inv.period + "-01T00:00:00").toLocaleDateString("id-ID", { month: "long", year: "numeric" });
-    const keterangan = inv.client.name + " — Jasa Outsourcing " + periodLabel;
+  const [account, cashAccount] = next === "lunas"
+    ? await Promise.all([db.account.findUnique({ where: { code: "4001" } }), db.cashAccount.findFirst({ where: { kind: "besar" } })])
+    : [null, null];
+  const periodLabel = new Date(inv.period + "-01T00:00:00").toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  const keterangan = inv.client.name + " — Jasa Outsourcing " + periodLabel;
+
+  await db.$transaction(async (tx) => {
+    const moved = await tx.invoice.updateMany({
+      where: { id, status: inv.status },
+      data: {
+        status: next,
+        sentAt: next === "terkirim" ? now : inv.sentAt,
+        paidAt: next === "lunas" ? now : inv.paidAt,
+      },
+    });
+    if (moved.count === 0) throw new Error(STATUS_CHANGED_MESSAGE);
     if (account && cashAccount) {
-      await db.transaction.create({
+      await tx.transaction.create({
         data: {
           date: now,
           accountCoaId: account.id,
@@ -390,15 +422,6 @@ export async function advanceInvoiceStatus(id: string) {
         },
       });
     }
-  }
-
-  await db.invoice.update({
-    where: { id },
-    data: {
-      status: next,
-      sentAt: next === "terkirim" ? now : inv.sentAt,
-      paidAt: next === "lunas" ? now : inv.paidAt,
-    },
   });
 
   revalidatePath("/klien");
@@ -453,25 +476,28 @@ export async function cancelInvoice(id: string) {
   const inv = await db.invoice.findUnique({ where: { id }, include: { client: true } });
   if (!inv) return;
   if (inv.status !== "lunas") throw new Error("Invoice ini belum lunas — hapus langsung saja, tidak perlu dibatalkan.");
+  await assertPeriodOpen();
 
   const account = await db.account.findUnique({ where: { code: "4001" } });
   const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
   const periodLabel = new Date(inv.period + "-01T00:00:00").toLocaleDateString("id-ID", { month: "long", year: "numeric" });
   const keterangan = inv.client.name + " — Jasa Outsourcing " + periodLabel;
-  if (account && cashAccount) {
-    await db.transaction.create({
-      data: {
-        date: new Date(),
-        accountCoaId: account.id,
-        cashAccountId: cashAccount.id,
-        desc: "Pembatalan invoice " + inv.invoiceNo + " (" + keterangan + ")",
-        amount: inv.total,
-        type: "keluar",
-      },
-    });
-  }
-
-  await db.invoice.update({ where: { id }, data: { status: "dibatalkan" } });
+  await db.$transaction(async (tx) => {
+    const moved = await tx.invoice.updateMany({ where: { id, status: "lunas" }, data: { status: "dibatalkan" } });
+    if (moved.count === 0) throw new Error(STATUS_CHANGED_MESSAGE);
+    if (account && cashAccount) {
+      await tx.transaction.create({
+        data: {
+          date: new Date(),
+          accountCoaId: account.id,
+          cashAccountId: cashAccount.id,
+          desc: "Pembatalan invoice " + inv.invoiceNo + " (" + keterangan + ")",
+          amount: inv.total,
+          type: "keluar",
+        },
+      });
+    }
+  });
 
   await db.auditLog.create({
     data: { userId: session.user.id, action: "invoice.cancel", entity: "Invoice", entityId: inv.invoiceNo },
