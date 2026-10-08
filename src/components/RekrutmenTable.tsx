@@ -21,7 +21,7 @@ function statusTag(status: string) {
   return "tag tag-outline";
 }
 
-export function RekrutmenTable({ candidates, positions }: { candidates: Candidate[]; positions: PositionOption[] }) {
+export function RekrutmenTable({ candidates, positions, sites }: { candidates: Candidate[]; positions: PositionOption[]; sites: { id: string; name: string }[] }) {
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
@@ -62,7 +62,7 @@ export function RekrutmenTable({ candidates, positions }: { candidates: Candidat
                 <td className="text-muted">{c.appliedDate.toLocaleDateString("id-ID")}</td>
                 <td><span className={statusTag(c.status)}>{STATUS_LABEL[c.status]}</span></td>
                 <td><EditCandidateDialog candidate={c} positions={positions} /></td>
-                <td><CandidateActions id={c.id} status={c.status} /></td>
+                <td><CandidateActions id={c.id} status={c.status} sites={sites} /></td>
               </tr>
             ))}
           </tbody>

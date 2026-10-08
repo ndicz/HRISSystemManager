@@ -48,6 +48,8 @@ export type EmployeeAttendanceSummary = {
   positionName: string;
   hadir: number;
   izin: number;
+  sakit: number;
+  cuti: number;
   alpha: number;
   total: number;
 };
@@ -57,18 +59,22 @@ export function employeeAttendanceSummary(
   records: { employeeId: string; date: Date; status: string }[],
   year: number,
 ): EmployeeAttendanceSummary[] {
-  const byEmployee = new Map<string, { hadir: number; izin: number; alpha: number; total: number }>();
+  const byEmployee = new Map<string, { hadir: number; izin: number; sakit: number; cuti: number; alpha: number; total: number }>();
   for (const r of records) {
     if (r.date.getFullYear() !== year) continue;
-    if (!byEmployee.has(r.employeeId)) byEmployee.set(r.employeeId, { hadir: 0, izin: 0, alpha: 0, total: 0 });
+    if (!byEmployee.has(r.employeeId)) byEmployee.set(r.employeeId, { hadir: 0, izin: 0, sakit: 0, cuti: 0, alpha: 0, total: 0 });
     const s = byEmployee.get(r.employeeId)!;
+    // Per person the three leave reasons are told apart; the chart above
+    // still rolls them into one "Izin/Sakit/Cuti" bar.
     if (r.status === "Hadir") s.hadir++;
+    else if (r.status === "Sakit") s.sakit++;
+    else if (r.status === "Cuti") s.cuti++;
     else if (isLeaveStatus(r.status)) s.izin++;
     else if (r.status === "Alpha") s.alpha++;
     if (r.status !== "Hari Libur") s.total++;
   }
   return employees.map((e) => {
-    const s = byEmployee.get(e.id) ?? { hadir: 0, izin: 0, alpha: 0, total: 0 };
+    const s = byEmployee.get(e.id) ?? { hadir: 0, izin: 0, sakit: 0, cuti: 0, alpha: 0, total: 0 };
     return { employeeId: e.id, name: e.name, siteName: e.site.name, positionName: e.position.name, ...s };
   });
 }

@@ -15,6 +15,7 @@ export async function addLeaveRequest(formData: FormData) {
   const reason = String(formData.get("reason") ?? "").trim() || "-";
 
   if (!employeeId || !startDate || !endDate) throw new UserError("Karyawan dan tanggal wajib diisi.");
+  if (new Date(endDate) < new Date(startDate)) throw new UserError("Tanggal selesai tidak boleh sebelum tanggal mulai.");
 
   await db.leaveRequest.create({
     data: { employeeId, type, startDate: new Date(startDate), endDate: new Date(endDate), reason },
@@ -46,6 +47,7 @@ export async function updateLeaveRequest(id: string, formData: FormData) {
   const endDate = String(formData.get("endDate") ?? "");
   const reason = String(formData.get("reason") ?? "").trim() || "-";
   if (!startDate || !endDate) throw new UserError("Tanggal wajib diisi.");
+  if (new Date(endDate) < new Date(startDate)) throw new UserError("Tanggal selesai tidak boleh sebelum tanggal mulai.");
 
   await db.leaveRequest.update({
     where: { id },

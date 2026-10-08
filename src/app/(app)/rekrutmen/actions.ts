@@ -4,6 +4,7 @@ import { UserError } from "@/lib/userError";
 import { db } from "@/lib/db";
 import { requireAccess } from "@/lib/authz";
 import { revalidatePath } from "next/cache";
+import { nextEmpCode, isUniqueViolation } from "@/lib/empCode";
 
 export async function addCandidate(formData: FormData) {
   await requireAccess("/rekrutmen");
@@ -16,7 +17,7 @@ export async function addCandidate(formData: FormData) {
   revalidatePath("/rekrutmen");
 }
 
-export async function advanceCandidate(id: string) {
+export async function advanceCandidate(id: string, siteId?: string) {
   const session = await requireAccess("/rekrutmen");
 
   const c = await db.candidate.findUnique({ where: { id } });
@@ -27,28 +28,38 @@ export async function advanceCandidate(id: string) {
   } else if (c.status === "interview") {
     await db.candidate.update({ where: { id }, data: { status: "diterima" } });
   } else if (c.status === "diterima") {
-    // Activate: convert candidate into a real employee.
-    const site = await db.site.findFirst();
+    // Activate: convert candidate into a real employee, at the tempat kerja
+    // HR picked (it used to silently take whichever site came first).
+    if (!siteId) throw new UserError("Pilih tempat kerja untuk karyawan baru ini dulu.");
+    const site = await db.site.findUnique({ where: { id: siteId } });
+    if (!site) throw new UserError("Tempat kerja tidak ditemukan.");
     const position = await db.position.findFirst({ where: { name: c.position } });
-    if (!site || !position) throw new UserError("Tempat kerja atau posisi default belum ada.");
+    if (!position) throw new UserError(`Posisi "${c.position}" belum ada di Karyawan & Lokasi — tambahkan dulu.`);
 
-    const empCount = await db.employee.count();
-    const empCode = "EMP-" + String(empCount + 1).padStart(4, "0");
-
-    await db.$transaction([
-      db.employee.create({
-        data: {
-          empCode,
-          name: c.name,
-          siteId: site.id,
-          positionId: position.id,
-          hireDate: new Date(),
-          contractType: "PKWT",
-          salaryComponents: { create: { name: "Gaji Pokok", amount: position.baseSalary } },
-        },
-      }),
-      db.candidate.update({ where: { id }, data: { status: "aktif" } }),
-    ]);
+    const hireDate = new Date();
+    for (let attempt = 0; ; attempt++) {
+      // Same numbering as Tambah Karyawan.
+      const empCode = await nextEmpCode(hireDate);
+      try {
+        await db.$transaction([
+          db.employee.create({
+            data: {
+              empCode,
+              name: c.name,
+              siteId: site.id,
+              positionId: position.id,
+              hireDate,
+              contractType: "PKWT",
+              salaryComponents: { create: { name: "Gaji Pokok", amount: position.baseSalary } },
+            },
+          }),
+          db.candidate.update({ where: { id }, data: { status: "aktif" } }),
+        ]);
+        break;
+      } catch (err) {
+        if (!isUniqueViolation(err) || attempt >= 4) throw err;
+      }
+    }
 
     await db.auditLog.create({
       data: { userId: session.user.id, action: "candidate.activate", entity: "Candidate", entityId: id },

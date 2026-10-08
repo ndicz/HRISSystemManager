@@ -102,6 +102,19 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
   }));
 
   const totalAset = saldoAkhir + totalPiutang;
+  // Kewajiban balances through the end of the viewed period: cash that came
+  // in against a liability (PPN collected on invoices, a loan) minus what has
+  // been paid back on it.
+  const liabilitasRows = useMemo(() => accounts
+    .filter((a) => a.type === "kewajiban")
+    .map((a) => ({
+      account: a,
+      saldo: transactions
+        .filter((t) => t.accountCoaId === a.id && monthKey(t.date) <= period)
+        .reduce((sum, t) => sum + (t.type === "masuk" ? t.amount : -t.amount), 0),
+    }))
+    .filter((r) => r.saldo !== 0), [accounts, transactions, period]);
+  const totalLiabilitas = liabilitasRows.reduce((sum, r) => sum + r.saldo, 0);
 
   const cashAccountBalance = (id: string) => {
     const acc = cashAccounts.find((c) => c.id === id);
@@ -250,9 +263,13 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
               <tr><td className="text-muted" style={{ paddingLeft: 20 }}>Piutang Usaha</td><td style={{ textAlign: "right" }}>{formatRp(totalPiutang)}</td></tr>
               <tr><td style={{ fontWeight: 600, borderTop: "1px solid var(--color-divider)" }}>Total Aset</td><td style={{ textAlign: "right", fontWeight: 600, borderTop: "1px solid var(--color-divider)" }}>{formatRp(totalAset)}</td></tr>
               <tr><td style={{ fontWeight: 600, paddingTop: 12 }}>Liabilitas</td><td></td></tr>
-              <tr><td className="text-muted" style={{ paddingLeft: 20 }}>Tidak ada liabilitas tercatat</td><td style={{ textAlign: "right" }}>{formatRp(0)}</td></tr>
+              {liabilitasRows.length === 0 ? (
+                <tr><td className="text-muted" style={{ paddingLeft: 20 }}>Tidak ada liabilitas tercatat</td><td style={{ textAlign: "right" }}>{formatRp(0)}</td></tr>
+              ) : liabilitasRows.map((r) => (
+                <tr key={r.account.id}><td className="text-muted" style={{ paddingLeft: 20 }}>{r.account.code} {r.account.name}</td><td style={{ textAlign: "right" }}>{formatRp(r.saldo)}</td></tr>
+              ))}
               <tr><td style={{ fontWeight: 600, paddingTop: 12 }}>Ekuitas</td><td></td></tr>
-              <tr><td className="text-muted" style={{ paddingLeft: 20 }}>Modal &amp; Laba Ditahan</td><td style={{ textAlign: "right" }}>{formatRp(totalAset)}</td></tr>
+              <tr><td className="text-muted" style={{ paddingLeft: 20 }}>Modal &amp; Laba Ditahan</td><td style={{ textAlign: "right" }}>{formatRp(totalAset - totalLiabilitas)}</td></tr>
               <tr><td style={{ fontWeight: 700, fontSize: 16, borderTop: "2px solid var(--color-text)", paddingTop: 12 }}>Total Liabilitas &amp; Ekuitas</td><td style={{ textAlign: "right", fontWeight: 700, fontSize: 16, borderTop: "2px solid var(--color-text)", paddingTop: 12 }}>{formatRp(totalAset)}</td></tr>
             </tbody>
           </table>

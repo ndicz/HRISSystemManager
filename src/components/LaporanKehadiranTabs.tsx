@@ -14,7 +14,7 @@ type Emp = { id: string; name: string; site: { name: string }; position: { name:
 
 const LEGEND: { key: keyof Omit<AttendanceBucket, "key" | "label">; label: string; color: string }[] = [
   { key: "hadir", label: "Hadir", color: "var(--color-accent-600)" },
-  { key: "izin", label: "Izin", color: "var(--color-accent-2-600)" },
+  { key: "izin", label: "Izin/Sakit/Cuti", color: "var(--color-accent-2-600)" },
   { key: "alpha", label: "Alpha", color: "var(--color-neutral-800)" },
   { key: "libur", label: "Hari Libur", color: "var(--color-neutral-300)" },
 ];
@@ -153,7 +153,7 @@ export function LaporanKehadiranTabs({ records, employees }: { records: Attendan
         ) : (
           <>
           <table className="table">
-            <thead><tr><th>Nama</th><th>Tempat kerja</th><th>Posisi</th><th>Hadir</th><th>Izin</th><th>Alpha</th><th>Total hari kerja</th></tr></thead>
+            <thead><tr><th>Nama</th><th>Tempat kerja</th><th>Posisi</th><th>Hadir</th><th>Izin</th><th>Sakit</th><th>Cuti</th><th>Alpha</th><th>Total hari kerja</th></tr></thead>
             <tbody>
               {paged.map((r) => (
                 <tr key={r.employeeId}>
@@ -162,6 +162,8 @@ export function LaporanKehadiranTabs({ records, employees }: { records: Attendan
                   <td className="text-muted">{r.positionName}</td>
                   <td>{r.hadir}</td>
                   <td>{r.izin}</td>
+                  <td>{r.sakit}</td>
+                  <td>{r.cuti}</td>
                   <td>{r.alpha}</td>
                   <td className="text-muted">{r.total}</td>
                 </tr>

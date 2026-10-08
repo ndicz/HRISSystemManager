@@ -73,7 +73,7 @@ export default async function CutiPage() {
           </table>
         )}
         <p style={{ fontSize: 12, opacity: 0.55, marginTop: "var(--space-3)" }}>
-          Kuota terpakai dihitung dari seluruh pengajuan cuti berstatus disetujui, sesuai jumlah hari kalender pengajuan.
+          Kuota terpakai dihitung dari pengajuan cuti berstatus disetujui di tahun {new Date().getFullYear()}, sesuai jumlah hari kalender pengajuan. Kuota direset setiap 1 Januari.
         </p>
       </div>
     </div>

@@ -43,18 +43,18 @@ export default async function KemenakerPage() {
           <p className="card-body">{employees.length - compliantCount} karyawan di bawah UMR</p>
         </div>
         <div className="card">
-          <div className="card-kicker">Iuran BPJS Ketenagakerjaan</div>
+          <div className="card-kicker">Iuran BPJS Ketenagakerjaan (porsi perusahaan)</div>
           <div className="card-title" style={{ fontSize: 18 }}>{formatRp(sumBpjsTk)}</div>
         </div>
         <div className="card">
-          <div className="card-kicker">Iuran BPJS Kesehatan</div>
+          <div className="card-kicker">Iuran BPJS Kesehatan (porsi perusahaan)</div>
           <div className="card-title" style={{ fontSize: 18 }}>{formatRp(rows.reduce((s, r) => s + r.bpjsKesehatan, 0))}</div>
         </div>
       </div>
 
       <KemenakerTable rows={rows} />
       <p style={{ fontSize: 12, opacity: 0.55, marginTop: "var(--space-3)", maxWidth: "70ch" }}>
-        UMR/UMK dan tarif iuran BPJS adalah estimasi — sesuaikan dengan penetapan resmi Kemenaker, Disnaker, dan BPJS setempat setiap tahun.
+        UMR/UMK dan tarif iuran BPJS adalah estimasi — sesuaikan dengan penetapan resmi Kemenaker, Disnaker, dan BPJS setempat setiap tahun. Iuran di atas adalah porsi yang dibayar perusahaan (BPJS TK 8,54%, Kesehatan 4%); potongan BPJS dari gaji karyawan — termasuk angka yang diatur per karyawan, tempat kerja, atau posisi — ada di Penggajian.
       </p>
     </div>
   );
