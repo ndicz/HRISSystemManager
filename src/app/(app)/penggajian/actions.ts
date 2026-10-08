@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { computeThr, computeMonthlyPayroll, resolvePayrollRate, resolveOvertimeDays, resolveAssignments, payrollPeriodKey, payrollPeriodRange } from "@/lib/payroll";
 import { mapLimit } from "@/lib/concurrency";
+import { assertPeriodOpen } from "@/lib/periodLock";
 
 // Audit trail writes are best-effort — losing one to a transient DB hiccup
 // should never block, or silently half-complete, the actual mutation it's
@@ -19,44 +20,66 @@ async function logAudit(args: Parameters<typeof db.auditLog.create>[0]) {
   }
 }
 
-export async function bayarThr(employeeId: string) {
+// Returns { error } instead of throwing: Next.js redacts thrown messages in
+// production, and these are reasons the person clicking needs to read.
+export async function bayarThr(employeeId: string): Promise<{ error?: string }> {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
 
-  const emp = await db.employee.findUnique({ where: { id: employeeId }, include: { salaryComponents: true } });
-  if (!emp || emp.thrPaid) return;
+  try {
+    const year = new Date().getFullYear();
+    const emp = await db.employee.findUnique({ where: { id: employeeId }, include: { salaryComponents: true, thrPayments: { where: { year } } } });
+    if (!emp) return { error: "Karyawan tidak ditemukan." };
+    if (emp.thrPayments.length > 0) return { error: `THR ${emp.name} untuk tahun ${year} sudah dibayar.` };
 
-  const { thr } = computeThr(emp, emp.salaryComponents);
-  // Same self-heal as bayarGaji's "Gaji Karyawan" category below — a
-  // missing COA label is harmless to recreate, unlike the CashAccount.
-  let account = await db.account.findFirst({ where: { code: "5008" } });
-  if (!account) {
-    try {
-      account = await db.account.create({ data: { code: "5008", name: "Beban THR", type: "beban" } });
-    } catch {
-      account = await db.account.findFirst({ where: { code: "5008" } });
+    const { thr } = computeThr(emp, emp.salaryComponents);
+    if (thr <= 0) return { error: `THR ${emp.name} Rp0 (masa kerja belum 1 bulan) — tidak ada yang perlu dibayar.` };
+    await assertPeriodOpen();
+
+    // Same self-heal as bayarGaji's "Gaji Karyawan" category below — a
+    // missing COA label is harmless to recreate, unlike the CashAccount.
+    let account = await db.account.findFirst({ where: { code: "5008" } });
+    if (!account) {
+      try {
+        account = await db.account.create({ data: { code: "5008", name: "Beban THR", type: "beban" } });
+      } catch {
+        account = await db.account.findFirst({ where: { code: "5008" } });
+      }
     }
-  }
-  const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
+    const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
+    if (!account || !cashAccount) return { error: "Belum ada rekening \"Kas besar\" atau akun Beban THR (5008) — tambahkan dulu di Pengeluaran & Kas." };
 
-  if (account && cashAccount) {
-    await db.transaction.create({
-      data: {
-        date: new Date(),
-        accountCoaId: account.id,
-        cashAccountId: cashAccount.id,
-        desc: "Pembayaran THR — " + emp.name,
-        amount: thr,
-        type: "keluar",
-      },
-    });
-  }
+    try {
+      await db.$transaction(async (tx) => {
+        // The ThrPayment row goes in first: its (employeeId, year) unique
+        // key makes a second, concurrent click fail here before any money
+        // is posted.
+        const payment = await tx.thrPayment.create({ data: { employeeId, year, amount: thr } });
+        const transaction = await tx.transaction.create({
+          data: {
+            date: new Date(),
+            accountCoaId: account.id,
+            cashAccountId: cashAccount.id,
+            desc: "Pembayaran THR — " + emp.name,
+            amount: thr,
+            type: "keluar",
+          },
+        });
+        await tx.thrPayment.update({ where: { id: payment.id }, data: { transactionId: transaction.id } });
+      });
+    } catch (err) {
+      if ((err as { code?: string })?.code === "P2002") return { error: `THR ${emp.name} untuk tahun ${year} sudah dibayar.` };
+      throw err;
+    }
 
-  await db.employee.update({ where: { id: employeeId }, data: { thrPaid: true } });
-  await logAudit({ data: { userId: session.user.id, action: "thr.pay", entity: "Employee", entityId: employeeId } });
+    await logAudit({ data: { userId: session.user.id, action: "thr.pay", entity: "Employee", entityId: employeeId, detail: JSON.stringify({ year, amount: thr }) } });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 
   revalidatePath("/penggajian");
   revalidatePath("/kas");
+  return {};
 }
 
 // Marks the regular monthly payroll run as paid — the one gap THR/Insentif
@@ -88,6 +111,7 @@ export async function bayarGaji(employeeIds: string[], period: string) {
   // of a throw, so wrap everything past basic validation and surface
   // whatever actually broke as a real, readable message.
   try {
+    await assertPeriodOpen();
     const { start: periodStart, end: periodEnd } = payrollPeriodRange(period);
 
     const [employees, rates, brackets, existingAccount, cashAccount] = await Promise.all([
@@ -150,22 +174,56 @@ export async function bayarGaji(employeeIds: string[], period: string) {
         const assignments = resolveAssignments(emp.assignments, period);
         const p = computeMonthlyPayroll(emp, emp.salaryComponents, emp.attendance, period, { rate, entry: existingEntry, overtimeDays, assignments, latenessBrackets: brackets, site: emp.site, position: emp.position });
 
-        const tx = await db.transaction.create({
-          data: {
-            date: new Date(),
-            accountCoaId: account.id,
-            cashAccountId: cashAccount.id,
-            desc: "Gaji " + period + " — " + emp.name,
-            amount: p.total,
-            type: "keluar",
-          },
+        // Claim the entry first (paid: false → true) so that of two
+        // concurrent "Bayar Gaji" runs only one posts this person's gaji to
+        // Kas; the loser sees count 0 and counts them as skipped.
+        const claimed = await db.$transaction(async (tx) => {
+          await tx.payrollEntry.upsert({
+            where: { employeeId_period: { employeeId: emp.id, period } },
+            update: {},
+            create: { employeeId: emp.id, period },
+          });
+          const claim = await tx.payrollEntry.updateMany({
+            where: { employeeId: emp.id, period, paid: false },
+            data: {
+              paid: true,
+              // Freeze what was actually paid: both feed off live data
+              // (the kasbon balance, assignments marked selesai later) that
+              // keeps changing after this, and the paid slip must not.
+              kasbonOverride: p.kasbonBulanIni,
+              penugasanTambahanOverride: p.penugasanTambahan,
+            },
+          });
+          if (claim.count === 0) return false;
+          const transaction = await tx.transaction.create({
+            data: {
+              date: new Date(),
+              accountCoaId: account.id,
+              cashAccountId: cashAccount.id,
+              desc: "Gaji " + period + " — " + emp.name,
+              amount: p.total,
+              type: "keluar",
+            },
+          });
+          await tx.payrollEntry.update({ where: { employeeId_period: { employeeId: emp.id, period } }, data: { paidTransactionId: transaction.id } });
+          // The kasbon installment just deducted comes off the outstanding
+          // balance, and one month of the cicilan is used up — otherwise the
+          // same installment gets deducted again every month, forever.
+          if (p.kasbonBulanIni > 0) {
+            await tx.employee.update({
+              where: { id: emp.id },
+              data: {
+                kasbon: Math.max(0, emp.kasbon - p.kasbonBulanIni),
+                kasbonCicilan: Math.max(1, emp.kasbonCicilan - 1),
+              },
+            });
+          }
+          return true;
         });
-
-        await db.payrollEntry.upsert({
-          where: { employeeId_period: { employeeId: emp.id, period } },
-          update: { paid: true, paidTransactionId: tx.id },
-          create: { employeeId: emp.id, period, paid: true, paidTransactionId: tx.id },
-        });
+        if (!claimed) {
+          skipped++;
+          return;
+        }
 
         paid++;
         total += p.total;

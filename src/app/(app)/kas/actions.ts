@@ -5,13 +5,8 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { monthKey } from "@/lib/finance";
+import { assertPeriodOpen } from "@/lib/periodLock";
 
-async function assertPeriodOpen(date: Date) {
-  const period = monthKey(date);
-  const closed = await db.closedPeriod.findUnique({ where: { period } });
-  if (closed) throw new Error(`Periode ${period} sudah ditutup — buka kembali periode tersebut dulu untuk mencatat transaksi baru.`);
-}
 
 export async function closePeriod(period: string) {
   const session = await auth();

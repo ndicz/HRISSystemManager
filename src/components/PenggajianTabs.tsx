@@ -23,6 +23,7 @@ type Emp = Employee & {
   payrollEntries: PayrollEntry[];
   overtimeDays: OvertimeDay[];
   assignments: Pick<Assignment, "cost" | "status" | "period">[];
+  thrPayments: { amount: number }[]; // this calendar year's payout, if any
 };
 
 type SiteOption = { id: string; name: string };
@@ -156,7 +157,9 @@ export function PenggajianTabs({
 
   const thrRows = filteredEmployees.map((e) => ({ e, t: computeThr(e, e.salaryComponents) }));
   const sumThr = thrRows.reduce((s, r) => s + r.t.thr, 0);
-  const sumThrDibayar = thrRows.filter((r) => r.e.thrPaid).reduce((s, r) => s + r.t.thr, 0);
+  const thrYear = new Date().getFullYear();
+  const sumThrDibayar = thrRows.reduce((s, r) => s + r.e.thrPayments.reduce((a, p) => a + p.amount, 0), 0);
+  const sumThrBelum = thrRows.filter((r) => r.e.thrPayments.length === 0).reduce((s, r) => s + r.t.thr, 0);
 
   const employeeOptions = employees.map((e) => ({ id: e.id, name: e.name, empCode: e.empCode }));
 
@@ -456,8 +459,8 @@ export function PenggajianTabs({
         <>
           <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
             <div className="card"><div className="card-kicker">Total estimasi THR</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumThr)}</div></div>
-            <div className="card"><div className="card-kicker">Sudah dibayar</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumThrDibayar)}</div></div>
-            <div className="card"><div className="card-kicker">Belum dibayar</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumThr - sumThrDibayar)}</div></div>
+            <div className="card"><div className="card-kicker">Sudah dibayar {thrYear}</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumThrDibayar)}</div></div>
+            <div className="card"><div className="card-kicker">Belum dibayar</div><div className="card-title" style={{ fontSize: 22 }}>{formatRp(sumThrBelum)}</div></div>
           </div>
           <div className="card">
             {thrRows.length === 0 ? <p style={{ fontSize: 13, opacity: 0.6 }}>{employees.length === 0 ? "Belum ada karyawan." : "Tidak ada hasil."}</p> : (
@@ -470,8 +473,8 @@ export function PenggajianTabs({
                       <td>{e.name}</td><td>{e.site.name}</td>
                       <td className="text-muted">{Math.floor(t.months / 12)} tahun {t.months % 12} bulan</td>
                       <td>{formatRp(t.thr)}</td>
-                      <td><span className={e.thrPaid ? "tag tag-accent" : "tag tag-outline"}>{e.thrPaid ? "Sudah dibayar" : "Belum dibayar"}</span></td>
-                      <td><ThrButton employeeId={e.id} disabled={e.thrPaid} /></td>
+                      <td><span className={e.thrPayments.length > 0 ? "tag tag-accent" : "tag tag-outline"}>{e.thrPayments.length > 0 ? `Sudah dibayar ${thrYear}` : t.thr <= 0 ? "Belum berhak" : "Belum dibayar"}</span></td>
+                      <td><ThrButton employeeId={e.id} disabled={e.thrPayments.length > 0 || t.thr <= 0} /></td>
                     </tr>
                   ))}
                 </tbody>

@@ -52,7 +52,7 @@ export function AssignmentTable({ assignments }: { assignments: A[] }) {
                   <EditAssignmentDialog assignment={{ id: a.id, employeeName: a.employee.name, title: a.title, mandays: a.mandays, cost: a.cost, period: a.period }} />
                 )}
               </td>
-              <td><AssignmentActions id={a.id} disabled={a.status === "selesai"} /></td>
+              <td><AssignmentActions id={a.id} disabled={a.status === "selesai"} period={a.period} /></td>
             </tr>
           ))}
         </tbody>

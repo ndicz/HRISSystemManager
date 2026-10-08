@@ -42,7 +42,7 @@ export function InvoiceBjActions({ id, status, invoiceNo }: { id: string; status
         type="button"
         className="btn btn-ghost"
         disabled={status === "lunas" || status === "dibatalkan" || pending}
-        onClick={() => startTransition(() => advanceInvoiceBjStatus(id))}
+        onClick={() => { setError(""); startTransition(async () => { try { await advanceInvoiceBjStatus(id); } catch (err) { setError(formatActionError(err)); } }); }}
       >
         {LABEL[status]}
       </button>

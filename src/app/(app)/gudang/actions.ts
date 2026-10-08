@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { assertPeriodOpen } from "@/lib/periodLock";
 
 export async function addInventoryItem(formData: FormData) {
   const session = await auth();
@@ -185,10 +186,15 @@ export async function completeInventoryRequest(id: string) {
     throw new Error(`Stok tidak cukup — sisa stok ${item.name} hanya ${item.qty} ${item.unit}.`);
   }
 
+  await assertPeriodOpen();
   const account = await db.account.findFirst({ where: { code: "5011" } });
   const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
 
   await db.$transaction(async (tx) => {
+    // Claim the request first so a double click can't take stock out (and
+    // post to Kas) twice.
+    const claimed = await tx.inventoryRequest.updateMany({ where: { id, status: "berjalan" }, data: { status: "selesai", completedAt: new Date() } });
+    if (claimed.count === 0) throw new Error("Pengambilan ini sudah diproses sebelumnya — muat ulang halaman.");
     if (item.trackStock) {
       await tx.inventoryItem.update({ where: { id: item.id }, data: { qty: { decrement: request.qty } } });
     }
@@ -208,10 +214,7 @@ export async function completeInventoryRequest(id: string) {
       transactionId = transaction.id;
     }
 
-    await tx.inventoryRequest.update({
-      where: { id },
-      data: { status: "selesai", completedAt: new Date(), transactionId },
-    });
+    await tx.inventoryRequest.update({ where: { id }, data: { transactionId } });
   });
 
   await db.auditLog.create({
@@ -236,10 +239,13 @@ export async function cancelInventoryRequest(id: string) {
   if (request.status === "dibatalkan") throw new Error("Pengambilan ini sudah dibatalkan sebelumnya.");
 
   const wasCompleted = request.status === "selesai";
+  if (wasCompleted && request.transactionId) await assertPeriodOpen();
   const account = await db.account.findFirst({ where: { code: "5011" } });
   const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
 
   await db.$transaction(async (tx) => {
+    const claimed = await tx.inventoryRequest.updateMany({ where: { id, status: request.status }, data: { status: "dibatalkan", cancelledAt: new Date() } });
+    if (claimed.count === 0) throw new Error("Pengambilan ini sudah diproses sebelumnya — muat ulang halaman.");
     if (wasCompleted && request.item.trackStock) {
       await tx.inventoryItem.update({ where: { id: request.itemId }, data: { qty: { increment: request.qty } } });
     }
@@ -259,7 +265,6 @@ export async function cancelInventoryRequest(id: string) {
       });
     }
 
-    await tx.inventoryRequest.update({ where: { id }, data: { status: "dibatalkan", cancelledAt: new Date() } });
   });
 
   await db.auditLog.create({
