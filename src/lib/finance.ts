@@ -31,17 +31,18 @@ export function invoiceBjDiscountValue(items: { qty: number; price: number }[], 
   return Math.round(invoiceBjSubtotal(items) * (discountPercent / 100));
 }
 
-export function invoiceBjTotal(items: { qty: number; price: number }[], discountPercent: number, withPpn: boolean): number {
+export function invoiceBjTotal(items: { qty: number; price: number }[], discountPercent: number, withPpn: boolean, ppnPercent = 11): number {
   const afterDiscount = invoiceBjSubtotal(items) - invoiceBjDiscountValue(items, discountPercent);
-  return withPpn ? Math.round(afterDiscount * 1.11) : afterDiscount;
+  return afterDiscount + invoiceBjPpn(items, discountPercent, withPpn, ppnPercent);
 }
 
-// The PPN 11% part of an invoice B&J total. It's collected on the state's
+// The PPN part of an invoice B&J total (11% unless the MBP it came from used another rate). It's collected on the state's
 // behalf (owed onward as Utang PPN), so it isn't the company's revenue —
 // payments book total − PPN to Pendapatan and the PPN to a Kewajiban account.
-export function invoiceBjPpn(items: { qty: number; price: number }[], discountPercent: number, withPpn: boolean): number {
+export function invoiceBjPpn(items: { qty: number; price: number }[], discountPercent: number, withPpn: boolean, ppnPercent = 11): number {
+  if (!withPpn) return 0;
   const afterDiscount = invoiceBjSubtotal(items) - invoiceBjDiscountValue(items, discountPercent);
-  return invoiceBjTotal(items, discountPercent, withPpn) - afterDiscount;
+  return Math.round(afterDiscount * (ppnPercent / 100));
 }
 
 // ── MBP (Material Budget Plan / penawaran) totals ───────────────────────
@@ -84,7 +85,7 @@ export function computeAgingRows(invoicesBj: InvoiceBjAging[], invoices: Invoice
       source: "Barang & Jasa",
       dueDate: inv.dueDate,
       docHandoverDate: inv.docHandoverDate,
-      amount: invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn),
+      amount: invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn, inv.ppnPercent),
       bucket: agingBucket(inv.dueDate, now),
     });
   }
@@ -157,20 +158,26 @@ export function terbilang(amount: number): string {
 export function laporanLabaRugi(accounts: Account[], transactions: Transaction[], period: string) {
   const inPeriod = transactions.filter((t) => monthKey(t.date) === period && !t.isTransfer);
 
+  // Net per account: a reversal posts the opposite direction on the same
+  // account (Batalkan invoice = keluar on 4001, pembatalan pengambilan
+  // gudang = masuk on 5011), so it has to be subtracted, not ignored —
+  // otherwise a cancelled invoice still showed as revenue.
+  const net = (accountId: string, positive: "masuk" | "keluar") => inPeriod
+    .filter((t) => t.accountCoaId === accountId)
+    .reduce((s, t) => s + (t.type === positive ? t.amount : -t.amount), 0);
+
   // Only pendapatan/beban accounts belong on an income statement —
   // aset/kewajiban/modal accounts are balance-sheet categories and are
   // correctly left out here rather than falling into either bucket.
   const pendapatanRows = accounts
     .filter((a) => a.type === "pendapatan")
     .map((a) => {
-      const amt = inPeriod.filter((t) => t.accountCoaId === a.id && t.type === "masuk").reduce((s, t) => s + t.amount, 0);
-      return { account: a, amt };
+      return { account: a, amt: net(a.id, "masuk") };
     });
   const bebanRows = accounts
     .filter((a) => a.type === "beban")
     .map((a) => {
-      const amt = inPeriod.filter((t) => t.accountCoaId === a.id && t.type === "keluar").reduce((s, t) => s + t.amount, 0);
-      return { account: a, amt };
+      return { account: a, amt: net(a.id, "keluar") };
     });
 
   const totalPendapatan = pendapatanRows.reduce((s, r) => s + r.amt, 0);

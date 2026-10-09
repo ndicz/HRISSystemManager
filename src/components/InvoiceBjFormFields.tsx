@@ -9,6 +9,7 @@ let nextRowId = 1;
 export type InvoiceBjFormDefaults = {
   clientId?: string;
   withPpn?: boolean;
+  ppnPercent?: number;
   jobTitle?: string;
   discountDesc?: string;
   discountPercent?: number;
@@ -47,7 +48,7 @@ export function InvoiceBjFormFields({
       </div>
       <label className="field" style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row" }}>
         <input type="checkbox" name="withPpn" defaultChecked={defaults?.withPpn ?? true} style={{ width: "auto" }} />
-        <span>Kena PPN 11%</span>
+        <span>Kena PPN {defaults?.ppnPercent ?? 11}%</span>
       </label>
       <div className="field">
         <label htmlFor="jobTitle">Nama pekerjaan (opsional)</label>

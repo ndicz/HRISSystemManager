@@ -14,7 +14,7 @@ export default async function InvoiceBjPrintPage({ params }: { params: Promise<{
   const subtotal = invoiceBjSubtotal(inv.items);
   const discountValue = invoiceBjDiscountValue(inv.items, inv.discountPercent);
   const afterDiscount = subtotal - discountValue;
-  const ppn = inv.withPpn ? Math.round(afterDiscount * 0.11) : 0;
+  const ppn = inv.withPpn ? Math.round(afterDiscount * (inv.ppnPercent / 100)) : 0;
   const total = afterDiscount + ppn;
 
   return (
@@ -69,7 +69,7 @@ export default async function InvoiceBjPrintPage({ params }: { params: Promise<{
           )}
           {inv.withPpn && (
             <tr>
-              <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif", borderBottom: "none" }}>PPN 11%</td>
+              <td colSpan={3} style={{ textAlign: "right", fontFamily: "system-ui, sans-serif", borderBottom: "none" }}>PPN {inv.ppnPercent}%</td>
               <td>{formatRp(ppn)}</td>
             </tr>
           )}
