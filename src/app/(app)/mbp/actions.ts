@@ -314,6 +314,7 @@ export async function convertMbpToInvoice(id: string) {
           date: new Date(),
           dueDate,
           withPpn: mbp.withPpn,
+          ppnPercent: mbp.ppnPercent,
           jobTitle: mbp.jobTitle,
           signerName: mbp.signerName,
           items: { create: mbp.items.map((i) => ({ desc: i.desc, qty: i.qty, price: i.price })) },

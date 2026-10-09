@@ -428,6 +428,7 @@ model InvoiceBj {
   dueDate         DateTime
   docHandoverDate DateTime? // tanggal dokumen invoice fisik diserahkan ke klien
   withPpn         Boolean         @default(true)
+  ppnPercent      Int       @default(11) // carried over from the MBP it was made from (PPN rate can differ)
   jobTitle        String? // judul pekerjaan/proyek yang ditagihkan
   discountDesc    String? // keterangan diskon, mis. "Diskon pelanggan lama"
   discountPercent Int             @default(0) // 0-100, persen dari subtotal

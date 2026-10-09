@@ -408,7 +408,8 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
         <div className="card">
           <div style={{ display: "grid", gap: 16 }}>
             {accounts.filter((a) => a.type === "beban").map((a) => {
-              const realisasi = periodTx.filter((t) => t.accountCoaId === a.id && t.type === "keluar").reduce((s, t) => s + t.amount, 0);
+              // Net of reversals (e.g. a cancelled gudang pengambilan), same as Laba Rugi.
+              const realisasi = periodTx.filter((t) => t.accountCoaId === a.id && !t.isTransfer).reduce((s, t) => s + (t.type === "keluar" ? t.amount : -t.amount), 0);
               const budget = a.budget ?? 0;
               const pct = budget > 0 ? Math.round((realisasi / budget) * 100) : 0;
               return (

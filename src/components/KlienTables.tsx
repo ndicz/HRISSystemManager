@@ -143,7 +143,7 @@ export function KlienTables({
                   <td>{inv.client.name}</td>
                   <td className="text-muted">{inv.jobTitle || "-"}</td>
                   <td className="text-muted">{inv.date.toLocaleDateString("id-ID")}</td>
-                  <td style={{ fontWeight: 600 }}>{formatRp(invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn))}</td>
+                  <td style={{ fontWeight: 600 }}>{formatRp(invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn, inv.ppnPercent))}</td>
                   <td><span className={statusTag(inv.status)}>{statusLabel(inv.status)}</span></td>
                   <td>
                     {(inv.status === "draft" || inv.status === "terkirim") && (

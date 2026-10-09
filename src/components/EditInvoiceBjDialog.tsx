@@ -43,6 +43,7 @@ export function EditInvoiceBjDialog({ invoice, clients, siteNames }: { invoice: 
                 defaults={{
                   clientId: invoice.clientId,
                   withPpn: invoice.withPpn,
+                  ppnPercent: invoice.ppnPercent,
                   jobTitle: invoice.jobTitle ?? "",
                   discountDesc: invoice.discountDesc ?? "",
                   discountPercent: invoice.discountPercent,

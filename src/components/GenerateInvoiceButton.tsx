@@ -32,7 +32,9 @@ export function GenerateInvoiceButton() {
           startTransition(async () => {
             try {
               const res = await generateInvoices(period);
-              setMsg(res.created > 0 ? `${res.created} tagihan dibuat` : "Tagihan sudah ada / diperbarui");
+              const parts = [res.created > 0 ? `${res.created} tagihan dibuat` : "Tagihan draft diperbarui"];
+              if (res.locked > 0) parts.push(`${res.locked} tagihan sudah terkirim/lunas tidak diubah`);
+              setMsg(parts.join(" · "));
             } catch (err) {
               setMsg(formatActionError(err));
             }

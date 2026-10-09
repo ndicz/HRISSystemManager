@@ -250,8 +250,8 @@ export async function advanceInvoiceBjStatus(id: string, fromStatus: string) {
   if (!next) throw new UserError(STATUS_CHANGED_MESSAGE);
   if (next === "lunas") await assertPeriodOpen();
 
-  const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn);
-  const ppn = invoiceBjPpn(inv.items, inv.discountPercent, inv.withPpn);
+  const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn, inv.ppnPercent);
+  const ppn = invoiceBjPpn(inv.items, inv.discountPercent, inv.withPpn, inv.ppnPercent);
   const [account, cashAccount, ppnAcc] = next === "lunas"
     ? await Promise.all([db.account.findUnique({ where: { code: "4001" } }), db.cashAccount.findFirst({ where: { kind: "besar" } }), ppn > 0 ? ppnAccount() : null])
     : [null, null, null];
@@ -322,7 +322,7 @@ export async function cancelInvoiceBj(id: string) {
   if (inv.status !== "lunas") throw new UserError("Invoice ini belum lunas — hapus langsung saja, tidak perlu dibatalkan.");
   await assertPeriodOpen();
 
-  const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn);
+  const total = invoiceBjTotal(inv.items, inv.discountPercent, inv.withPpn, inv.ppnPercent);
   const account = await db.account.findUnique({ where: { code: "4001" } });
   const cashAccount = await db.cashAccount.findFirst({ where: { kind: "besar" } });
   // Reverse exactly what the payment posted: invoices paid before PPN was
@@ -372,6 +372,7 @@ export async function generateInvoices(period: string) {
 
   let seq = await lastOutsourcingInvoiceSeq();
   let created = 0;
+  let locked = 0;
 
   for (const client of clients) {
     if (client.employees.length === 0) continue;
@@ -384,7 +385,11 @@ export async function generateInvoices(period: string) {
 
     const existing = await db.invoice.findUnique({ where: { clientId_period: { clientId: client.id, period } } });
     if (existing) {
-      await db.invoice.update({ where: { id: existing.id }, data: { gajiTotal, feeTotal, total } });
+      // Only a draft is recalculated. Once sent, the client has the figure;
+      // once lunas/dibatalkan, Kas already holds it — rewriting the total
+      // then made the invoice disagree with what was billed and paid.
+      if (existing.status === "draft") await db.invoice.update({ where: { id: existing.id }, data: { gajiTotal, feeTotal, total } });
+      else locked += 1;
       continue;
     }
 
@@ -405,7 +410,7 @@ export async function generateInvoices(period: string) {
   });
 
   revalidatePath("/klien");
-  return { created };
+  return { created, locked };
 }
 
 export async function advanceInvoiceStatus(id: string, fromStatus: string) {
