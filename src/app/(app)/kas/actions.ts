@@ -127,6 +127,10 @@ export async function addAccount(formData: FormData) {
   // transactions across both.
   const nameConflict = await db.account.findFirst({ where: { name } });
   if (nameConflict) throw new UserError(`Sudah ada akun bernama "${name}" (kode ${nameConflict.code}).`);
+  // code is unique; checked here so a typed-in duplicate gets a readable
+  // message instead of the database's generic error.
+  const codeConflict = await db.account.findUnique({ where: { code } });
+  if (codeConflict) throw new UserError(`Kode ${code} sudah dipakai akun "${codeConflict.name}" — pakai kode lain.`);
 
   await db.account.create({ data: { code, name, type } });
   revalidatePath("/kas");
