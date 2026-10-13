@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { addEmployee } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 type Option = { id: string; name: string };
 
@@ -89,7 +90,7 @@ export function AddEmployeeDialog({
               </div>
               <div className="field">
                 <label htmlFor="hireDate">Tanggal masuk</label>
-                <input className="input" id="hireDate" name="hireDate" type="date" defaultValue={todayInputValue()} required />
+                <DateInput id="hireDate" name="hireDate" defaultValue={todayInputValue()} required />
                 <p style={{ fontSize: 11, opacity: 0.55, marginTop: 4 }}>
                   Menentukan bulan/tahun pada ID karyawan (mis. WSP 00307 26 = urut 003, masuk Juli 2026).
                 </p>
@@ -122,7 +123,7 @@ export function AddEmployeeDialog({
               {contractType === "PKWT" && (
                 <div className="field">
                   <label htmlFor="contractEnd">Kontrak berakhir</label>
-                  <input className="input" id="contractEnd" name="contractEnd" type="date" />
+                  <DateInput id="contractEnd" name="contractEnd" />
                 </div>
               )}
               {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}

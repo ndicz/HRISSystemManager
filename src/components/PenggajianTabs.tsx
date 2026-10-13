@@ -14,6 +14,7 @@ import { PayrollDetailDialog } from "@/components/PayrollDetailDialog";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
 import { BASE_PATH } from "@/lib/basePath";
+import { InfoNote } from "@/components/InfoNote";
 
 type Emp = Employee & {
   site: Site;
@@ -206,7 +207,7 @@ export function PenggajianTabs({
                   ))}
                 </select>
               </div>
-              <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -219,17 +220,23 @@ export function PenggajianTabs({
                 <button type="button" className="btn btn-secondary" disabled={bankReadyRows.length === 0} onClick={downloadBankTransfer}>
                   Transfer bank
                 </button>
-                <PayrollRateDialog period={period} sites={sites} rates={rates} />
-                <LatenessBracketDialog sites={sites} positions={positions} employees={employees.map((e) => ({ id: e.id, name: e.name }))} brackets={latenessBrackets} />
-                <SetBonusDialog employees={employeeOptions} period={period} currentBonuses={payrollRows.map((r) => ({ employeeId: r.e.id, amount: r.entry?.allowance ?? 0 }))} />
                 <PayGajiButton
                   employeeIds={unpaidRows.map((r) => r.e.id)}
                   period={period}
                   totalAmount={unpaidTotal}
                   label={`Bayar Gaji (${unpaidRows.length} belum dibayar)`}
                   onPaid={() => setSelectedIds(new Set())}
+                  variant="primary"
                 />
               </div>
+            </div>
+            {/* Period set-up — used once per period, so kept quieter than the
+                pay/print actions above. */}
+            <div style={{ display: "flex", gap: "var(--space-1)", flexWrap: "wrap", alignItems: "center", marginBottom: "var(--space-3)" }}>
+              <span style={{ fontSize: 12, opacity: 0.6, marginRight: 4 }}>Pengaturan periode:</span>
+              <PayrollRateDialog period={period} sites={sites} rates={rates} />
+              <LatenessBracketDialog sites={sites} positions={positions} employees={employees.map((e) => ({ id: e.id, name: e.name }))} brackets={latenessBrackets} />
+              <SetBonusDialog employees={employeeOptions} period={period} currentBonuses={payrollRows.map((r) => ({ employeeId: r.e.id, amount: r.entry?.allowance ?? 0 }))} />
             </div>
 
             {selectedIds.size > 0 && (
@@ -262,6 +269,7 @@ export function PenggajianTabs({
                     totalAmount={selectedTotal}
                     label="Bayar Gaji Terpilih"
                     onPaid={() => setSelectedIds(new Set())}
+                    variant="primary"
                   />
                 </div>
               </div>
@@ -274,15 +282,15 @@ export function PenggajianTabs({
           </div>
 
           {bankMissingCount > 0 && (
-            <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-3)" }}>
-              {bankMissingCount} karyawan sudah dibayar tapi belum punya nomor rekening (isi lewat dialog &quot;Profil&quot; di halaman Karyawan) — dilewati dari file transfer bank.
-            </p>
+            <InfoNote>
+              {bankMissingCount} karyawan sudah dibayar tapi belum punya nomor rekening, jadi tidak ikut file transfer bank. Isi lewat &quot;Profil&quot; di halaman Karyawan.
+            </InfoNote>
           )}
 
           {!periodHasRate && (
-            <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0, marginBottom: "var(--space-3)" }}>
-              Belum ada tarif potongan/lembur untuk periode ini — potongan absensi dihitung proporsional dari gaji pokok seperti biasa. Klik &quot;Atur tarif&quot; untuk beralih ke potongan Izin/Alfa/Terlambat bernominal tetap.
-            </p>
+            <InfoNote dismissKey="payroll-proportional">
+              Potongan absensi periode ini dihitung proporsional dari gaji pokok. Untuk potongan nominal tetap per Izin/Alfa/Terlambat, isi &quot;Atur tarif potongan &amp; lembur&quot;.
+            </InfoNote>
           )}
 
           <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
@@ -313,9 +321,8 @@ export function PenggajianTabs({
                         title="Pilih semua"
                       />
                     </th>
-                    <SortableTh label="ID" sortKey="empCode" activeKey={gajiSortKey} dir={gajiSortDir} onSort={toggleGajiSort} />
                     <SortableTh label="Nama" sortKey="name" activeKey={gajiSortKey} dir={gajiSortDir} onSort={toggleGajiSort} />
-                    <th>Pokok</th><th>Lembur</th><th>Potongan</th><th>Penugasan</th><th>Total</th><th>Status</th><th></th><th></th>
+                    <th>Pokok</th><th>Lembur</th><th>Potongan</th><th>Penugasan</th><th>Total</th><th className="col-actions">Status</th>
                   </tr>
                 </thead>
                 {sitesInRows.map(({ siteName, rows }) => {
@@ -355,30 +362,29 @@ export function PenggajianTabs({
                             title={`Pilih semua di ${siteName}`}
                           />
                         </td>
-                        <td colSpan={9} style={{ fontWeight: 600, background: "color-mix(in srgb, var(--color-text) 4%, transparent)" }}>
+                        <td colSpan={7} style={{ fontWeight: 600, background: "color-mix(in srgb, var(--color-text) 4%, transparent)" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
                             {siteName}
                             <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                              <PayGajiButton
-                                employeeIds={siteUnpaidIds}
-                                period={period}
-                                totalAmount={siteUnpaidTotal}
-                                label={`Bayar gaji ${siteName} (${siteUnpaidIds.length} belum dibayar)`}
-                              />
-                              {sitePaidIds.length > 0 ? (
+                              {siteUnpaidIds.length > 0 && (
+                                <PayGajiButton
+                                  employeeIds={siteUnpaidIds}
+                                  period={period}
+                                  totalAmount={siteUnpaidTotal}
+                                  label={`Bayar ${siteUnpaidIds.length} orang`}
+                                  variant="small"
+                                />
+                              )}
+                              {sitePaidIds.length > 0 && (
                                 <a
                                   href={`${BASE_PATH}/print/slip-batch?ids=${sitePaidIds.join(",")}&period=${period}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="btn btn-ghost"
-                                  style={{ fontWeight: 400 }}
+                                  className="btn btn-ghost btn-sm"
+                                  title={`Cetak slip ${siteName}`}
                                 >
-                                  Cetak slip {siteName} ({sitePaidIds.length})
+                                  Cetak slip ({sitePaidIds.length})
                                 </a>
-                              ) : (
-                                <button type="button" className="btn btn-ghost" style={{ fontWeight: 400 }} disabled title="Belum ada yang dibayar untuk periode ini">
-                                  Cetak slip {siteName}
-                                </button>
                               )}
                             </div>
                           </div>
@@ -395,16 +401,18 @@ export function PenggajianTabs({
                               onChange={() => toggleSelect(e.id)}
                             />
                           </td>
-                          <td className="text-muted">{e.empCode}</td><td>{e.name}</td>
+                          <td>
+                            <div>{e.name}</div>
+                            <div className="text-muted" style={{ fontSize: 11 }}>{e.empCode}</div>
+                          </td>
                           <td>{formatRp(p.gajiPokok)}</td>
                           <td>{formatRp(p.lembur)}</td>
                           <td>-{formatRp(p.potongan)}</td>
                           <td>{formatRp(p.penugasanTambahan)}</td>
                           <td style={{ fontWeight: 600 }}>{formatRp(p.total)}</td>
-                          <td>
-                            {entry?.paid ? <span className="tag tag-accent">✓ Dibayar</span> : <span className="tag tag-outline">Belum dibayar</span>}
-                          </td>
-                          <td>
+                          <td className="col-actions">
+                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            {entry?.paid ? <span className="tag tag-accent">✓ Dibayar</span> : <span className="tag tag-outline">Belum</span>}
                             <PayrollDetailDialog
                               employeeId={e.id}
                               employeeName={e.name}
@@ -415,38 +423,35 @@ export function PenggajianTabs({
                               bpjsKesehatanOverride={e.bpjsKesehatanOverride}
                               bpjsKetenagakerjaanOverride={e.bpjsKetenagakerjaanOverride}
                             />
-                          </td>
-                          <td>
-                            {entry?.paid ? (
-                              <a href={`${BASE_PATH}/print/slip/${e.id}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Cetak slip</a>
-                            ) : (
-                              <button type="button" className="btn btn-ghost" disabled title="Bayar gaji dulu sebelum cetak slip">Cetak slip</button>
+                            {entry?.paid && (
+                              <a href={`${BASE_PATH}/print/slip/${e.id}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Slip</a>
                             )}
+                            </div>
                           </td>
                         </tr>
                         );
                       })}
                       <tr>
-                        <td colSpan={3} style={{ fontWeight: 600 }}>Subtotal {siteName}</td>
+                        <td colSpan={2} style={{ fontWeight: 600 }}>Subtotal {siteName}</td>
                         <td style={{ fontWeight: 600 }}>{formatRp(siteTotals.gajiPokok)}</td>
                         <td style={{ fontWeight: 600 }}>{formatRp(siteTotals.lembur)}</td>
                         <td style={{ fontWeight: 600 }}>-{formatRp(siteTotals.potongan)}</td>
                         <td style={{ fontWeight: 600 }}>{formatRp(siteTotals.penugasanTambahan)}</td>
                         <td style={{ fontWeight: 600 }}>{formatRp(siteTotals.total)}</td>
-                        <td></td><td></td><td></td>
+                        <td className="col-actions"></td>
                       </tr>
                     </tbody>
                   );
                 })}
                 <tbody>
                   <tr>
-                    <td colSpan={3} style={{ fontWeight: 700 }}>Grand Total (Semua Tempat Kerja)</td>
+                    <td colSpan={2} style={{ fontWeight: 700 }}>Grand Total (Semua Tempat Kerja)</td>
                     <td style={{ fontWeight: 700 }}>{formatRp(totals.gajiPokok)}</td>
                     <td style={{ fontWeight: 700 }}>{formatRp(totals.lembur)}</td>
                     <td style={{ fontWeight: 700 }}>-{formatRp(totals.potongan)}</td>
                     <td style={{ fontWeight: 700 }}>{formatRp(totals.penugasanTambahan)}</td>
                     <td style={{ fontWeight: 700, background: "color-mix(in srgb, var(--color-accent) 12%, transparent)" }}>{formatRp(totals.total)}</td>
-                    <td></td><td></td><td></td>
+                    <td className="col-actions"></td>
                   </tr>
                 </tbody>
               </table>

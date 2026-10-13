@@ -9,6 +9,7 @@ import {
 import { monthKey, monthKeyOptions } from "@/lib/finance";
 import { downloadXlsx } from "@/lib/xlsx-writer";
 import { formatActionError } from "@/lib/errors";
+import { DateInput } from "@/components/DateInput";
 
 // "Izin", "Sakit", and "Cuti" are all treated as paid/no-deduction days by
 // payroll (see isLeaveStatus in lib/payroll) — kept as separate options
@@ -223,13 +224,14 @@ export function AttendanceRecapPanel({
       <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-end", marginBottom: "var(--space-3)", flexWrap: "wrap" }}>
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="rec-date">Tanggal</label>
-          <input
-            className="input" id="rec-date" type="date" value={newDate}
+          <DateInput
+            id="rec-date" value={newDate}
             min={bounds.min} max={bounds.max}
-            onChange={(e) => {
-              const v = e.target.value;
+            onChange={(v) => {
+              if (!v) return;
               setNewDate(v < bounds.min ? bounds.min : v > bounds.max ? bounds.max : v);
             }}
+            style={{ width: 160 }}
           />
         </div>
         <div className="field" style={{ marginBottom: 0 }}>

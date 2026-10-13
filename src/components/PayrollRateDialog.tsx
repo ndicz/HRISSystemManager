@@ -41,7 +41,7 @@ export function PayrollRateDialog({ period, sites, rates }: { period: string; si
 
   return (
     <>
-      <button type="button" className="btn btn-secondary" onClick={() => setOpen(true)}>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(true)}>
         Atur tarif potongan &amp; lembur
       </button>
       {open && (

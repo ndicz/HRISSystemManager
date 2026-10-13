@@ -7,6 +7,7 @@ import { formatRp, kasbonPerBulan } from "@/lib/payroll";
 import { formatActionError } from "@/lib/errors";
 import { RupiahInput } from "@/components/RupiahInput";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 type Emp = {
   id: string;
@@ -105,7 +106,7 @@ export function EditEmployeeDialog({ employee, sites, positions }: { employee: E
               {contractType === "PKWT" && (
                 <div className="field">
                   <label htmlFor="contractEnd">Kontrak berakhir</label>
-                  <input className="input" id="contractEnd" name="contractEnd" type="date" defaultValue={toDateInputValue(employee.contractEnd)} />
+                  <DateInput id="contractEnd" name="contractEnd" defaultValue={toDateInputValue(employee.contractEnd)} />
                 </div>
               )}
               <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>

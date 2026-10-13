@@ -6,6 +6,7 @@ import { formatRp } from "@/lib/payroll";
 import { EmployeeCombobox, type EmployeeOption } from "@/components/EmployeeCombobox";
 import { formatActionError } from "@/lib/errors";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 type ItemOption = { id: string; name: string; unit: string; qty: number; price: number; trackStock: boolean };
 
@@ -107,7 +108,7 @@ export function RequestItemDialog({ items, employees, siteNames }: { items: Item
               )}
               <div className="field" style={{ marginBottom: 0 }}>
                 <label htmlFor="req-targetDate">Tanggal target selesai (opsional)</label>
-                <input className="input" id="req-targetDate" name="targetDate" type="date" />
+                <DateInput id="req-targetDate" name="targetDate" />
               </div>
 
               <div className="field" style={{ marginBottom: 0 }}>

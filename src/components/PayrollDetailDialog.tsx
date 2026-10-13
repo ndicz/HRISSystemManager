@@ -223,7 +223,7 @@ export function PayrollDetailDialog({
               {entry?.paid ? (
                 <span className="tag tag-accent" style={{ marginRight: "auto" }}>✓ Sudah dibayar</span>
               ) : (
-                <PayGajiButton employeeIds={[employeeId]} period={period} totalAmount={p.total} label="Bayar gaji" />
+                <PayGajiButton employeeIds={[employeeId]} period={period} totalAmount={p.total} label="Bayar gaji" variant="primary" />
               )}
               {entry?.paid ? (
                 <a href={`${BASE_PATH}/print/slip/${employeeId}?period=${period}`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">

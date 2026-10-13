@@ -566,6 +566,7 @@ export async function completeAssignment(id: string) {
           date: new Date(),
           accountCoaId: account.id,
           cashAccountId: cashAccount.id,
+          source: "penugasan",
           desc: "Biaya Penugasan Tambahan — " + assignment.title + " (" + assignment.employee.name + ")",
           amount: assignment.cost,
           type: "keluar",

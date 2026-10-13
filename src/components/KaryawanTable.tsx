@@ -93,27 +93,25 @@ export function KaryawanTable({ employees, sites, positions }: { employees: Emp[
         <table className="table">
           <thead>
             <tr>
-              <SortableTh label="ID" sortKey="empCode" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <SortableTh label="Nama" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-              <th>Tempat kerja</th>
-              <th>Posisi</th>
+              <th>Penempatan</th>
               <th>Kontrak</th>
               <th>Gaji Pokok</th>
-              <th>BPJS Kes</th>
-              <th>BPJS TK</th>
-              <th></th>
-              <th></th>
-              <th></th>
-              <th></th>
+              <th>BPJS</th>
+              <th className="col-actions"></th>
             </tr>
           </thead>
           <tbody>
             {paged.map((e) => (
               <tr key={e.id}>
-                <td className="text-muted">{e.empCode}</td>
-                <td>{e.name}</td>
-                <td>{e.site.name}</td>
-                <td>{e.position.name}</td>
+                <td>
+                  <div>{e.name}</div>
+                  <div className="text-muted" style={{ fontSize: 11 }}>{e.empCode}</div>
+                </td>
+                <td>
+                  <div>{e.site.name}</div>
+                  <div className="text-muted" style={{ fontSize: 11 }}>{e.position.name}</div>
+                </td>
                 <td>
                   <span className={e.contractType === "PKWTT" ? "tag tag-neutral" : "tag tag-outline"}>
                     {e.contractType}
@@ -121,12 +119,22 @@ export function KaryawanTable({ employees, sites, positions }: { employees: Emp[
                   </span>
                 </td>
                 <td>{formatRp(baseSalary(e.salaryComponents))}</td>
-                <td className="text-muted">{e.bpjsKesehatanOverride ? formatRp(e.bpjsKesehatanOverride) : "Otomatis"}</td>
-                <td className="text-muted">{e.bpjsKetenagakerjaanOverride ? formatRp(e.bpjsKetenagakerjaanOverride) : "Otomatis"}</td>
-                <td><EditEmployeeDialog employee={e} sites={sites} positions={positions} /></td>
-                <td><SalaryComponentsDialog employeeId={e.id} employeeName={e.name} /></td>
-                <td><EmployeeProfileDialog employee={e} /></td>
-                <td><ResignDialog employeeId={e.id} employeeName={e.name} /></td>
+                <td className="text-muted" style={{ fontSize: 12 }}>
+                  {e.bpjsKesehatanOverride || e.bpjsKetenagakerjaanOverride ? (
+                    <>
+                      <div>Kes {e.bpjsKesehatanOverride ? formatRp(e.bpjsKesehatanOverride) : "otomatis"}</div>
+                      <div>TK {e.bpjsKetenagakerjaanOverride ? formatRp(e.bpjsKetenagakerjaanOverride) : "otomatis"}</div>
+                    </>
+                  ) : "Otomatis"}
+                </td>
+                <td className="col-actions">
+                  <div style={{ display: "flex", gap: 2, whiteSpace: "nowrap" }}>
+                    <EditEmployeeDialog employee={e} sites={sites} positions={positions} />
+                    <SalaryComponentsDialog employeeId={e.id} employeeName={e.name} />
+                    <EmployeeProfileDialog employee={e} />
+                    <ResignDialog employeeId={e.id} employeeName={e.name} />
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
