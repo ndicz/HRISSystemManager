@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { assertPeriodOpen } from "@/lib/periodLock";
+import { TRANSACTION_SOURCE_LABEL as SOURCE_LABEL } from "@/lib/finance";
 
 
 export async function closePeriod(period: string) {
@@ -80,6 +81,9 @@ export async function updateTransaction(id: string, formData: FormData) {
 
   const existing = await db.transaction.findUnique({ where: { id } });
   if (!existing) throw new UserError("Transaksi tidak ditemukan.");
+  if (existing.source) {
+    throw new UserError(`Transaksi ini dicatat otomatis dari ${SOURCE_LABEL[existing.source] ?? existing.source} — koreksi lewat modul asalnya supaya Kas tetap cocok.`);
+  }
 
   const dateRaw = String(formData.get("date") ?? "");
   const date = dateRaw ? new Date(dateRaw) : existing.date;
@@ -294,6 +298,7 @@ export async function payPayable(id: string) {
           date: new Date(),
           accountCoaId: account.id,
           cashAccountId: cashAccount.id,
+          source: "hutang",
           desc: "Bayar hutang — " + payable.vendorName + " (" + payable.desc + ")",
           amount: payable.amount,
           type: "keluar",
@@ -335,10 +340,10 @@ export async function addTransfer(formData: FormData) {
 
   await db.$transaction([
     db.transaction.create({
-      data: { date: new Date(), accountCoaId: transferAccount.id, cashAccountId: fromId, desc: "Transfer ke " + to.name, amount, type: "keluar", isTransfer: true },
+      data: { date: new Date(), accountCoaId: transferAccount.id, cashAccountId: fromId, source: "transfer", desc: "Transfer ke " + to.name, amount, type: "keluar", isTransfer: true },
     }),
     db.transaction.create({
-      data: { date: new Date(), accountCoaId: transferAccount.id, cashAccountId: toId, desc: "Transfer dari " + from.name, amount, type: "masuk", isTransfer: true },
+      data: { date: new Date(), accountCoaId: transferAccount.id, cashAccountId: toId, source: "transfer", desc: "Transfer dari " + from.name, amount, type: "masuk", isTransfer: true },
     }),
   ]);
 

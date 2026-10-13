@@ -8,6 +8,7 @@ import { formatActionError } from "@/lib/errors";
 import { formatRp } from "@/lib/payroll";
 import { RupiahInput } from "@/components/RupiahInput";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 function todayInputValue() {
   const d = new Date();
@@ -130,7 +131,7 @@ export function PayrollEntryPanel({
             <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-end", flexWrap: "wrap" }}>
               <div className="field" style={{ marginBottom: 0 }}>
                 <label htmlFor="new-overtime-date">Tanggal</label>
-                <input className="input" id="new-overtime-date" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+                <DateInput id="new-overtime-date" value={newDate} onChange={setNewDate} />
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
                 <label htmlFor="new-overtime-type">Jenis</label>

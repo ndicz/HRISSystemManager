@@ -11,7 +11,10 @@ export function PayGajiButton({
   label,
   totalAmount,
   onPaid,
+  variant = "ghost",
 }: {
+  // "primary" for the page's main pay action, "small" inside table rows.
+  variant?: "primary" | "ghost" | "small";
   employeeIds: string[];
   period: string;
   label: string;
@@ -52,7 +55,13 @@ export function PayGajiButton({
 
   return (
     <>
-      <button type="button" className="btn btn-ghost" onClick={() => setOpen(true)} disabled={employeeIds.length === 0}>
+      <button
+        type="button"
+        className={variant === "primary" ? "btn btn-primary" : variant === "small" ? "btn btn-secondary btn-sm" : "btn btn-ghost"}
+        onClick={() => setOpen(true)}
+        disabled={employeeIds.length === 0}
+        title={employeeIds.length === 0 ? "Semua karyawan di daftar ini sudah dibayar" : undefined}
+      >
         {label}
       </button>
       {open && (

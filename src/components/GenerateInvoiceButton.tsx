@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { generateInvoices } from "@/app/(app)/klien/actions";
 import { formatActionError } from "@/lib/errors";
+import { monthKeyOptions } from "@/lib/finance";
 
 function currentPeriod() {
   const d = new Date();
@@ -17,13 +18,9 @@ export function GenerateInvoiceButton() {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
       {msg && <span className="text-muted" style={{ fontSize: 12 }}>{msg}</span>}
-      <input
-        type="month"
-        className="input"
-        value={period}
-        onChange={(e) => setPeriod(e.target.value)}
-        style={{ width: 150 }}
-      />
+      <select className="input" value={period} onChange={(e) => setPeriod(e.target.value)} style={{ width: 170 }} aria-label="Periode tagihan">
+        {monthKeyOptions(12, 1).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
       <button
         type="button"
         className="btn btn-primary"

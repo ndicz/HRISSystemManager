@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateLeaveRequest, deleteLeaveRequest } from "@/app/(app)/cuti/actions";
 import { formatActionError } from "@/lib/errors";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 type LeaveRow = { id: string; employeeName: string; type: string; startDate: Date; endDate: Date; reason: string };
 
@@ -61,11 +62,11 @@ export function EditLeaveRequestDialog({ request }: { request: LeaveRow }) {
               <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field">
                   <label htmlFor="edit-leave-start">Mulai</label>
-                  <input className="input" id="edit-leave-start" name="startDate" type="date" required defaultValue={toDateInputValue(request.startDate)} />
+                  <DateInput id="edit-leave-start" name="startDate" required defaultValue={toDateInputValue(request.startDate)} />
                 </div>
                 <div className="field">
                   <label htmlFor="edit-leave-end">Selesai</label>
-                  <input className="input" id="edit-leave-end" name="endDate" type="date" required defaultValue={toDateInputValue(request.endDate)} />
+                  <DateInput id="edit-leave-end" name="endDate" required defaultValue={toDateInputValue(request.endDate)} />
                 </div>
               </div>
               <div className="field">

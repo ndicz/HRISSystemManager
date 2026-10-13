@@ -5,6 +5,7 @@ import { addPayable } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatActionError } from "@/lib/errors";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 export function AddPayableDialog() {
   const [open, setOpen] = useState(false);
@@ -51,7 +52,7 @@ export function AddPayableDialog() {
                 </div>
                 <div className="field">
                   <label htmlFor="dueDate">Jatuh tempo</label>
-                  <input className="input" id="dueDate" name="dueDate" type="date" required />
+                  <DateInput id="dueDate" name="dueDate" required />
                 </div>
               </div>
               {error && <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{error}</p>}

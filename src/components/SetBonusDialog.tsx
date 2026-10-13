@@ -75,7 +75,7 @@ export function SetBonusDialog({
 
   return (
     <>
-      <button type="button" className="btn btn-secondary" onClick={() => setOpen(true)}>Atur bonus</button>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(true)}>Atur bonus</button>
       {open && (
         <div className="dialog-backdrop" onClick={() => setOpen(false)}>
           <div className="dialog" style={{ maxWidth: 560, width: "92vw" }} onClick={(e) => e.stopPropagation()}>

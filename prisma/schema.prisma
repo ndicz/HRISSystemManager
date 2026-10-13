@@ -486,6 +486,11 @@ model Transaction {
   amount        Int
   type          String // "masuk" | "keluar"
   isTransfer    Boolean     @default(false)
+  // Which module posted this automatically ("gaji", "thr", "penugasan",
+  // "invoice", "gudang", "hutang", "transfer"); null = entered by hand in
+  // Kas. Automatic entries can't be edited from Kas — correcting the amount
+  // there would no longer match the slip/invoice/stock it came from.
+  source        String?
   attachmentUrl String?
   createdById   String?
   createdAt     DateTime    @default(now())

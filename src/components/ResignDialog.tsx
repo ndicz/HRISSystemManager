@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { resignEmployee } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 function todayIso() {
   const d = new Date();
@@ -46,7 +47,7 @@ export function ResignDialog({ employeeId, employeeName }: { employeeId: string;
               </p>
               <div className="field">
                 <label htmlFor="resignDate">Tanggal resign</label>
-                <input className="input" id="resignDate" name="resignDate" type="date" required defaultValue={todayIso()} />
+                <DateInput id="resignDate" name="resignDate" required defaultValue={todayIso()} />
               </div>
               <div className="field">
                 <label htmlFor="resignReason">Alasan</label>

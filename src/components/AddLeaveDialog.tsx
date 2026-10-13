@@ -5,6 +5,7 @@ import { addLeaveRequest } from "@/app/(app)/cuti/actions";
 import { EmployeeCombobox } from "@/components/EmployeeCombobox";
 import { formatActionError } from "@/lib/errors";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 type Option = { id: string; name: string; empCode: string; sisa: number };
 
@@ -61,11 +62,11 @@ export function AddLeaveDialog({ employees }: { employees: Option[] }) {
               <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field">
                   <label htmlFor="startDate">Mulai</label>
-                  <input className="input" id="startDate" name="startDate" type="date" required />
+                  <DateInput id="startDate" name="startDate" required />
                 </div>
                 <div className="field">
                   <label htmlFor="endDate">Selesai</label>
-                  <input className="input" id="endDate" name="endDate" type="date" required />
+                  <DateInput id="endDate" name="endDate" required />
                 </div>
               </div>
               <div className="field">

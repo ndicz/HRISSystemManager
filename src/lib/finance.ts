@@ -1,5 +1,16 @@
 import type { Account, Client, Invoice, InvoiceBj, InvoiceBjItem, Transaction } from "@prisma/client";
 
+// Modules that post to Kas on their own (Transaction.source).
+export const TRANSACTION_SOURCE_LABEL: Record<string, string> = {
+  gaji: "Penggajian",
+  thr: "THR",
+  penugasan: "Penugasan karyawan",
+  invoice: "Klien & Tagihan",
+  gudang: "Gudang",
+  hutang: "Hutang Usaha",
+  transfer: "Transfer antar rekening",
+};
+
 export function monthKey(d: Date): string {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
 }

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import type { Account, CashAccount, Payable, Transaction } from "@prisma/client";
 import { formatRp } from "@/lib/payroll";
-import { laporanLabaRugi, monthKey, monthKeyOptions, saldoKasSampai, saldoKasSebelum, AGING_BUCKET_ORDER, type AgingRow } from "@/lib/finance";
+import { laporanLabaRugi, TRANSACTION_SOURCE_LABEL, monthKey, monthKeyOptions, saldoKasSampai, saldoKasSebelum, AGING_BUCKET_ORDER, type AgingRow } from "@/lib/finance";
 import { accountTypeLabel, accountTypeTagClass } from "@/lib/coa";
 import { AddTransactionDialog } from "@/components/AddTransactionDialog";
 import { EditTransactionDialog } from "@/components/EditTransactionDialog";
@@ -175,22 +175,26 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
 
       {tab === "transaksi" && (
         <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
           <input
             type="text"
             className="input"
             placeholder="Cari akun, rekening, keterangan..."
             value={qTx}
             onChange={(e) => setQTx(e.target.value)}
-            style={{ width: "100%", maxWidth: 280, marginBottom: "var(--space-4)" }}
+            style={{ width: "100%", maxWidth: 280 }}
           />
+          {/* One entry point for both kas kecil and kas besar — the form
+              already asks which rekening, so two identical buttons only
+              made people wonder which one to use. */}
+          <AddTransactionDialog accounts={accounts} cashAccounts={cashAccounts} disabled={isTodayPeriodClosed} />
+          </div>
           {(["kecil", "besar"] as const).map((kind) => {
-            const kindAccounts = cashAccounts.filter((c) => c.kind === kind);
             const kindTx = filteredTx.filter((t) => t.cashAccount.kind === kind);
             return (
               <div key={kind} style={{ marginBottom: "var(--space-6)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)", flexWrap: "wrap", gap: "var(--space-2)" }}>
                   <div className="card-kicker">Transaksi Kas {kind === "kecil" ? "Kecil" : "Besar"}</div>
-                  <AddTransactionDialog accounts={accounts} cashAccounts={kindAccounts} disabled={isTodayPeriodClosed} />
                 </div>
                 <div className="card">
                   {kindTx.length === 0 ? (
@@ -212,7 +216,9 @@ export function KasTabs({ accounts, cashAccounts, transactions, payables, closed
                               ) : "-"}
                             </td>
                             <td>
-                              {!t.isTransfer && (
+                              {t.source || t.isTransfer ? (
+                                <span className="tag tag-neutral" title={`Dicatat otomatis dari ${TRANSACTION_SOURCE_LABEL[t.source ?? "transfer"] ?? "modul lain"} — koreksi lewat modul asalnya.`}>Otomatis</span>
+                              ) : (
                                 <EditTransactionDialog tx={t} accounts={accounts} cashAccounts={cashAccounts} disabled={closedList.includes(monthKey(t.date))} />
                               )}
                             </td>

@@ -95,6 +95,10 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 var(--space-2);
 }
 h1 { font-size: 42px; }
+/* In-app page titles: smaller than the display h1 so the data below starts
+   higher on the screen. */
+.app-content .page-header h1 { font-size: 30px; }
+.app-content .page-header p { font-size: 14px; }
 h2 { font-size: 32px; }
 h3 { font-size: 25px; }
 h4 { font-size: 20px; }
@@ -131,6 +135,26 @@ img { display: block; max-width: 100%; }
 .btn-ghost { color: var(--color-accent-700); padding-inline: var(--space-1); background: transparent; }
 .btn-ghost:hover { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
 .btn-icon { width: 36px; height: 36px; padding: 0; }
+.attention-item {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--space-2);
+  padding: 10px 12px; border-radius: var(--radius-md); font-size: 14px; color: var(--color-text); text-decoration: none;
+  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+.attention-item:hover { background: color-mix(in srgb, var(--color-accent) 13%, transparent); }
+.btn-sm { min-height: 28px; padding: 2px 10px; font-size: 12px; }
+
+/* Short explanatory note (what a mode means, why a button is disabled) —
+   kept visually quiet so it doesn't compete with the data around it. */
+.info-note {
+  display: flex; gap: 8px; align-items: flex-start;
+  font-size: 12px; line-height: 1.45; color: color-mix(in srgb, var(--color-text) 72%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-radius: var(--radius-md); padding: 8px 10px; margin: 0 0 var(--space-3);
+}
+.info-note-icon { flex-shrink: 0; font-weight: 700; color: var(--color-accent-700); }
+.info-note-close { margin-left: auto; flex-shrink: 0; background: none; border: none; cursor: pointer; color: inherit; font-size: 14px; line-height: 1; padding: 0 2px; }
 
 .field { min-width: 0; }
 .field > label { display: block; font-size: 12px; margin-bottom: 5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
@@ -224,6 +248,10 @@ img { display: block; max-width: 100%; }
   position: sticky; top: 0; z-index: 1; background: #fff;
 }
 .table td { padding: var(--space-2); border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); white-space: nowrap; }
+/* Status/action column pinned to the right edge of a wide table, so the
+   buttons stay in view while the rest of the row scrolls under it. */
+.table .col-actions { position: sticky; right: 0; background: #fff; box-shadow: -10px 0 10px -10px color-mix(in srgb, var(--color-text) 25%, transparent); }
+.table th.col-actions { z-index: 2; }
 .table tbody tr:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
 
 /* For a .table nested inside a dialog's own bounded, already-scrolling

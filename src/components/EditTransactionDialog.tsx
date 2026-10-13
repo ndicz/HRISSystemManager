@@ -5,6 +5,7 @@ import { updateTransaction } from "@/app/(app)/kas/actions";
 import { RupiahInput } from "@/components/RupiahInput";
 import { formatActionError } from "@/lib/errors";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 type Option = { id: string; name: string; type?: string };
 type Tx = { id: string; date: Date; accountCoaId: string; cashAccountId: string; desc: string; amount: number; type: string };
@@ -63,7 +64,7 @@ export function EditTransactionDialog({ tx, accounts, cashAccounts, disabled }: 
               </div>
               <div className="field">
                 <label htmlFor="edit-date">Tanggal</label>
-                <input className="input" id="edit-date" name="date" type="date" defaultValue={toDateInputValue(tx.date)} required />
+                <DateInput id="edit-date" name="date" defaultValue={toDateInputValue(tx.date)} required />
               </div>
               <div className="field">
                 <label htmlFor="edit-accountCoaId">Akun (COA)</label>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { Account, CashAccount, Employee, Position, SalaryComponent, Site, Transaction } from "@prisma/client";
 import { expiringContracts, formatRp, isLeaveStatus } from "@/lib/payroll";
 import { monthKey, saldoKasSampai } from "@/lib/finance";
@@ -19,11 +20,13 @@ export function DashboardTabs({
   sites,
   cashAccounts,
   transactions,
+  attention,
 }: {
   employees: Emp[];
   sites: Site[];
   cashAccounts: CashAccount[];
   transactions: Tx[];
+  attention: { href: string; text: string }[];
 }) {
   const [period, setPeriod] = useState(() => monthKey(new Date()));
 
@@ -119,10 +122,15 @@ export function DashboardTabs({
             ) : (
               siteStats.map((row) => (
                 <div key={row.site.id}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>{row.site.name}</span><span className="text-muted">{row.hadir}/{row.total} hadir</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, gap: 8 }}><span>{row.site.name}</span><span className="text-muted" style={{ whiteSpace: "nowrap" }}>{row.hadir}/{row.total} hadir</span></div>
                   <div style={{ height: 10, background: "var(--color-surface)", borderRadius: 5, overflow: "hidden" }}>
                     <div style={{ height: "100%", borderRadius: 5, background: "var(--color-accent)", width: row.pct + "%" }} />
                   </div>
+                  {(row.izin > 0 || row.alpha > 0) && (
+                    <div className="text-muted" style={{ fontSize: 11, marginTop: 3 }}>
+                      {[row.izin > 0 && `${row.izin} izin/sakit/cuti`, row.alpha > 0 && `${row.alpha} alpha`].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -132,21 +140,19 @@ export function DashboardTabs({
 
       <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "var(--space-4)" }}>
         <div className="card">
-          <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Kehadiran per tempat kerja</div>
-          <table className="table">
-            <thead><tr><th>Tempat kerja</th><th>Karyawan</th><th>Hadir</th><th>Izin</th><th>Alpha</th></tr></thead>
-            <tbody>
-              {siteStats.map((row) => (
-                <tr key={row.site.id}>
-                  <td>{row.site.name}</td>
-                  <td>{row.total}</td>
-                  <td>{row.hadir}</td>
-                  <td>{row.izin}</td>
-                  <td>{row.alpha}</td>
-                </tr>
+          <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Perlu perhatian</div>
+          {attention.length === 0 ? (
+            <p style={{ fontSize: 13, opacity: 0.6, margin: 0 }}>Tidak ada yang menunggu. Semua beres.</p>
+          ) : (
+            <div style={{ display: "grid", gap: "var(--space-2)" }}>
+              {attention.map((a) => (
+                <Link key={a.href} href={a.href} className="attention-item">
+                  <span>{a.text}</span>
+                  <span aria-hidden>→</span>
+                </Link>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
         <div className="card">
           <div className="card-kicker" style={{ marginBottom: "var(--space-3)" }}>Transaksi kas terbaru</div>

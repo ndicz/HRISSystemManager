@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { updateEmployeeProfile, fetchCertificates, addCertificate, removeCertificate } from "@/app/(app)/karyawan/actions";
 import { formatActionError } from "@/lib/errors";
 import { submitForm } from "@/lib/submitForm";
+import { DateInput } from "@/components/DateInput";
 
 type Emp = {
   id: string;
@@ -128,7 +129,7 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
                   </div>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="birthDate">Tanggal lahir</label>
-                    <input className="input" id="birthDate" name="birthDate" type="date" defaultValue={toDateInputValue(employee.birthDate)} />
+                    <DateInput id="birthDate" name="birthDate" defaultValue={toDateInputValue(employee.birthDate)} />
                   </div>
                 </div>
 
@@ -234,11 +235,11 @@ export function EmployeeProfileDialog({ employee }: { employee: Emp }) {
                     </div>
                     <div className="field" style={{ marginBottom: 0, width: 150 }}>
                       <label htmlFor="cert-from">Berlaku</label>
-                      <input className="input" id="cert-from" type="date" value={certFrom} onChange={(e) => setCertFrom(e.target.value)} />
+                      <DateInput id="cert-from" value={certFrom} onChange={setCertFrom} />
                     </div>
                     <div className="field" style={{ marginBottom: 0, width: 150 }}>
                       <label htmlFor="cert-until">Kedaluwarsa</label>
-                      <input className="input" id="cert-until" type="date" value={certUntil} onChange={(e) => setCertUntil(e.target.value)} />
+                      <DateInput id="cert-until" value={certUntil} onChange={setCertUntil} />
                     </div>
                     <button type="button" className="btn btn-primary" disabled={certPending || !certName.trim()} onClick={handleAddCert}>
                       Tambah

@@ -268,6 +268,7 @@ export async function advanceInvoiceBjStatus(id: string, fromStatus: string) {
           date: new Date(),
           accountCoaId: account.id,
           cashAccountId: cashAccount.id,
+          source: "invoice",
           desc: "Pembayaran " + inv.invoiceNo + " (" + keterangan + ")",
           amount: ppnAcc ? total - ppn : total,
           type: "masuk",
@@ -275,7 +276,7 @@ export async function advanceInvoiceBjStatus(id: string, fromStatus: string) {
       });
       if (ppnAcc) {
         await tx.transaction.create({
-          data: { date: new Date(), accountCoaId: ppnAcc.id, cashAccountId: cashAccount.id, desc: ppnDesc(inv.invoiceNo), amount: ppn, type: "masuk" },
+          data: { date: new Date(), accountCoaId: ppnAcc.id, cashAccountId: cashAccount.id, source: "invoice", desc: ppnDesc(inv.invoiceNo), amount: ppn, type: "masuk" },
         });
       }
     }
@@ -338,6 +339,7 @@ export async function cancelInvoiceBj(id: string) {
           date: new Date(),
           accountCoaId: account.id,
           cashAccountId: cashAccount.id,
+          source: "invoice",
           desc: "Pembatalan invoice " + inv.invoiceNo + " (" + keterangan + ")",
           amount: ppnPosted ? total - ppnPosted.amount : total,
           type: "keluar",
@@ -345,7 +347,7 @@ export async function cancelInvoiceBj(id: string) {
       });
       if (ppnPosted) {
         await tx.transaction.create({
-          data: { date: new Date(), accountCoaId: ppnPosted.accountCoaId, cashAccountId: cashAccount.id, desc: "Pembatalan " + ppnDesc(inv.invoiceNo), amount: ppnPosted.amount, type: "keluar" },
+          data: { date: new Date(), accountCoaId: ppnPosted.accountCoaId, cashAccountId: cashAccount.id, source: "invoice", desc: "Pembatalan " + ppnDesc(inv.invoiceNo), amount: ppnPosted.amount, type: "keluar" },
         });
       }
     }
@@ -449,6 +451,7 @@ export async function advanceInvoiceStatus(id: string, fromStatus: string) {
           date: now,
           accountCoaId: account.id,
           cashAccountId: cashAccount.id,
+          source: "invoice",
           desc: "Pembayaran " + inv.invoiceNo + " (" + keterangan + ")",
           amount: inv.total,
           type: "masuk",
@@ -524,6 +527,7 @@ export async function cancelInvoice(id: string) {
           date: new Date(),
           accountCoaId: account.id,
           cashAccountId: cashAccount.id,
+          source: "invoice",
           desc: "Pembatalan invoice " + inv.invoiceNo + " (" + keterangan + ")",
           amount: inv.total,
           type: "keluar",
