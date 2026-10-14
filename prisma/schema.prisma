@@ -125,8 +125,8 @@ model Employee {
   kasbonCicilan               Int       @default(1) // over how many months to deduct it (1 = full amount at once)
   status                      String    @default("aktif") // "aktif" | "resign"
   thrOverride                 Int?
-  // null = use the standard formula (computeBpjsKesehatan / computeBpjsKetenagakerjaanKaryawan);
-  // set = deduct this exact amount instead, for cases the formula doesn't match reality.
+  // null = fall back to the tempat kerja, then posisi amount; if none is set, BPJS isn't deducted.
+  // set = deduct this exact amount.
   bpjsKesehatanOverride       Int?
   bpjsKetenagakerjaanOverride Int?
   overtimeHours               Int       @default(0)

@@ -45,11 +45,12 @@ export function computePayroll(
   const potonganAbsensi = base - effective;
   const lemburRate = Math.round(base / 173 * 1.5);
   const lembur = emp.overtimeHours * lemburRate;
-  // null/0 override = use the standard formula; a set override lets HR
-  // correct cases where the formula doesn't match what's actually being
-  // deducted.
-  const bpjsKesehatan = orAuto(emp.bpjsKesehatanOverride) ?? computeBpjsKesehatan(base).karyawan;
-  const bpjsKetenagakerjaan = orAuto(emp.bpjsKetenagakerjaanOverride) ?? computeBpjsKetenagakerjaanKaryawan(base);
+  // BPJS is only deducted when an amount has actually been set (here, or on
+  // the tempat kerja / posisi in computeMonthlyPayrollLive). Not every
+  // employee is enrolled through payroll, so a formula figure deducted by
+  // default took money the company never paid to BPJS.
+  const bpjsKesehatan = orAuto(emp.bpjsKesehatanOverride) ?? 0;
+  const bpjsKetenagakerjaan = orAuto(emp.bpjsKetenagakerjaanOverride) ?? 0;
   const bpjs = bpjsKesehatan + bpjsKetenagakerjaan;
   const kasbonBulanIni = kasbonPerBulan(emp.kasbon, emp.kasbonCicilan);
   const potongan = potonganAbsensi + bpjs + kasbonBulanIni;

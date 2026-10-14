@@ -51,8 +51,8 @@ export function KaryawanTable({ employees, sites, positions }: { employees: Emp[
           e.contractType,
           e.contractEnd ? e.contractEnd.toLocaleDateString("id-ID") : "-",
           baseSalary(e.salaryComponents),
-          e.bpjsKesehatanOverride || "Otomatis",
-          e.bpjsKetenagakerjaanOverride || "Otomatis",
+          e.bpjsKesehatanOverride || "-",
+          e.bpjsKetenagakerjaanOverride || "-",
           e.kasbon,
           e.kasbonCicilan,
           e.cutiKuota,
@@ -122,10 +122,10 @@ export function KaryawanTable({ employees, sites, positions }: { employees: Emp[
                 <td className="text-muted" style={{ fontSize: 12 }}>
                   {e.bpjsKesehatanOverride || e.bpjsKetenagakerjaanOverride ? (
                     <>
-                      <div>Kes {e.bpjsKesehatanOverride ? formatRp(e.bpjsKesehatanOverride) : "otomatis"}</div>
-                      <div>TK {e.bpjsKetenagakerjaanOverride ? formatRp(e.bpjsKetenagakerjaanOverride) : "otomatis"}</div>
+                      <div>Kes {e.bpjsKesehatanOverride ? formatRp(e.bpjsKesehatanOverride) : "-"}</div>
+                      <div>TK {e.bpjsKetenagakerjaanOverride ? formatRp(e.bpjsKetenagakerjaanOverride) : "-"}</div>
                     </>
-                  ) : "Otomatis"}
+                  ) : <span title="Tidak diisi per karyawan: ikut tempat kerja/posisi, kalau kosong tidak dipotong">-</span>}
                 </td>
                 <td className="col-actions">
                   <div style={{ display: "flex", gap: 2, whiteSpace: "nowrap" }}>
