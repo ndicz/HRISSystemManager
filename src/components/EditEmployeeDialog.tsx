@@ -140,15 +140,15 @@ export function EditEmployeeDialog({ employee, sites, positions }: { employee: E
                 <input className="input" id="cutiKuota" name="cutiKuota" type="number" min={0} defaultValue={employee.cutiKuota} />
               </div>
 
-              <div className="card-kicker">Potongan BPJS (kosongkan = pakai rumus otomatis)</div>
+              <div className="card-kicker">Potongan BPJS (kosongkan = ikut tempat kerja/posisi; kalau semua kosong, tidak dipotong)</div>
               <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="bpjsKesehatanOverride">BPJS Kesehatan (Rp)</label>
-                  <RupiahInput id="bpjsKesehatanOverride" name="bpjsKesehatanOverride" placeholder="Otomatis" defaultValue={employee.bpjsKesehatanOverride} />
+                  <RupiahInput id="bpjsKesehatanOverride" name="bpjsKesehatanOverride" placeholder="Tidak diisi" defaultValue={employee.bpjsKesehatanOverride} />
                 </div>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="bpjsKetenagakerjaanOverride">BPJS Ketenagakerjaan (Rp)</label>
-                  <RupiahInput id="bpjsKetenagakerjaanOverride" name="bpjsKetenagakerjaanOverride" placeholder="Otomatis" defaultValue={employee.bpjsKetenagakerjaanOverride} />
+                  <RupiahInput id="bpjsKetenagakerjaanOverride" name="bpjsKetenagakerjaanOverride" placeholder="Tidak diisi" defaultValue={employee.bpjsKetenagakerjaanOverride} />
                 </div>
               </div>
 

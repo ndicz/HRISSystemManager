@@ -68,17 +68,17 @@ export function EditSiteDialog({ site }: { site: SiteRow }) {
               <div style={{ padding: "var(--space-3)", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 4%, transparent)" }}>
                 <div className="card-kicker" style={{ marginBottom: "var(--space-2)" }}>Override BPJS untuk semua karyawan di tempat kerja ini</div>
                 <p style={{ fontSize: 12, opacity: 0.6, margin: "0 0 var(--space-3)" }}>
-                  Kosongkan = pakai rumus otomatis. Override manual per karyawan (di halaman Penggajian) tetap menang
-                  atas ini kalau ada.
+                  Kosongkan = ikut posisi; kalau posisi juga kosong, BPJS tidak dipotong. Nominal per karyawan
+                  (di Edit karyawan / Detail gaji) tetap menang atas ini kalau ada.
                 </p>
                 <div className="grid-cols" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="edit-site-bpjs-kes">BPJS Kesehatan (Rp)</label>
-                    <RupiahInput id="edit-site-bpjs-kes" name="bpjsKesehatanOverride" placeholder="Otomatis" defaultValue={site.bpjsKesehatanOverride} />
+                    <RupiahInput id="edit-site-bpjs-kes" name="bpjsKesehatanOverride" placeholder="Tidak diisi" defaultValue={site.bpjsKesehatanOverride} />
                   </div>
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="edit-site-bpjs-tk">BPJS Ketenagakerjaan (Rp)</label>
-                    <RupiahInput id="edit-site-bpjs-tk" name="bpjsKetenagakerjaanOverride" placeholder="Otomatis" defaultValue={site.bpjsKetenagakerjaanOverride} />
+                    <RupiahInput id="edit-site-bpjs-tk" name="bpjsKetenagakerjaanOverride" placeholder="Tidak diisi" defaultValue={site.bpjsKetenagakerjaanOverride} />
                   </div>
                 </div>
               </div>
