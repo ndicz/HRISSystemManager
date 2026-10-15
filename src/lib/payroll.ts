@@ -312,7 +312,14 @@ function computeMonthlyPayrollLive(
     const autoLembur = lemburRegulerCount * 8 * lemburRatePerJam + lemburMerahCount * 8 * lemburRatePerJam * 2;
     const lembur = entry?.lemburOverride ?? autoLembur;
     const potonganAbsensi = entry?.potonganAbsensiOverride ?? base.potonganAbsensi;
-    const potongan = potonganAbsensi + base.bpjs + kasbonBulanIni;
+    // Without a flat rate there is no per-occurrence "otomatis" figure for
+    // izin/alfa/terlambat, but HR can still type one in "Lembur & Potongan"
+    // — those used to be saved and then silently left out of the total.
+    // They're deducted on top of the proportional potongan absensi.
+    const potonganIzin = entry?.potonganIzinOverride ?? 0;
+    const potonganAlpha = entry?.potonganAlphaOverride ?? 0;
+    const potonganTerlambat = entry?.potonganTerlambatOverride ?? 0;
+    const potongan = potonganAbsensi + potonganIzin + potonganAlpha + potonganTerlambat + base.bpjs + kasbonBulanIni;
     // Bonus (PayrollEntry.allowance) folds into the monthly total the same
     // way here as in the flat-rate branch below — previously hardcoded to
     // 0, so a bonus entered for an employee/period without a configured
@@ -323,7 +330,7 @@ function computeMonthlyPayrollLive(
       ...base,
       gajiPokok, potonganAbsensi, kasbonBulanIni, potongan,
       lembur, allowance, total,
-      potonganIzin: 0, potonganAlpha: 0, potonganTerlambat: 0,
+      potonganIzin, potonganAlpha, potonganTerlambat,
       lemburReguler: 0, lemburMerah: 0, penugasanTambahan,
       usesFlatRate: false as const,
     };
