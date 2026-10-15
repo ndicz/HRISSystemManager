@@ -99,6 +99,35 @@ export async function resignEmployee(formData: FormData) {
   revalidatePath("/penggajian");
 }
 
+// Undo a resign (entered by mistake, or the person came back): back to
+// aktif with all history intact, so they show up again in Absensi and
+// Penggajian from the next run.
+export async function reactivateEmployee(employeeId: string) {
+  const session = await requireAccess("/karyawan");
+  const existing = await db.employee.findUnique({ where: { id: employeeId } });
+  if (!existing) throw new UserError("Karyawan tidak ditemukan.");
+  if (existing.status !== "resign") throw new UserError("Karyawan ini sudah aktif.");
+
+  await db.employee.update({
+    where: { id: employeeId },
+    data: { status: "aktif", resignDate: null, resignReason: null },
+  });
+
+  await db.auditLog.create({
+    data: {
+      userId: session.user.id,
+      action: "employee.reactivate",
+      entity: "Employee",
+      entityId: employeeId,
+      detail: JSON.stringify({ resignDate: existing.resignDate?.toISOString().slice(0, 10) ?? null, resignReason: existing.resignReason }),
+    },
+  });
+
+  revalidatePath("/karyawan");
+  revalidatePath("/absensi");
+  revalidatePath("/penggajian");
+}
+
 // Hard delete is only for a genuine mistake (added the wrong person, no
 // history yet) — once there's attendance, payroll, or allowance history,
 // use "resign" instead (above) so that history stays intact. Cascades
@@ -136,6 +165,7 @@ export async function updateEmployeeDetails(formData: FormData) {
   const session = await requireAccess(["/karyawan", "/absensi"]);
 
   const employeeId = String(formData.get("employeeId") ?? "");
+  const name = String(formData.get("name") ?? "").trim().replace(/\s+/g, " ");
   const siteId = String(formData.get("siteId") ?? "");
   const positionId = String(formData.get("positionId") ?? "");
   const contractType = String(formData.get("contractType") ?? "PKWT");
@@ -154,6 +184,9 @@ export async function updateEmployeeDetails(formData: FormData) {
   const existing = await db.employee.findUnique({ where: { id: employeeId }, include: { site: true, position: true } });
   if (!existing) throw new UserError("Karyawan tidak ditemukan.");
 
+  // Older clients don't send the field; only a non-blank name renames.
+  const renameLog = name && name !== existing.name ? JSON.stringify({ from: existing.name, to: name }) : null;
+
   let transferLog: string | null = null;
   if (siteId && siteId !== existing.siteId) {
     const newSite = await db.site.findUnique({ where: { id: siteId } });
@@ -171,6 +204,7 @@ export async function updateEmployeeDetails(formData: FormData) {
   await db.employee.update({
     where: { id: employeeId },
     data: {
+      ...(renameLog ? { name } : {}),
       ...(siteId ? { siteId } : {}),
       ...(positionId ? { positionId } : {}),
       contractType,
@@ -184,7 +218,7 @@ export async function updateEmployeeDetails(formData: FormData) {
   });
 
   await db.auditLog.create({
-    data: { userId: session.user.id, action: "employee.update", entity: "Employee", entityId: employeeId },
+    data: { userId: session.user.id, action: "employee.update", entity: "Employee", entityId: employeeId, ...(renameLog ? { detail: renameLog } : {}) },
   });
   if (transferLog) {
     await db.auditLog.create({

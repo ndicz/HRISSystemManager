@@ -75,6 +75,10 @@ export function EditEmployeeDialog({ employee, sites, positions }: { employee: E
             <form ref={formRef} onSubmit={(e) => submitForm(e, handleSubmit)} style={{ display: "grid", gap: "var(--space-3)" }}>
               <input type="hidden" name="employeeId" value={employee.id} />
               <div className="field">
+                <label htmlFor="edit-emp-name">Nama</label>
+                <input className="input" id="edit-emp-name" name="name" defaultValue={employee.name} required />
+              </div>
+              <div className="field">
                 <label htmlFor="siteId">Tempat kerja</label>
                 <select className="input" id="siteId" name="siteId" defaultValue={employee.siteId}>
                   {sites.map((s) => (

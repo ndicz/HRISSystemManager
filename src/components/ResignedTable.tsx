@@ -4,6 +4,7 @@ import type { Employee, Site, Position } from "@prisma/client";
 import { Pagination, usePagedRows } from "@/components/Pagination";
 import { SortableTh, useSortableRows } from "@/components/SortableHeader";
 import { BASE_PATH } from "@/lib/basePath";
+import { ReactivateEmployeeButton } from "@/components/ReactivateEmployeeButton";
 
 type Emp = Employee & { site: Site; position: Position };
 
@@ -43,7 +44,8 @@ export function ResignedTable({ resigned }: { resigned: Emp[] }) {
               <td>{e.position.name}</td>
               <td className="text-muted">{e.resignDate ? e.resignDate.toLocaleDateString("id-ID") : "-"}</td>
               <td>{e.resignReason ?? "-"}</td>
-              <td>
+              <td style={{ whiteSpace: "nowrap" }}>
+                <ReactivateEmployeeButton employeeId={e.id} employeeName={e.name} />
                 {e.resignDate && (
                   <a href={`${BASE_PATH}/print/final-settlement/${e.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
                     Cetak slip terakhir
