@@ -88,6 +88,9 @@ export default async function SlipPrintPage({
               {p.allowance > 0 && <tr><td>Bonus</td><td>{formatRp(p.allowance)}</td></tr>}
               {p.penugasanTambahan > 0 && <tr><td>Penugasan tambahan</td><td>{formatRp(p.penugasanTambahan)}</td></tr>}
               <tr><td>Potongan absensi</td><td>-{formatRp(p.potonganAbsensi)}</td></tr>
+              {p.potonganIzin > 0 && <tr><td>Potongan izin</td><td>-{formatRp(p.potonganIzin)}</td></tr>}
+              {p.potonganAlpha > 0 && <tr><td>Potongan alfa</td><td>-{formatRp(p.potonganAlpha)}</td></tr>}
+              {p.potonganTerlambat > 0 && <tr><td>Potongan terlambat</td><td>-{formatRp(p.potonganTerlambat)}</td></tr>}
               <tr><td>Potongan BPJS Kesehatan</td><td>-{formatRp(p.bpjsKesehatan)}</td></tr>
               <tr><td>Potongan BPJS Ketenagakerjaan</td><td>-{formatRp(p.bpjsKetenagakerjaan)}</td></tr>
               <tr>

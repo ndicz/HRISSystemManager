@@ -142,6 +142,11 @@ export function PayrollDetailDialog({
     : [
         { key: "gajiPokok", label: "Gaji pokok", amount: p.gajiPokok },
         { key: "potonganAbsensi", label: "Potongan absensi", amount: -p.potonganAbsensi, editable: potonganAbsensiEdit },
+        // Manual izin/alfa/terlambat from "Lembur & Potongan" — shown only
+        // when set, since without a flat rate there's no automatic figure.
+        ...(p.potonganIzin ? [{ key: "izin", label: "Potongan izin (manual)", amount: -p.potonganIzin }] : []),
+        ...(p.potonganAlpha ? [{ key: "alfa", label: "Potongan alfa (manual)", amount: -p.potonganAlpha }] : []),
+        ...(p.potonganTerlambat ? [{ key: "terlambat", label: "Potongan terlambat (manual)", amount: -p.potonganTerlambat }] : []),
         { key: "lembur", label: "Lembur", amount: p.lembur },
         { key: "allowance", label: "Bonus", amount: p.allowance },
       ];

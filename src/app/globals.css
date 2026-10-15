@@ -252,6 +252,10 @@ img { display: block; max-width: 100%; }
    buttons stay in view while the rest of the row scrolls under it. */
 .table .col-actions { position: sticky; right: 0; background: #fff; box-shadow: -10px 0 10px -10px color-mix(in srgb, var(--color-text) 25%, transparent); }
 .table th.col-actions { z-index: 2; }
+/* A dialog opened from a sticky cell lives inside that cell's stacking
+   context, so the sticky header and the other rows' sticky cells painted
+   over it. Lift the cell holding an open dialog above all of them. */
+.table .col-actions:has(.dialog-backdrop) { z-index: 100; }
 .table tbody tr:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
 
 /* For a .table nested inside a dialog's own bounded, already-scrolling
